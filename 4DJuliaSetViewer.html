@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>4D Julia Set Viewer Pro</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined" rel="stylesheet">
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; color: #fff; font-family: sans-serif; }
+        canvas { width: 100vw !important; height: 100dvh !important; display: block; touch-action: none; }
+        #toggle-ui-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5em; line-height: 1; position: absolute; bottom: 20px; right: 20px; z-index: 150; background: rgba(40, 40, 40, 0.9); color: white; border: 1px solid #666; padding: 10px 15px; border-radius: 20px; cursor: pointer; font-size: 14px; box-shadow: 0 4px 6px rgba(0,0,0,0.5); }
+        #toggle-ui-btn.is-close::before { font-family: 'Material Symbols Outlined'; content: '\e8b8'; line-height: 1; font-size: 16px;}
+        #toggle-ui-btn.is-open::before { font-family: 'Material Symbols Outlined'; content: '\e5cd'; line-height: 1; font-size: 16px;}
+        #custom-ui { transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out; position: absolute; bottom: 0; left: 0; width: 100%; max-height: 80dvh; overflow-y: auto; background: rgba(20, 20, 20, 0.9); border-top: 1px solid #444; padding: 15px 15px 70px 15px; box-sizing: border-box; z-index: 100; overscroll-behavior: contain; }
+        #custom-ui.hidden { transform: translateY(100%); }
+        #custom-ui.is-interacting { opacity: 0.25; pointer-events: none; }
+        details { background: rgba(255,255,255,0.05); border-radius: 5px; margin-bottom: 10px; padding: 5px 10px; }
+        summary { font-size: 13px; font-weight: bold; color: #ddd; cursor: pointer; padding: 5px 0; outline: none; }
+        
+        .grid-container, .grid-2cols, .grid-3cols, .grid-4cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-top: 10px; }
+        .grid-2cols { grid-template-columns: repeat(2, 1fr); }
+        .grid-3cols { grid-template-columns: repeat(3, 1fr); }
+        .grid-4cols { grid-template-columns: repeat(4, 1fr); }
+        
+        .slider-group { display: flex; flex-direction: column; }
+        .slider-group label { font-size: 11px; margin-bottom: 5px; color: #ccc; display: flex; justify-content: space-between; align-items: center; cursor: help; }
+        .val-label { font-family: monospace; padding: 1px 4px; border-radius: 3px; color: #eee; font-weight: bold; }
+        
+        .slider-group input[type="range"] { width: 100%; height: 24px; margin: 0; touch-action: none; }
+        .slider-group input[type="color"] { width: 100%; height: 30px; border: none; background: none; cursor: pointer; }
+        .slider-group select, .slider-group button { background: #333; color: #fff; border: 1px solid #555; padding: 5px; border-radius: 3px; height: 30px; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.3em; }
+        .slider-group button:hover { background: #444; }
+        .slider-group button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .flex-icon-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5em; line-height: 1; }
+        
+        #download-btn { background: #0055ff; border-color: #0044cc; font-weight: bold; }
+        #download-btn::before { font-family: 'Material Symbols Outlined'; content: '\f090'; font-size: 16px;}
+        #download-btn:hover { background: #0066ff; }
+        #download-btn:disabled { background: #555; color: #aaa; border-color: #444; }
+        
+        #share-btn { background: #28a745; border-color: #218838; font-weight: bold; }
+        #share-btn::before { font-family: 'Material Symbols Outlined'; content: '\e157'; font-size: 16px;}
+        #share-btn:hover { background: #218838; }
+
+        #random-btn { background: #8a2be2; border-color: #6a1b9a; font-weight: bold; }
+        #random-btn::before { font-family: 'Material Symbols Outlined'; content: '\e043'; font-size: 16px;}
+        #random-btn:hover { background: #9400d3; }
+
+        #undo-btn::before { font-family: 'Material Symbols Outlined'; content: '\e166'; font-size: 16px; }
+        #redo-btn::before { font-family: 'Material Symbols Outlined'; content: '\e15a'; font-size: 16px; }
+
+        #fullscreen-btn {
+            position: absolute; top: 10px; right: 10px; z-index: 150;
+            background: rgba(40, 40, 40, 0.7); color: white; border: 1px solid #666;
+            padding: 8px; border-radius: 5px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5); transition: background 0.2s;
+        }
+        #fullscreen-btn:hover { background: rgba(80, 80, 80, 0.9); }
+        #fullscreen-btn::before { font-family: 'Material Symbols Outlined'; content: '\e5d0'; font-size: 20px; }
+        #fullscreen-btn.is-fullscreen::before { content: '\e5d1'; }
+
+        #auto-animate-btn {
+            position: absolute; top: 10px; left: 10px; z-index: 150;
+            background: rgba(40, 40, 40, 0.7); color: white; border: 1px solid #666;
+            padding: 8px; border-radius: 5px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5); transition: background 0.2s;
+        }
+        #auto-animate-btn:hover { background: rgba(80, 80, 80, 0.9); }
+        #auto-animate-btn::before { font-family: 'Material Symbols Outlined'; content: '\e037'; font-size: 20px; }
+        #auto-animate-btn.is-playing::before { content: '\e034'; }
+
+        #fps-counter { position: absolute; bottom: 10px; left: 10px; z-index: 150; background: rgba(0,0,0,0.7); color: #0f0; padding: 4px 8px; border-radius: 5px; font-family: monospace; font-size: 12px; pointer-events: none; }
+
+        #XRButton { 
+            position: absolute !important; 
+            right: 50px !important; 
+            top: 10px !important; 
+            left: auto !important; 
+            bottom: auto !important;
+            z-index: 150 !important;
+            background: rgba(40, 40, 40, 0.7) !important; 
+            color: #fff !important;
+            border: 1px solid #666 !important; 
+            border-radius: 5px !important; 
+            font-size: 12px !important; 
+            font-weight: bold !important;
+            padding: 8px 12px !important; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5) !important;
+            cursor: pointer !important;
+            transition: background 0.2s !important;
+        }
+        #XRButton:hover { 
+            background: rgba(80, 80, 80, 0.9) !important; 
+        }
+        #XRButton::after {font-family: 'Material Symbols Outlined'; content: '\f4c5'; font-size: 20px; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: rgba(0, 0, 0, 0.85); z-index: 9999; display: flex; align-items: center; justify-content: center; opacity: 1; transition: opacity 0.3s ease; }
+        .modal-overlay.hidden { opacity: 0; pointer-events: none; }
+        .modal-content { background: #1a1a1a; padding: 30px; border-radius: 8px; border: 1px solid #333; text-align: center; width: 80%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+        .modal-title { font-size: 16px; font-weight: bold; margin-bottom: 20px; color: #ddd; }
+        .progress-container { width: 100%; height: 12px; background: #333; border-radius: 6px; overflow: hidden; margin-bottom: 10px; }
+        .progress-bar { width: 0%; height: 100%; background: #0055ff; transition: width 0.1s linear; }
+        .progress-text { font-size: 14px; font-weight: bold; color: #fff; }
+    </style>
+</head>
+<body>
+    <div id="fps-counter">60 FPS</div>
+    <button id="auto-animate-btn" title="自動アニメーション開始" aria-label="自動アニメーション開始"></button>
+    <button id="fullscreen-btn" title="全画面表示" aria-label="全画面表示"></button>
+    <button id="toggle-ui-btn" class="is-close">設定</button>
+
+    <div id="dl-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-title">高解像度画像を生成中...</div>
+            <div class="progress-container">
+                <div id="dl-progress-bar" class="progress-bar"></div>
+            </div>
+            <div id="dl-progress-text" class="progress-text">0%</div>
+        </div>
+    </div>
+
+    <div id="custom-ui" class="hidden">
+        <div class="grid-2cols" style="margin-bottom: 20px; align-items: end;">
+            <div class="slider-group">
+                <label title="あらかじめ登録された美麗な形状設定を呼び出します。">形状プリセット</label>
+                <select id="preset-select">
+                    <option value="custom">カスタム</option>
+                    <option value="preset1" selected>Deep Blue (Default)</option>
+                    <option value="preset2">Jade Artifact</option>
+                    <option value="preset3">Crimson Ring</option>
+                    <option value="preset4">Golden Amber</option>
+                    <option value="preset5">Pure Origin</option>
+                </select>
+            </div>
+            <div class="slider-group">
+                <label title="自動アニメーション駆動時のモーフィングパターンを変更します。">動作プリセット</label>
+                <select id="anim-preset-select">
+                    <option value="custom">カスタム</option>
+                    <option value="preset1" selected>Harmonic Flow (Default)</option>
+                    <option value="preset2">Subtle Drift</option>
+                    <option value="preset3">Turbulent Wave</option>
+                    <option value="preset4">Rapid Pulse</option>
+                </select>
+            </div>
+            <div class="slider-group">
+                <label title="パラメータ変更の履歴を戻すまたは進めます">履歴操作</label>
+                <div class="grid-2cols" style="margin-top: 0; gap: 4px; margin-bottom: 4px;">
+                    <button id="undo-btn" class="flex-icon-btn" disabled>1つ戻る</button>
+                    <button id="redo-btn" class="flex-icon-btn" disabled>1つ進む</button>
+                </div>
+                
+            </div>
+            <div class="slider-group">
+                <label title="形状、回転、色、質感の完全ランダム生成を行います。">ランダム生成</label>
+                <button id="random-btn" class="flex-icon-btn" title="C値、回転、色彩、質感をランダムに変更します。">ランダム生成</button>
+            </div>
+            <div class="slider-group">
+                <label title="保存ファイルの画像フォーマットと解像度の倍率を指定します。">書き出し設定 (形式 / 解像度)</label>
+                <select id="dl-format" style="margin-bottom: 4px;">
+                    <option value="jpeg" selected>JPEG</option>
+                    <option value="webp">WebP</option>
+                    <option value="png">PNG</option>
+                    <option value="transparent_png">PNG（背景透過）</option>
+                </select>
+                <select id="dl-scale">
+                    <option value="0.5">0.5x（軽量）</option>
+                    <option value="1.0" selected>1.0x（標準）</option>
+                    <option value="1.5">1.5x（高品質）</option>
+                </select>
+            </div>
+            <div class="slider-group">
+                <label title="現在の作品を高画質の壁紙として保存、または設定付きURLを発行します。">作品の保存・共有</label>
+                <button id="download-btn" class="flex-icon-btn" style="margin-bottom: 4px;">画像を保存</button>
+                <button id="share-btn" class="flex-icon-btn">URLをコピー</button>
+            </div>
+        </div>
+
+        <details open>
+            <summary>形状パラメータ (C Value)</summary>
+            <div class="grid-container">
+                <div class="slider-group"><label title="4次元複素定数の実数成分X。数理構造の骨格を左右します。">C.x <span id="val-cx" class="val-label"></span></label><input type="range" id="cx" min="-1.0" max="1.0" step="0.001" value="-0.517"></div>
+                <div class="slider-group"><label title="4次元複素定数の虚数成分Y。形状の肉付きや対称性に影響します。">C.y <span id="val-cy" class="val-label"></span></label><input type="range" id="cy" min="-1.0" max="1.0" step="0.001" value="-0.341"></div>
+                <div class="slider-group"><label title="4次元複素定数の虚数成分Z。立体的なトポロジーをねじ曲げます。">C.z <span id="val-cz" class="val-label"></span></label><input type="range" id="cz" min="-1.0" max="1.0" step="0.001" value="-0.407"></div>
+                <div class="slider-group"><label title="4次元複素定数の虚数成分W（第4軸）。3次元スライス断面が超空間を移動します。">C.w <span id="val-cw" class="val-label"></span></label><input type="range" id="cw" min="-1.0" max="1.0" step="0.001" value="-0.071"></div>
+            </div>
+        </details>
+
+        <details>
+            <summary>空間の回転と視野角</summary>
+            <div class="grid-3cols">
+                <div class="slider-group"><label title="通常の3次元空間におけるX軸周りの回転（仰俯角）。">X軸回転 (Pitch) <span id="val-rotX" class="val-label"></span></label><input type="range" id="rotX" min="0" max="6.283" step="0.01" value="0"></div>
+                <div class="slider-group"><label title="通常の3次元空間におけるY軸周りの回転（左右方位角）。">Y軸回転 (Yaw) <span id="val-rotY" class="val-label"></span></label><input type="range" id="rotY" min="0" max="6.283" step="0.01" value="0"></div>
+                <div class="slider-group"><label title="通常の3次元空間におけるZ軸周りの回転（傾き）。">Z軸回転 (Roll) <span id="val-rotZ" class="val-label"></span></label><input type="range" id="rotZ" min="0" max="6.283" step="0.01" value="0"></div>
+            </div>
+            <div class="grid-3cols" style="margin-top: 10px;">
+                <div class="slider-group"><label title="第4のステレオ軸WとX軸で形成される超平面上の回転。断面が内側から裏返ります。">XW平面回転 (4D) <span id="val-rotXW" class="val-label"></span></label><input type="range" id="rotXW" min="0" max="6.283" step="0.01" value="0"></div>
+                <div class="slider-group"><label title="第4のステレオ軸WとY軸で形成される超平面上の回転。">YW平面回転 (4D) <span id="val-rotYW" class="val-label"></span></label><input type="range" id="rotYW" min="0" max="6.283" step="0.01" value="0"></div>
+                <div class="slider-group"><label title="第4のステレオ軸WとZ軸で形成される超平面上の回転。">ZW平面回転 (4D) <span id="val-rotZW" class="val-label"></span></label><input type="range" id="rotZW" min="0" max="6.283" step="0.01" value="0"></div>
+            </div>
+            <div class="slider-group" style="margin-top: 10px;"><label title="カメラのレンズ視野角。値を大きくするとパースが強くなり、小さくすると望遠になります。">視野角 (FoV) <span id="val-fov" class="val-label"></span></label><input type="range" id="fov" min="15" max="120" step="1" value="45"></div>
+        </details>
+
+        <details>
+            <summary>色と質感</summary>
+            <div class="grid-2cols">
+                <div class="slider-group"><label title="空間の背景色。">背景色</label><input type="color" id="bgColor" value="#000000"></div>
+                <div class="slider-group"><label title="フラクタルのベースとなる色彩（HSV空間のH/Sを決定します）。">ベースカラー</label><input type="color" id="baseColorPicker" value="#0055ff"></div>
+            </div>
+            <div class="grid-3cols">
+                <div class="slider-group"><label title="最終レンダリングの全体的な光量倍率。">明るさ <span id="val-brightness" class="val-label"></span></label><input type="range" id="brightness" min="0.5" max="3.0" step="0.1" value="1.4"></div>
+                <div class="slider-group"><label title="形状の奥まった部分に生じる陰影（環境光遮蔽）の強度。">影の濃さ <span id="val-aoPower" class="val-label"></span></label><input type="range" id="aoPower" min="0.1" max="3.0" step="0.1" value="1.0"></div>
+                <div class="slider-group"><label title="鏡面反射光（ハイライト）の鋭さ。値が大きいほど金属的な鋭い光沢になります。">光沢感 <span id="val-specular" class="val-label"></span></label><input type="range" id="specular" min="2.0" max="64.0" step="1.0" value="10.0"></div>
+            </div>
+        </details>
+
+        <details>
+            <summary>アニメーション設定の詳細</summary>
+            <div class="grid-2cols">
+                <div class="slider-group"><label title="自動アニメーションの全体の進行速度速度。">全体の速度 <span id="val-anim-speed" class="val-label"></span></label><input type="range" id="anim-speed" min="0.1" max="2.0" step="0.1" value="0.8"></div>
+                <div class="slider-group"><label title="アニメーションによって揺れ動くC値の最大可動振幅。">最大振幅 <span id="val-anim-amp" class="val-label"></span></label><input type="range" id="anim-amp" min="0.0" max="0.5" step="0.05" value="0.4"></div>
+            </div>
+            
+            <details style="margin-top: 10px; background: rgba(255,255,255,0.02);">
+                <summary>各軸の固有パラメータ（速度・振幅・位相）</summary>
+                <div style="display: flex; flex-direction: column; gap: 16px; margin-top: 10px;">
+                    <div class="grid-3cols">
+                        <div class="slider-group"><label title="C.x 軸の調和振動速度比率。">C.x 速度比 <span id="val-speed-x" class="val-label"></span></label><input type="range" id="speed-x" min="0" max="2.0" step="0.05" value="1.0"></div>
+                        <div class="slider-group"><label title="C.x 軸の固有振幅比率。">C.x 振幅比 <span id="val-amp-x" class="val-label"></span></label><input type="range" id="amp-x" min="0" max="1.0" step="0.05" value="1.0"></div>
+                        <div class="slider-group"><label title="C.x 軸の始動タイミングをずらす初期位相。">C.x 初期位相 <span id="val-phase-x" class="val-label"></span></label><input type="range" id="phase-x" min="0" max="6.283" step="0.1" value="0"></div>
+                    </div>
+                    <div class="grid-3cols">
+                        <div class="slider-group"><label title="C.y 軸の調和振動速度比率。">C.y 速度比 <span id="val-speed-y" class="val-label"></span></label><input type="range" id="speed-y" min="0" max="2.0" step="0.05" value="0.75"></div>
+                        <div class="slider-group"><label title="C.y 軸の固有振幅比率。">C.y 振幅比 <span id="val-amp-y" class="val-label"></span></label><input type="range" id="amp-y" min="0" max="1.0" step="0.05" value="1.0"></div>
+                        <div class="slider-group"><label title="C.y 軸の始動タイミングをずらす初期位相。">C.y 初期位相 <span id="val-phase-y" class="val-label"></span></label><input type="range" id="phase-y" min="0" max="6.283" step="0.1" value="0"></div>
+                    </div>
+                    <div class="grid-3cols">
+                        <div class="slider-group"><label title="C.z 軸の調和振動速度比率。">C.z 速度比 <span id="val-speed-z" class="val-label"></span></label><input type="range" id="speed-z" min="0" max="2.0" step="0.05" value="0.5"></div>
+                        <div class="slider-group"><label title="C.z 軸の固有振幅比率。">C.z 振幅比 <span id="val-amp-z" class="val-label"></span></label><input type="range" id="amp-z" min="0" max="1.0" step="0.05" value="1.0"></div>
+                        <div class="slider-group"><label title="C.z 軸の始動タイミングをずらす初期位相。">C.z 初期位相 <span id="val-phase-z" class="val-label"></span></label><input type="range" id="phase-z" min="0" max="6.283" step="0.1" value="0"></div>
+                    </div>
+                    <div class="grid-3cols">
+                        <div class="slider-group"><label title="C.w 軸の調和振動速度比率。">C.w 速度比 <span id="val-speed-w" class="val-label"></span></label><input type="range" id="speed-w" min="0" max="2.0" step="0.05" value="0.25"></div>
+                        <div class="slider-group"><label title="C.w 軸の固有振幅比率。">C.w 振幅比 <span id="val-amp-w" class="val-label"></span></label><input type="range" id="amp-w" min="0" max="1.0" step="0.05" value="1.0"></div>
+                        <div class="slider-group"><label title="C.w 軸の始動タイミングをずらす初期位相。">C.w 初期位相 <span id="val-phase-w" class="val-label"></span></label><input type="range" id="phase-w" min="0" max="6.283" step="0.1" value="0"></div>
+                    </div>
+                </div>
+            </details>
+        </details>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <script>
+        // グローバルに VRButton を定義するポリフィルスクリプト
+        window.VRButton = {
+            createButton: function ( renderer ) {
+                const button = document.createElement( 'button' );
+                button.id = 'XRButton';
+                button.style.display = 'none';
+
+                if ( 'xr' in navigator ) {
+                    button.id = 'XRButton';
+                    button.title = 'ENTER VR';
+
+                    navigator.xr.isSessionSupported( 'immersive-vr' ).then( function ( supported ) {
+                        if ( supported ) {
+                            button.style.display = 'block';
+                        } else {
+                            button.title = 'VR NOT SUPPORTED';
+                            button.style.display = 'block';
+                            button.style.opacity = '0.5';
+                            button.disabled = true;
+                        }
+                    } );
+
+                    let currentSession = null;
+
+                    async function onSessionStarted( session ) {
+                        session.addEventListener( 'end', onSessionEnded );
+                        await renderer.xr.setSession( session );
+                        button.title = 'EXIT VR';
+                        currentSession = session;
+                    }
+
+                    function onSessionEnded( ) {
+                        currentSession.removeEventListener( 'end', onSessionEnded );
+                        button.title = 'ENTER VR';
+                        currentSession = null;
+                    }
+
+                    button.onclick = function () {
+                        if ( currentSession === null ) {
+                            const sessionInit = { optionalFeatures: [ 'local-floor', 'bounded-floor', 'hand-tracking', 'layers' ] };
+                            navigator.xr.requestSession( 'immersive-vr', sessionInit ).then( onSessionStarted );
+                        } else {
+                            currentSession.end();
+                        }
+                    };
+                } else {
+                    if ( window.isSecureContext === false ) {
+                        button.title = 'WEBXR NEEDS HTTPS';
+                    } else {
+                        button.title = 'WEBXR NOT AVAILABLE';
+                    }
+                    button.style.display = 'block';
+                    button.style.opacity = '0.5';
+                    button.disabled = true;
+                }
+                return button;
+            }
+        };
+    </script>
+
+    <script>
+        const CONFIG = {
+            QUALITY: { LOW: { steps: 150, iter: 15 }, HIGH: { steps: 800, iter: 80 } },
+            MAX_RENDER_SIZE: 1200,
+            UI_PARAMS: [
+                'cx', 'cy', 'cz', 'cw', 'rotX', 'rotY', 'rotZ', 'rotXW', 'rotYW', 'rotZW', 
+                'hue', 'saturation', 'brightness', 'aoPower', 'specular', 'bgColor',
+                'anim-speed', 'anim-amp',
+                'speed-x', 'amp-x', 'phase-x',
+                'speed-y', 'amp-y', 'phase-y',
+                'speed-z', 'amp-z', 'phase-z',
+                'speed-w', 'amp-w', 'phase-w',
+                'fov'
+            ],
+            PRESETS: {
+                preset1: { cx: -0.517, cy: -0.341, cz: -0.407, cw: -0.071, rotX: 0, rotY: 0, rotZ: 2.02, rotXW: 0, rotYW: 0, rotZW: 0, hue: 0.586, saturation: 1, brightness: 2.3, aoPower: 1, specular: 10, bgColor: '#0a0c1a', fov: 45 },
+                preset2: { cx: 0.415, cy: 0.56, cz: 0.175, cw: 0.459, rotX: 0, rotY: 0.7, rotZ: 0, rotXW: 0, rotYW: 0, rotZW: 0, hue: 0.35, saturation: 1, brightness: 1.5, aoPower: 1.2, specular: 24, bgColor: '#05220d', fov: 45 },
+                preset3: { cx: 0.497, cy: 0.182, cz: 0.161, cw: -0.178, rotX: 2.25, rotY: 1.29, rotZ: 2.25, rotXW: 2.92, rotYW: 0, rotZW: 0.15, hue: 0, saturation: 0.814, brightness: 2.3, aoPower: 0.1, specular: 64, bgColor: '#fe9f9f', fov: 45 },
+                preset4: { cx: 0.038, cy: 0.681, cz: 0.054, cw: 0.12, rotX: 3.81, rotY: 3.45, rotZ: 0.8, rotXW: 0, rotYW: 0, rotZW: 3.22, hue: 0.114, saturation: 0.898, brightness: 2.3, aoPower: 0.6, specular: 16, bgColor: '#b87d00', fov: 45 },
+                preset5: { cx: 0, cy: 0, cz: 0, cw: 0, rotX: 0, rotY: 0, rotZ: 0, rotXW: 0, rotYW: 0, rotZW: 0, hue: 0, saturation: 0, brightness: 2.7, aoPower: 0.1, specular: 64, bgColor: '#dedede', fov: 45 }
+            },
+            ANIM_PRESETS: {
+                preset1: { speed: 0.8, amp: 0.45, sx: 1.0, ax: 1.0, px: 0.0, sy: 0.75, ay: 1.0, py: 0.0, sz: 0.5, az: 1.0, pz: 0.0, sw: 0.25, aw: 1.0, pw: 0.0 },
+                preset2: { speed: 0.5, amp: 0.15, sx: 1.35, ax: 1, px: 1.3, sy: 0.7, ay: 1, py: 3.7, sz: 0.75, az: 1, pz: 1.9, sw: 1.25, aw: 1, pw: 5.1 },
+                preset3: { speed: 1.0, amp: 0.5, sx: 1.2, ax: 0.85, px: 4.4, sy: 1.3, ay: 0.7, py: 2.9, sz: 0.5, az: 0.6, pz: 4, sw: 1.2, aw: 0.75, pw: 2.7 },
+                preset4: { speed: 1.5, amp: 0.5, sx: 1, ax: 1, px: 0, sy: 0.75, ay: 0.7, py: 0, sz: 0.5, az: 0.6, pz: 4, sw: 0.9, aw: 0.45, pw: 0 }
+            },
+            ANIM_UI_IDS: [
+                { id: 'anim-speed', key: 'speed' }, { id: 'anim-amp', key: 'amp' },
+                { id: 'speed-x', key: 'sx' }, { id: 'amp-x', key: 'ax' }, { id: 'phase-x', key: 'px' },
+                { id: 'speed-y', key: 'sy' }, { id: 'amp-y', key: 'ay' }, { id: 'phase-y', key: 'py' },
+                { id: 'speed-z', key: 'sz' }, { id: 'amp-z', key: 'az' }, { id: 'phase-z', key: 'pz' },
+                { id: 'speed-w', key: 'sw' }, { id: 'amp-w', key: 'aw' }, { id: 'phase-w', key: 'pw' }
+            ]
+        };
+
+        const SHADERS = {
+            vertex: `void main() { gl_Position = vec4(position, 1.0); }`,
+            fragment: `
+                uniform vec2 u_resolution;
+                uniform vec4 u_c;
+                uniform int u_maxIter; uniform int u_maxSteps;
+                uniform vec3 u_cameraPos; uniform mat4 u_cameraWorldMatrix; uniform mat4 u_cameraProjectionMatrixInverse;
+                uniform float u_brightness; uniform float u_hue; uniform float u_saturation;
+                uniform float u_aoPower; uniform float u_specular; uniform vec3 u_bgColor; uniform float u_bgAlpha;
+                uniform mat4 u_rotMatrix_3D;
+                uniform mat4 u_rotMatrix_4D;
+
+                vec4 qSq(vec4 q) { return vec4(q.x*q.x - dot(q.yzw, q.yzw), 2.0*q.x*q.yzw); }
+
+                vec2 iSphere(vec3 ro, vec3 rd, float r) {
+                    float b = dot(ro, rd); float c = dot(ro, ro) - r*r; float h = b*b - c;
+                    if(h < 0.0) return vec2(-1.0);
+                    h = sqrt(h); return vec2(-b-h, -b+h);
+                }
+
+                vec2 map(vec3 p) {
+                    p = (u_rotMatrix_3D * vec4(p, 1.0)).xyz;
+                    vec4 z = vec4(p, 0.0); 
+                    z = u_rotMatrix_4D * z; 
+                    float m2 = dot(z, z); 
+                    float dz2 = 1.0; 
+                    float iter = 0.0; 
+                    for(int i = 0; i < 200; i++) { 
+                        if(i >= u_maxIter) break;
+                        dz2 *= 4.0 * m2; 
+                        z = qSq(z) + u_c; 
+                        m2 = dot(z, z);
+                        if(m2 > 256.0) { iter = float(i) - log2(max(1.0, log2(m2) / 2.0)); break; }
+                    }
+                    float d = 0.25 * log(m2) * sqrt(m2 / dz2);
+                    return vec2(d, iter);
+                }
+
+                vec3 calcNormal(vec3 p, float d_from_cam) {
+                    float e_val = max(0.0005, d_from_cam * 0.0002); vec2 e = vec2(1.0, -1.0) * e_val;
+                    return normalize(e.xyy * map(p + e.xyy).x + e.yyx * map(p + e.yyx).x + e.yxy * map(p + e.yxy).x + e.xxx * map(p + e.xxx).x);
+                }
+
+                vec3 hsv2rgb(vec3 c) {
+                    vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0); vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+                    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+                }
+
+                vec3 ACESFilm(vec3 x) {
+                    float a = 2.51; float b = 0.03; float c = 2.43; float d = 0.59; float e = 0.14;
+                    return clamp((x*(a*x+b))/(x*(c*x+d)+e), 0.0, 1.0);
+                }
+
+                vec4 render(vec2 fragCoord) {
+                    vec2 ndc = (fragCoord / u_resolution.xy) * 2.0 - 1.0;
+                    vec4 target = u_cameraProjectionMatrixInverse * vec4(ndc.x, ndc.y, 1.0, 1.0);
+                    vec3 rayDir = (u_cameraWorldMatrix * vec4(normalize(target.xyz / target.w), 0.0)).xyz;
+                    vec3 rayPos = u_cameraPos;
+
+                    vec2 sph = iSphere(rayPos, rayDir, 2.5);
+                    if(sph.y < 0.0) return vec4(u_bgColor, u_bgAlpha);
+
+                    float d = 0.0; float iter = 0.0; float total_d = max(0.0, sph.x); 
+                    rayPos += rayDir * total_d;
+                    bool hit = false;
+                    int steps_taken = 0;
+
+                    for(int i = 0; i < 8000; i++) {
+                        if(i >= u_maxSteps) break;
+                        steps_taken = i;
+                        vec2 res = map(rayPos);
+                        d = res.x; iter = res.y; 
+                        
+                        if(d < 0.001) { hit = true; break; }
+                        if(total_d > sph.y) break; 
+                        rayPos += rayDir * d; total_d += d;
+                    }
+
+                    if(hit) {
+                        vec3 normal = calcNormal(rayPos, total_d);
+                        vec3 lightDir = normalize(u_cameraPos - rayPos + vec3(-1.0, -2.0, 2.0)); 
+                        vec3 viewDir = normalize(u_cameraPos - rayPos);
+                        vec3 halfDir = normalize(lightDir + viewDir);
+                        
+                        float diff = max(dot(lightDir, normal), 0.0);
+                        float spec = pow(max(dot(halfDir, normal), 0.0), u_specular);
+                        float shdw_mt = clamp(0.3 + 0.25 * diff + spec, 0.0, 1.0); 
+                        float ao = clamp(10.0 / float(max(1, steps_taken)), 0.0, 1.0); 
+                        ao = pow(ao, u_aoPower);
+                        
+                        vec3 tintColor = hsv2rgb(vec3(u_hue, u_saturation, 1.0));
+                        float colorVariation = 0.85 + 0.15 * sin(iter * 0.5); 
+                        vec3 baseColor = tintColor * colorVariation;
+                        
+                        float depth_val = max(0.0, 1.0 - total_d / 20.0);
+                        vec3 finalColor = baseColor * ao * depth_val * shdw_mt;
+                        if (u_bgAlpha > 0.5) {
+                            finalColor += u_bgColor * (1.0 - ao) * 0.15;
+                        }
+                        finalColor = pow(finalColor, vec3(0.8));
+                        finalColor *= u_brightness;
+                        finalColor = ACESFilm(finalColor);
+                        return vec4(clamp(finalColor, 0.0, 1.0), 1.0);
+                    }
+                    return vec4(u_bgColor, u_bgAlpha);
+                }
+
+                void main() {
+                    #ifdef ENABLE_AA
+                        vec4 col = vec4(0.0);
+                        col += render(gl_FragCoord.xy + vec2(-0.25, -0.25));
+                        col += render(gl_FragCoord.xy + vec2( 0.25, -0.25));
+                        col += render(gl_FragCoord.xy + vec2(-0.25,  0.25));
+                        col += render(gl_FragCoord.xy + vec2( 0.25,  0.25));
+                        gl_FragColor = col / 4.0;
+                    #else
+                        gl_FragColor = render(gl_FragCoord.xy);
+                    #endif
+                }
+            `
+        };
+
+        const App = {
+            state: {
+                isAutoAnimating: false,
+                animTime: 0,
+                baseC: { x: -0.517, y: -0.341, z: -0.407, w: -0.071 },
+                phases: { x: 0, y: 0, z: 0, w: 0 },
+                isInteracting: false,
+                isDownloading: false,
+                renderTimer: null,
+                needsRender: true,
+                timeTarget: 1.0 / 30.0,
+                timeAcc: 1.0 / 30.0,
+                fpsFrames: 0,
+                fpsLastTime: performance.now(),
+                params: {}
+            },
+            uiElements: {},
+            history: [],
+            historyIndex: -1,
+            maxHistory: 30,
+
+            init() {
+                this.tempColor = new THREE.Color();
+                const ids = [...CONFIG.UI_PARAMS, 'custom-ui', 'fps-counter'];
+                ids.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) this.uiElements[id] = el;
+                    const valLabel = document.getElementById(`val-${id}`);
+                    if (valLabel) this.uiElements[`val-${id}`] = valLabel;
+                });
+                
+                // 完全なクリーンアップのためのイベントハンドラ束縛の共通化保持
+                this.handlers = {
+                    onResize: this.onResize.bind(this),
+                    onPointerUp: this.onPointerUp.bind(this),
+                    onPointerCancel: this.onPointerCancel.bind(this),
+                    onVisibilityChange: this.onVisibilityChange.bind(this),
+                    onControlsChange: () => { this.state.needsRender = true; },
+                    onInteractStart: this.onInteractStart.bind(this),
+                    onInteractEnd: this.onInteractEnd.bind(this)
+                };
+
+                this.setupThreeJS();
+                this.bindEvents();
+                this.loadFromURL();
+                
+                // 初回読み込み完了時の状態を履歴のルートとして保存
+                this.pushHistory();
+                
+                this.animate();
+            },
+
+            setupThreeJS() {
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
+                this.camera.position.set(0, 0, 2);
+                
+                this.renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true, alpha: true });
+                this.renderer.setClearColor(0x000000, 0); 
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0)); 
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                
+                // 実験的WebXRを有効化
+                this.renderer.xr.enabled = true;
+                document.body.appendChild(VRButton.createButton(this.renderer));
+                
+                document.body.appendChild(this.renderer.domElement);
+
+                this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableRotate = true; 
+                this.controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+                this.controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+
+                this.renderer.xr.addEventListener('sessionstart', () => {
+                    this.setQuality('LOW');
+                    this.state.needsRender = true;
+                });
+                this.renderer.xr.addEventListener('sessionend', () => {
+                    if (!this.state.isInteracting && !this.state.isAutoAnimating) {
+                        this.setQuality('HIGH');
+                    }
+                });
+
+                this.material = new THREE.ShaderMaterial({
+                    vertexShader: SHADERS.vertex,
+                    fragmentShader: SHADERS.fragment,
+                    uniforms: {
+                        u_resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+                        u_c: { value: new THREE.Vector4() },
+                        u_maxIter: { value: CONFIG.QUALITY.HIGH.iter }, 
+                        u_maxSteps: { value: CONFIG.QUALITY.HIGH.steps },
+                        u_cameraPos: { value: new THREE.Vector3() }, 
+                        u_cameraWorldMatrix: { value: new THREE.Matrix4() },
+                        u_cameraProjectionMatrixInverse: { value: new THREE.Matrix4() },
+                        u_brightness: { value: 0.0 }, u_hue: { value: 0.0 }, u_saturation: { value: 0.0 }, 
+                        u_aoPower: { value: 0.0 }, u_specular: { value: 0.0 }, 
+                        u_bgColor: { value: new THREE.Color(0x000000) }, u_bgAlpha: { value: 1.0 },
+                        u_rotMatrix_3D: { value: new THREE.Matrix4() },
+                        u_rotMatrix_4D: { value: new THREE.Matrix4() },
+                    }
+                });
+
+                this.mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.material);
+                this.scene.add(this.mesh);
+                this.clock = new THREE.Clock();
+                this.updateResolution();
+            },
+
+            bindEvents() {
+                const customUi = document.getElementById('custom-ui');
+                const stopPropagation = (e) => e.stopPropagation();
+                ['pointerdown', 'touchstart', 'touchmove', 'wheel'].forEach(evt => {
+                    customUi.addEventListener(evt, stopPropagation);
+                });
+
+                document.addEventListener('visibilitychange', this.handlers.onVisibilityChange);
+                this.controls.addEventListener('change', this.handlers.onControlsChange);
+                this.controls.addEventListener('start', this.handlers.onInteractStart);
+                this.controls.addEventListener('end', this.handlers.onInteractEnd);
+                
+                const cParams = ['cx', 'cy', 'cz', 'cw'];
+                
+                CONFIG.UI_PARAMS.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    
+                    // モバイルでのスクロールとスライダー干渉防止
+                    el.addEventListener('touchstart', stopPropagation, { passive: true });
+                    el.addEventListener('pointerdown', stopPropagation);
+
+                    el.addEventListener('input', () => {
+                        this.state.params[id] = el.type === 'color' ? el.value : parseFloat(el.value);
+                        
+                        if (id === 'hue' || id === 'saturation') this.updatePickerFromSliders();
+                        if (cParams.includes(id)) this.updateBaseC();
+                        if (id === 'fov') {
+                            this.camera.fov = this.state.params['fov'];
+                            this.camera.updateProjectionMatrix();
+                        }
+
+                        this.handlers.onInteractStart();
+                        this.updateSingleValueLabel(id);
+                        
+                        if (!CONFIG.ANIM_PRESETS[document.getElementById('anim-preset-select').value]) {
+                            // アニメーション関連以外のパラメータが動いたらプリセットをカスタムへ
+                            if(!CONFIG.ANIM_UI_IDS.map(a=>a.id).includes(id)) {
+                                document.getElementById('preset-select').value = 'custom';
+                            }
+                        }
+                    });
+                    
+                    // 操作が確定した(指・マウスを離した)瞬間に履歴保存
+                    el.addEventListener('change', () => {
+                        this.pushHistory();
+                        this.handlers.onInteractEnd();
+                    });
+                });
+
+                window.addEventListener('pointerup', this.handlers.onPointerUp);
+                window.addEventListener('pointercancel', this.handlers.onPointerCancel);
+                window.addEventListener('resize', this.handlers.onResize);
+
+                // アニメーション選択
+                const animPresetSelect = document.getElementById('anim-preset-select');
+                animPresetSelect.addEventListener('change', (e) => {
+                    const val = e.target.value;
+                    if (CONFIG.ANIM_PRESETS[val]) {
+                        CONFIG.ANIM_UI_IDS.forEach(item => { this.state.params[item.id] = CONFIG.ANIM_PRESETS[val][item.key]; });
+                        this.updateUIFromState();
+                        this.pushHistory();
+                    }
+                });
+                CONFIG.ANIM_UI_IDS.forEach(item => {
+                    document.getElementById(item.id).addEventListener('change', () => animPresetSelect.value = 'custom');
+                });
+                
+                document.getElementById('auto-animate-btn').addEventListener('click', () => this.toggleAutoAnimate());
+
+                // ベースカラー
+                const baseColorPicker = document.getElementById('baseColorPicker');
+                baseColorPicker.addEventListener('input', (e) => {
+                    const hsv = this.hexToHsv(e.target.value);
+                    this.state.params['hue'] = hsv.h;
+                    this.state.params['saturation'] = hsv.s;
+                    this.handlers.onInteractStart();
+                    document.getElementById('preset-select').value = 'custom';
+                    this.updateSingleValueLabel('hue');
+                    this.updateSingleValueLabel('saturation');
+                });
+                baseColorPicker.addEventListener('change', () => {
+                    this.pushHistory();
+                    this.handlers.onInteractEnd();
+                });
+                
+                this.updatePickerFromSliders = () => {
+                    baseColorPicker.value = this.hsvToHex(this.state.params['hue'], this.state.params['saturation'], 1.0);
+                };
+
+                // 形状プリセット変更
+                document.getElementById('preset-select').addEventListener('change', (e) => {
+                    const val = e.target.value;
+                    if (CONFIG.PRESETS[val]) {
+                        this.handlers.onInteractStart();
+                        CONFIG.UI_PARAMS.forEach(id => { 
+                            if (CONFIG.PRESETS[val][id] !== undefined) this.state.params[id] = CONFIG.PRESETS[val][id];
+                        });
+                        this.updateUIFromState();
+                        this.updateBaseC();
+                        this.pushHistory();
+                        this.handlers.onInteractEnd();
+                    }
+                });
+
+                // 各種ボタン
+                document.getElementById('share-btn').addEventListener('click', () => this.shareURL());
+                document.getElementById('download-btn').addEventListener('click', () => this.downloadImage());
+                document.getElementById('random-btn').addEventListener('click', () => this.randomizeAll());
+                document.getElementById('undo-btn').addEventListener('click', () => this.undo());
+                document.getElementById('redo-btn').addEventListener('click', () => this.redo());
+                
+                const toggleBtn = document.getElementById('toggle-ui-btn');
+                toggleBtn.addEventListener('click', () => {
+                    customUi.classList.toggle('hidden');
+                    const isOpen = !customUi.classList.contains('hidden');
+                    toggleBtn.innerText = isOpen ? '閉じる' : '設定';
+                    toggleBtn.classList.toggle('is-open', isOpen);
+                    toggleBtn.classList.toggle('is-close', !isOpen);
+                });
+                document.getElementById('fullscreen-btn').addEventListener('click', () => this.toggleFullscreen());
+                document.addEventListener('fullscreenchange', () => this.updateFullscreenIcon());
+            },
+
+            pushHistory() {
+                // 現在のインデックス以降のRedo履歴を枝切り削除
+                if (this.historyIndex < this.history.length - 1) {
+                    this.history = this.history.slice(0, this.historyIndex + 1);
+                }
+                
+                // パラメータディープコピーおよびカメラ状態の保存
+                const snapshot = {
+                    params: JSON.parse(JSON.stringify(this.state.params)),
+                    cameraPos: this.camera.position.clone(),
+                    cameraTarget: this.controls.target.clone()
+                };
+
+                this.history.push(snapshot);
+                if (this.history.length > this.maxHistory) {
+                    this.history.shift();
+                }
+                this.historyIndex = this.history.length - 1;
+                this.updateHistoryButtons();
+            },
+
+            undo() {
+                if (this.historyIndex > 0) {
+                    this.historyIndex--;
+                    this.applyHistoryState(this.history[this.historyIndex]);
+                }
+            },
+
+            redo() {
+                if (this.historyIndex < this.history.length - 1) {
+                    this.historyIndex++;
+                    this.applyHistoryState(this.history[this.historyIndex]);
+                }
+            },
+
+            applyHistoryState(snapshot) {
+                this.state.params = JSON.parse(JSON.stringify(snapshot.params));
+                this.camera.position.copy(snapshot.cameraPos);
+                this.controls.target.copy(snapshot.cameraTarget);
+                this.controls.update();
+                
+                this.updateUIFromState();
+                this.updateBaseC();
+                this.updateHistoryButtons();
+                this.state.needsRender = true;
+            },
+
+            updateHistoryButtons() {
+                document.getElementById('undo-btn').disabled = (this.historyIndex <= 0);
+                document.getElementById('redo-btn').disabled = (this.historyIndex >= this.history.length - 1);
+            },
+
+            randomizeAll() {
+                this.handlers.onInteractStart();
+
+                const randRange = (min, max) => Math.random() * (max - min) + min;
+                
+                // Cのランダム化 (-1.2 〜 1.2)
+                this.state.params['cx'] = parseFloat(randRange(-0.5, 1.0).toFixed(3));
+                this.state.params['cy'] = parseFloat(randRange(-0.8, 0.8).toFixed(3));
+                this.state.params['cz'] = parseFloat(randRange(-0.8, 0.8).toFixed(3));
+                this.state.params['cw'] = parseFloat(randRange(-1.0, 1.0).toFixed(3));
+                
+                // 回転空間のシャッフル (0 〜 2PI)
+                this.state.params['rotX'] = parseFloat(randRange(0, 6.283).toFixed(2));
+                this.state.params['rotY'] = parseFloat(randRange(0, 6.283).toFixed(2));
+                this.state.params['rotZ'] = parseFloat(randRange(0, 6.283).toFixed(2));
+                this.state.params['rotXW'] = parseFloat(randRange(0, 6.283).toFixed(2));
+                this.state.params['rotYW'] = parseFloat(randRange(0, 6.283).toFixed(2));
+                this.state.params['rotZW'] = parseFloat(randRange(0, 6.283).toFixed(2));
+                
+                // 色・質感のランダム化
+                this.state.params['hue'] = parseFloat(Math.random().toFixed(3));
+                this.state.params['saturation'] = parseFloat(randRange(0.4, 1.0).toFixed(3));
+                this.state.params['brightness'] = parseFloat(randRange(1.0, 2.5).toFixed(1));
+                this.state.params['aoPower'] = parseFloat(randRange(0.5, 2.2).toFixed(1));
+                this.state.params['specular'] = parseFloat(Math.pow(2, Math.floor(randRange(2, 6))).toFixed(1)); // 4.0 ~ 64.0
+                
+                // 明度を落としたランダムな背景色
+                const toHex = x => Math.floor(x * 40).toString(16).padStart(2, '0'); // 暗めの色
+                this.state.params['bgColor'] = `#${toHex(Math.random())}${toHex(Math.random())}${toHex(Math.random())}`;
+
+                document.getElementById('preset-select').value = 'custom';
+                
+                this.updateUIFromState();
+                this.updateBaseC();
+                this.pushHistory();
+                this.handlers.onInteractEnd();
+            },
+
+            loadFromURL() {
+                const params = new URLSearchParams(window.location.search);
+                if (params.has('p') && params.has('v')) { 
+                    const version = params.get('v');
+                    const values = params.get('p').split(',');
+                    
+                    if (version === '1' && values.length === CONFIG.UI_PARAMS.length + 6) {
+                        let isValid = true;
+                        const parsedValues = [];
+                        
+                        CONFIG.UI_PARAMS.forEach((id, index) => {
+                            if (document.getElementById(id) && document.getElementById(id).type === 'color') {
+                                parsedValues.push('#' + values[index]);
+                            } else {
+                                const val = parseFloat(values[index]);
+                                if (Number.isNaN(val)) isValid = false;
+                                parsedValues.push(val);
+                            }
+                        });
+                        
+                        const camIdx = CONFIG.UI_PARAMS.length;
+                        const camVals = values.slice(camIdx, camIdx + 6).map(parseFloat);
+                        if (camVals.some(Number.isNaN)) isValid = false;
+
+                        if (isValid) {
+                            CONFIG.UI_PARAMS.forEach((id, index) => { this.state.params[id] = parsedValues[index]; });
+                            this.camera.position.set(camVals[0], camVals[1], camVals[2]);
+                            this.controls.target.set(camVals[3], camVals[4], camVals[5]);
+                            this.controls.update();
+                            
+                            document.getElementById('preset-select').value = 'custom';
+                            document.getElementById('anim-preset-select').value = 'custom';
+                            
+                            this.updateUIFromState();
+                            this.updateBaseC();
+                            return; 
+                        }
+                    }
+                }
+                
+                document.getElementById('preset-select').value = 'preset1';
+                CONFIG.UI_PARAMS.forEach(id => { 
+                    if (CONFIG.PRESETS.preset1[id] !== undefined) {
+                        this.state.params[id] = CONFIG.PRESETS.preset1[id]; 
+                    } else {
+                        const el = document.getElementById(id);
+                        if(el) this.state.params[id] = el.type === 'color' ? el.value : parseFloat(el.value);
+                    }
+                });
+                
+                this.updateUIFromState();
+                this.updateBaseC();
+            },
+
+            updateUIFromState() {
+                CONFIG.UI_PARAMS.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = this.state.params[id];
+                    this.updateSingleValueLabel(id);
+                });
+                const picker = document.getElementById('baseColorPicker');
+                if (picker && this.state.params['hue'] !== undefined && this.state.params['saturation'] !== undefined) {
+                    picker.value = this.hsvToHex(this.state.params['hue'], this.state.params['saturation'], 1.0);
+                }
+                if (this.state.params['fov'] !== undefined) {
+                    this.camera.fov = this.state.params['fov'];
+                    this.camera.updateProjectionMatrix();
+                }
+            },
+
+            updateSingleValueLabel(id) {
+                const labelEl = this.uiElements[`val-${id}`] || document.getElementById(`val-${id}`);
+                if (labelEl && this.state.params[id] !== undefined) {
+                    const val = this.state.params[id];
+                    if (id.startsWith('rot') || id.startsWith('phase-')) {
+                        // ラジアンから度数法へ変換
+                        const degrees = (val * 180 / Math.PI).toFixed(1);
+                        labelEl.innerText = `${degrees}°`;
+                    } else if (id === 'fov') {
+                        labelEl.innerText = `${val}°`;
+                    } else if (typeof val === 'number') {
+                        labelEl.innerText = val.toFixed(3).replace(/\.?0+$/, '');
+                    }
+                }
+            },
+
+            updateResolution() {
+                let w = window.innerWidth; let h = window.innerHeight;
+                if (Math.max(w, h) > CONFIG.MAX_RENDER_SIZE) {
+                    const scale = CONFIG.MAX_RENDER_SIZE / Math.max(w, h);
+                    w = Math.floor(w * scale); h = Math.floor(h * scale);
+                }
+                this.renderer.setSize(w, h, false);
+                this.material.uniforms.u_resolution.value.set(w, h);
+                this.state.needsRender = true;
+            },
+
+            updateBaseC() {
+                this.state.baseC.x = this.state.params['cx'];
+                this.state.baseC.y = this.state.params['cy'];
+                this.state.baseC.z = this.state.params['cz'];
+                this.state.baseC.w = this.state.params['cw'];
+                this.state.animTime = 0;
+                this.state.phases = { x: 0, y: 0, z: 0, w: 0 };
+            },
+
+            setQuality(quality) {
+                if (this.mesh && this.mesh.material) {
+                    this.mesh.material.uniforms.u_maxSteps.value = CONFIG.QUALITY[quality].steps;
+                    this.mesh.material.uniforms.u_maxIter.value = CONFIG.QUALITY[quality].iter;
+                }
+            },
+
+            onInteractStart() {
+                this.state.isInteracting = true; 
+                this.state.needsRender = true;
+                document.getElementById('custom-ui').classList.add('is-interacting');
+                clearTimeout(this.state.renderTimer); 
+                this.setQuality('LOW'); 
+            },
+
+            onInteractEnd() {
+                this.state.isInteracting = false; 
+                document.getElementById('custom-ui').classList.remove('is-interacting');
+                clearTimeout(this.state.renderTimer); 
+                this.state.renderTimer = setTimeout(() => { 
+                    if (!this.state.isInteracting && !this.state.isAutoAnimating) {
+                        this.setQuality('HIGH'); 
+                        this.state.needsRender = true;
+                    }
+                }, 300);
+            },
+
+            onResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.updateResolution();
+                this.updateFullscreenIcon();
+            },
+
+            onPointerUp() {
+                if (this.state.isInteracting) this.handlers.onInteractEnd();
+            },
+
+            onPointerCancel() {
+                if (this.state.isInteracting) this.handlers.onInteractEnd();
+            },
+
+            onVisibilityChange() {
+                if (!document.hidden) this.clock.getDelta(); 
+            },
+
+            toggleAutoAnimate() {
+                this.state.isAutoAnimating = !this.state.isAutoAnimating;
+                const btn = document.getElementById('auto-animate-btn');
+                const cSliderIds = ['cx', 'cy', 'cz', 'cw'];
+
+                if (this.state.isAutoAnimating) {
+                    document.getElementById('undo-btn').disabled = true;
+                    document.getElementById('redo-btn').disabled = true;
+                    document.getElementById('preset-select').disabled = true;
+                    this.setQuality('LOW');
+                    cSliderIds.forEach(id => document.getElementById(id).disabled = true);
+                    btn.classList.add('is-playing');
+                    btn.title = "自動アニメーション停止";
+                    btn.setAttribute('aria-label', btn.title);
+                } else {
+                    this.updateHistoryButtons();
+                    document.getElementById('preset-select').disabled = false;
+                    if (!this.state.isInteracting) {
+                        this.setQuality('HIGH');
+                        this.state.needsRender = true;
+                    }
+                    this.clock.getDelta();
+                    cSliderIds.forEach(id => document.getElementById(id).disabled = false);
+                    btn.classList.remove('is-playing');
+                    btn.title = "自動アニメーション開始";
+                    btn.setAttribute('aria-label', btn.title);
+                    this.pushHistory(); // アニメーション終了時のパラメータをスタックに保存
+                }
+            },
+
+            updateUniforms() {
+                const u = this.mesh.material.uniforms;
+                const p = this.state.params;
+                
+                u.u_c.value.set(p['cx'], p['cy'], p['cz'], p['cw']);
+                u.u_brightness.value = p['brightness'];
+                u.u_hue.value = p['hue'];
+                u.u_saturation.value = p['saturation'];
+                u.u_aoPower.value = p['aoPower'];
+                u.u_specular.value = p['specular'];
+                u.u_bgColor.value.set(p['bgColor']);
+
+                const euler = new THREE.Euler(p['rotX'], p['rotY'], p['rotZ'], 'XYZ');
+                u.u_rotMatrix_3D.value.makeRotationFromEuler(euler);
+
+                const m4D = new THREE.Matrix4();
+                const cosXW = Math.cos(p['rotXW']), sinXW = Math.sin(p['rotXW']);
+                const cosYW = Math.cos(p['rotYW']), sinYW = Math.sin(p['rotYW']);
+                const cosZW = Math.cos(p['rotZW']), sinZW = Math.sin(p['rotZW']);
+
+                m4D.set(
+                    cosXW * cosYW, -sinXW * cosZW + cosXW * sinYW * sinZW, sinXW * sinZW + cosXW * sinYW * cosZW, 0,
+                    sinXW * cosYW, cosXW * cosZW + sinXW * sinYW * sinZW, -cosXW * sinZW + sinXW * sinYW * cosZW, 0,
+                    -sinYW,        cosYW * sinZW,                         cosYW * cosZW,                        0,
+                    0,             0,                                     0,                                    1
+                );
+                u.u_rotMatrix_4D.value.copy(m4D);
+                
+                u.u_cameraPos.value.copy(this.camera.position);
+                u.u_cameraWorldMatrix.value.copy(this.camera.matrixWorld);
+                u.u_cameraProjectionMatrixInverse.value.copy(this.camera.projectionMatrixInverse);
+            },
+
+            animate() {
+                this.renderer.setAnimationLoop(() => {
+                    if (document.hidden) return;
+
+                    this.state.fpsFrames++;
+                    const now = performance.now();
+                    if (now >= this.state.fpsLastTime + 1000) {
+                        const fps = Math.round((this.state.fpsFrames * 1000) / (now - this.state.fpsLastTime));
+                        if (this.uiElements['fps-counter']) {
+                            this.uiElements['fps-counter'].innerText = `${fps} FPS`;
+                        }
+                        this.state.fpsFrames = 0;
+                        this.state.fpsLastTime = now;
+                    }
+
+                    const delta = this.clock.getDelta();
+                    this.state.timeAcc += delta;
+
+                    if (this.state.isAutoAnimating) {
+                        const p = this.state.params;
+                        const mSpeed = p['anim-speed'];
+                        const mAmp = p['anim-amp'];
+                        
+                        const getAmp = (base, ratio) => Math.min(mAmp * ratio, 1.2 - Math.abs(base));
+
+                        const ampX = getAmp(this.state.baseC.x, p['amp-x']);
+                        const ampY = getAmp(this.state.baseC.y, p['amp-y']);
+                        const ampZ = getAmp(this.state.baseC.z, p['amp-z']);
+                        const ampW = getAmp(this.state.baseC.w, p['amp-w']);
+                        const px = p['phase-x'] || 0.0;
+                        const py = p['phase-y'] || 0.0;
+                        const pz = p['phase-z'] || 0.0;
+                        const pw = p['phase-w'] || 0.0;
+
+                        this.state.phases.x += delta * (mSpeed * p['speed-x']);
+                        this.state.phases.y += delta * (mSpeed * p['speed-y']);
+                        this.state.phases.z += delta * (mSpeed * p['speed-z']);
+                        this.state.phases.w += delta * (mSpeed * p['speed-w']);
+
+                        p['cx'] = this.state.baseC.x + (Math.sin(this.state.phases.x + px) - Math.sin(px)) * ampX;
+                        p['cy'] = this.state.baseC.y + (Math.sin(this.state.phases.y + py) - Math.sin(py)) * ampY;
+                        p['cz'] = this.state.baseC.z + (Math.sin(this.state.phases.z + pz) - Math.sin(pz)) * ampZ;
+                        p['cw'] = this.state.baseC.w + (Math.sin(this.state.phases.w + pw) - Math.sin(pw)) * ampW;
+
+                        const customUi = this.uiElements['custom-ui'] || document.getElementById('custom-ui');
+                        if (!customUi.classList.contains('hidden')) {
+                            (this.uiElements['cx'] || document.getElementById('cx')).value = p['cx'].toFixed(3);
+                            (this.uiElements['cy'] || document.getElementById('cy')).value = p['cy'].toFixed(3);
+                            (this.uiElements['cz'] || document.getElementById('cz')).value = p['cz'].toFixed(3);
+                            (this.uiElements['cw'] || document.getElementById('cw')).value = p['cw'].toFixed(3);
+                            
+                            ['cx', 'cy', 'cz', 'cw'].forEach(id => this.updateSingleValueLabel(id));
+                        }
+                    }
+
+                    if (this.state.isDownloading || (!this.state.isAutoAnimating && !this.state.needsRender && !this.renderer.xr.isPresenting)) return;
+                    if (!this.renderer.xr.isPresenting && this.state.timeAcc < this.state.timeTarget) return; 
+                    this.state.timeAcc = this.state.timeAcc % this.state.timeTarget; 
+
+                    this.controls.update();
+                    this.updateUniforms(); 
+                    this.renderer.render(this.scene, this.camera);
+                    this.state.needsRender = false;
+                });
+            },
+
+            shareURL() {
+                const values = CONFIG.UI_PARAMS.map(id => {
+                    const val = this.state.params[id];
+                    return id === 'bgColor' ? val.replace('#', '') : val;
+                });
+                values.push(this.camera.position.x.toFixed(3), this.camera.position.y.toFixed(3), this.camera.position.z.toFixed(3));
+                values.push(this.controls.target.x.toFixed(3), this.controls.target.y.toFixed(3), this.controls.target.z.toFixed(3));
+                const url = `${window.location.origin}${window.location.pathname}?v=1&p=${values.join(',')}`;
+                
+                navigator.clipboard.writeText(url).then(() => {
+                    const btn = document.getElementById('share-btn');
+                    btn.innerText = "コピーしました!";
+                    setTimeout(() => btn.innerText = "URLをコピー", 2000);
+                }).catch(() => alert("URLのコピーに失敗しました。"));
+            },
+
+            downloadImage() {
+                this.state.isDownloading = true;
+                this.controls.enabled = false;
+                document.getElementById('custom-ui').classList.add('is-interacting');
+
+                const dlModal = document.getElementById('dl-modal');
+                const progressBar = document.getElementById('dl-progress-bar');
+                const progressText = document.getElementById('dl-progress-text');
+                progressBar.style.width = '0%';
+                progressText.innerText = '0%';
+                dlModal.classList.remove('hidden');
+
+                const format = document.getElementById('dl-format').value;
+                const isTransparent = format === 'transparent_png';
+                const isPng = format === 'png' || format === 'transparent_png';
+                const isWebp = format === 'webp';
+
+                setTimeout(() => {
+                    const dlMaterial = new THREE.ShaderMaterial({
+                        vertexShader: SHADERS.vertex,
+                        fragmentShader: SHADERS.fragment,
+                        defines: { ENABLE_AA: 1 },
+                        uniforms: THREE.UniformsUtils.clone(this.material.uniforms)
+                    });
+
+                    dlMaterial.uniforms.u_maxSteps.value = 2000;
+                    dlMaterial.uniforms.u_maxIter.value = 120;
+                    dlMaterial.uniforms.u_bgAlpha = { value: isTransparent ? 0.0 : 1.0 };
+                    this.mesh.material = dlMaterial;
+
+                    const scale = parseFloat(document.getElementById('dl-scale').value);
+                    const dpr = window.devicePixelRatio || 1;
+                    
+                    let targetWidth = Math.floor(window.innerWidth * dpr * scale);
+                    let targetHeight = Math.floor(window.innerHeight * dpr * scale);
+
+                    const MAX_CANVAS_SIZE = 4096;
+                    if (Math.max(targetWidth, targetHeight) > MAX_CANVAS_SIZE) {
+                        const safeScale = MAX_CANVAS_SIZE / Math.max(targetWidth, targetHeight);
+                        targetWidth = Math.floor(targetWidth * safeScale);
+                        targetHeight = Math.floor(targetHeight * safeScale);
+                    }
+
+                    const TILE_MAX = 250;
+                    const tilesX = Math.ceil(targetWidth / TILE_MAX);
+                    const tilesY = Math.ceil(targetHeight / TILE_MAX);
+                    const tileW = Math.ceil(targetWidth / tilesX);
+                    const tileH = Math.ceil(targetHeight / tilesY);
+
+                    const composeCanvas = document.createElement('canvas');
+                    composeCanvas.width = targetWidth;
+                    composeCanvas.height = targetHeight;
+                    const ctx = composeCanvas.getContext('2d');
+
+                    const originalAspect = this.camera.aspect;
+                    this.camera.aspect = targetWidth / targetHeight;
+                    this.camera.updateProjectionMatrix();
+                    
+                    this.renderer.setSize(tileW, tileH, false);
+                    dlMaterial.uniforms.u_resolution.value.set(tileW, tileH);
+
+                    let tx = 0; let ty = 0;
+
+                    const renderNextTile = () => {
+                        this.camera.setViewOffset(targetWidth, targetHeight, tx * tileW, ty * tileH, tileW, tileH);
+                        this.updateUniforms(); 
+                        
+                        this.renderer.render(this.scene, this.camera);
+                        ctx.drawImage(this.renderer.domElement, tx * tileW, ty * tileH, tileW, tileH);
+
+                        tx++;
+                        if (tx >= tilesX) { tx = 0; ty++; }
+
+                        const progress = Math.round(((ty * tilesX + tx) / (tilesX * tilesY)) * 100);
+                        
+                        if (ty < tilesY) {
+                            progressBar.style.width = `${progress}%`;
+                            progressText.innerText = `${progress}%`;
+                            requestAnimationFrame(renderNextTile);
+                        } else {
+                            progressBar.style.width = `100%`;
+                            progressText.innerText = "画像エンコード中...\n\nしばらくお待ちください";
+                            
+                            setTimeout(() => {
+                                finishDownload();
+                            }, 100);
+                        }
+                    };
+
+                    const finishDownload = () => {
+                        let mimeType = 'image/jpeg';
+                        let ext = 'jpg';
+                        let quality = 0.95;
+                        
+                        if (isPng) {
+                            mimeType = 'image/png';
+                            ext = 'png';
+                            quality = undefined;
+                        } else if (isWebp) {
+                            mimeType = 'image/webp';
+                            ext = 'webp';
+                            quality = 0.95;
+                        }
+
+                        composeCanvas.toBlob((blob) => {
+                            if (!blob) {
+                                alert("ダウンロードに失敗しました。");
+                                restoreState();
+                                return;
+                            }
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.download = `4d_julia_wallpaper_${targetWidth}x${targetHeight}.${ext}`;
+                            link.href = url;
+                            link.click();
+                            setTimeout(() => URL.revokeObjectURL(url), 100);
+                            restoreState();
+                        }, mimeType, quality);
+                    };
+
+                    const restoreState = () => {
+                        this.camera.clearViewOffset();
+                        this.camera.aspect = originalAspect;
+                        this.camera.updateProjectionMatrix();
+                        
+                        this.mesh.material = this.material;
+                        dlMaterial.dispose();
+                        
+                        this.updateResolution();
+                        this.setQuality('HIGH'); 
+
+                        dlModal.classList.add('hidden');
+                        this.controls.enabled = true;
+                        document.getElementById('custom-ui').classList.remove('is-interacting');
+
+                        this.state.isDownloading = false;
+                        this.state.needsRender = true;
+                    };
+                    
+                    requestAnimationFrame(renderNextTile);
+
+                }, 50);
+            },
+
+            toggleFullscreen() {
+                if (document.fullscreenElement) {
+                    if (document.exitFullscreen) document.exitFullscreen();
+                } else if (window.innerHeight === screen.height) {
+                    alert("ブラウザ機能の全画面表示を解除してください。");
+                } else {
+                    document.documentElement.requestFullscreen().catch(err => {
+                        console.warn(`フルスクリーン化に失敗しました: ${err.message}`);
+                    });
+                }
+            },
+
+            updateFullscreenIcon() {
+                const isFullscreen = document.fullscreenElement || (window.innerHeight === screen.height);
+                const btn = document.getElementById('fullscreen-btn');
+                btn.classList.toggle('is-fullscreen', isFullscreen);
+                btn.title = isFullscreen ? "全画面表示を終了" : "全画面表示";
+                btn.setAttribute('aria-label', btn.title);
+            },
+
+            hsvToHex(h, s, v) {
+                let r, g, b;
+                let i = Math.floor(h * 6);
+                let f = h * 6 - i;
+                let p = v * (1 - s);
+                let q = v * (1 - f * s);
+                let t = v * (1 - (1 - f) * s);
+                switch (i % 6) {
+                    case 0: r = v, g = t, b = p; break;
+                    case 1: r = q, g = v, b = p; break;
+                    case 2: r = p, g = v, b = t; break;
+                    case 3: r = p, g = q, b = v; break;
+                    case 4: r = t, g = p, b = v; break;
+                    case 5: r = v, g = p, b = q; break;
+                }
+                const toHex = x => Math.round(x * 255).toString(16).padStart(2, '0');
+                return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+            },
+
+            hexToHsv(hex) {
+                let r = parseInt(hex.slice(1, 3), 16) / 255;
+                let g = parseInt(hex.slice(3, 5), 16) / 255;
+                let b = parseInt(hex.slice(5, 7), 16) / 255;
+                let max = Math.max(r, g, b), min = Math.min(r, g, b);
+                let h, s, v = max;
+                let d = max - min;
+                s = max === 0 ? 0 : d / max;
+                if (max === min) h = 0; 
+                else {
+                    switch (max) {
+                        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                        case g: h = (b - r) / d + 2; break;
+                        case b: h = (r - g) / d + 4; break;
+                    }
+                    h /= 6;
+                }
+                return { h, s, v };
+            },
+
+            destroy() {
+                this.state.isAutoAnimating = false;
+                
+                // アニメーションおよびタイマーループの停止
+                if (this.renderer) {
+                    this.renderer.setAnimationLoop(null);
+                }
+                clearTimeout(this.state.renderTimer);
+
+                // 各種イベントリスナーを同一のバインド参照から完全解除
+                document.removeEventListener('visibilitychange', this.handlers.onVisibilityChange);
+                if (this.controls) {
+                    this.controls.removeEventListener('change', this.handlers.onControlsChange);
+                    this.controls.removeEventListener('start', this.handlers.onInteractStart);
+                    this.controls.removeEventListener('end', this.handlers.onInteractEnd);
+                    this.controls.dispose();
+                }
+                window.removeEventListener('pointerup', this.handlers.onPointerUp);
+                window.removeEventListener('pointercancel', this.handlers.onPointerCancel);
+                window.removeEventListener('resize', this.handlers.onResize);
+
+                // WebGL GPU リソースの明示的解放
+                if (this.mesh) {
+                    this.scene.remove(this.mesh);
+                    if (this.mesh.geometry) this.mesh.geometry.dispose();
+                    if (this.mesh.material) this.mesh.material.dispose();
+                }
+
+                if (this.renderer) {
+                    this.renderer.dispose();
+                    this.renderer.forceContextLoss();
+                    const dom = this.renderer.domElement;
+                    if (dom && dom.parentNode) dom.parentNode.removeChild(dom);
+                }
+
+                // 参照のクリーンアップ
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.mesh = null;
+                this.controls = null;
+                this.history = [];
+            }
+        };
+
+        window.addEventListener('DOMContentLoaded', () => App.init());
+    </script>
+</body>
+</html>
