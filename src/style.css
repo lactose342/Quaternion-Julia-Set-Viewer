@@ -210,6 +210,8 @@ summary {
     justify-content: center;
     box-shadow: 0 2px 4px rgba(0,0,0,0.5);
     transition: background 0.2s;
+    width: 42px;
+    height: 42px;
 }
 
 #fullscreen-btn { right: 10px; }
@@ -224,7 +226,7 @@ summary {
 
 #VRButton { 
     position: absolute !important; 
-    right: 50px !important; 
+    right: 60px !important; 
     top: 10px !important; 
     left: auto !important; 
     bottom: auto !important;
@@ -239,6 +241,8 @@ summary {
     box-shadow: 0 2px 4px rgba(0,0,0,0.5) !important;
     cursor: pointer !important;
     transition: background 0.2s !important;
+    width: 42px;
+    height: 42px;
 }
 #VRButton:disabled {
     opacity: 0.3 !important;
