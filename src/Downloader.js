@@ -41,9 +41,11 @@ export class Downloader {
         const origIter = u.u_maxIter.value;
         const origAlpha = u.u_bgAlpha.value;
 
-        u.u_maxSteps.value = 2000;
+        // 書き出し用の高画質設定
+        u.u_maxSteps.value = 4000;
         u.u_maxIter.value = 120;
         u.u_bgAlpha.value = isTransparent ? 0.0 : 1.0;
+        u.u_isExporting.value = true;
 
         const dpr = window.devicePixelRatio || 1;
         let targetWidth = Math.floor(window.innerWidth * dpr * scale);
@@ -146,6 +148,7 @@ export class Downloader {
             u.u_maxSteps.value = origSteps;
             u.u_maxIter.value = origIter;
             u.u_bgAlpha.value = origAlpha;
+            u.u_isExporting.value = false;
             
             this.ren.updateResolution();
             this.ren.setQuality('HIGH'); 

@@ -35,7 +35,7 @@ export class Renderer {
         this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
         this.camera.position.set(0, 0, 2);
         
-        this.renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: false, alpha: true }); // 軽量化のため false に変更
+        this.renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: false, alpha: true });
         this.renderer.setClearColor(0x000000, 0);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
         THREE.ColorManagement.enabled = false;
@@ -85,6 +85,7 @@ export class Renderer {
                 u_bgAlpha: { value: 1.0 },
                 u_rotMatrix_3D: { value: new THREE.Matrix4() },
                 u_rotMatrix_4D: { value: new THREE.Matrix4() },
+                u_isExporting: { value: false }, // ★フラグ追加
             }
         });
 
@@ -162,15 +163,9 @@ export class Renderer {
         const cyw = Math.cos(frac['rotYW']), syw = Math.sin(frac['rotYW']);
         const czw = Math.cos(frac['rotZW']), szw = Math.sin(frac['rotZW']);
 
-        this.mXW.set(
-            cxw, 0, 0, -sxw,  0, 1, 0, 0,  0, 0, 1, 0,  sxw, 0, 0, cxw
-        );
-        this.mYW.set(
-            1, 0, 0, 0,  0, cyw, 0, -syw,  0, 0, 1, 0,  0, syw, 0, cyw
-        );
-        this.mZW.set(
-            1, 0, 0, 0,  0, 1, 0, 0,  0, 0, czw, -szw,  0, 0, szw, czw
-        );
+        this.mXW.set(cxw, 0, 0, -sxw,  0, 1, 0, 0,  0, 0, 1, 0,  sxw, 0, 0, cxw);
+        this.mYW.set(1, 0, 0, 0,  0, cyw, 0, -syw,  0, 0, 1, 0,  0, syw, 0, cyw);
+        this.mZW.set(1, 0, 0, 0,  0, 1, 0, 0,  0, 0, czw, -szw,  0, 0, szw, czw);
 
         this.m4D.copy(this.mZW).multiply(this.mYW).multiply(this.mXW);
         u.u_rotMatrix_4D.value.copy(this.m4D);
@@ -220,18 +215,22 @@ export class Renderer {
                 if (this.onAutoAnimateUpdate) this.onAutoAnimateUpdate(this.appState.params); 
             }
 
-            if (this.appState.isDownloading || (!this.appState.isAutoAnimating && !this.renderState.needsRender && !this.renderer.xr.isPresenting)) return;
-            if (!this.renderer.xr.isPresenting && this.renderState.timeAcc < this.renderState.timeTarget) return; 
+            const isVR = this.renderer.xr.isPresenting;
+            if (this.appState.isDownloading || (!this.appState.isAutoAnimating && !this.renderState.needsRender && !isVR)) return;
+            if (!isVR && this.renderState.timeAcc < this.renderState.timeTarget) return; 
             
             this.renderState.timeAcc = this.renderState.timeAcc % this.renderState.timeTarget; 
 
-            const maxPanRadius = 2.0;
-            const targetLen = this.controls.target.length();
-            if (targetLen > maxPanRadius) {
-                this.controls.target.setLength(maxPanRadius);
+            if (isVR) {
+                this.renderState.needsRender = true; 
+            } else {
+                const maxPanRadius = 2.0;
+                const targetLen = this.controls.target.length();
+                if (targetLen > maxPanRadius) {
+                    this.controls.target.setLength(maxPanRadius);
+                }
+                this.controls.update();
             }
-
-            this.controls.update();
 
             this.appState.camera.position.x = this.camera.position.x;
             this.appState.camera.position.y = this.camera.position.y;
