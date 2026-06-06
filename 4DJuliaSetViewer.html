@@ -102,11 +102,64 @@
         .progress-container { width: 100%; height: 12px; background: #333; border-radius: 6px; overflow: hidden; margin-bottom: 10px; }
         .progress-bar { width: 0%; height: 100%; background: #0055ff; transition: width 0.1s linear; }
         .progress-text { font-size: 14px; font-weight: bold; color: #fff; }
+
+        #toast-container {
+            position: fixed;
+            bottom: 70px;
+            right: 20px;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 10px;
+            z-index: 10000;
+            pointer-events: none;
+            width: max-content;
+            max-width: 90vw;
+        }
+        .toast {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5em;
+            line-height: 1;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .toast.success { background: #28a745; border: 1px solid #1e7e34; }
+        .toast.success::before { font-family: 'Material Symbols Outlined'; content: '\e5ca'; font-size: 16px; }
+        .toast.error   { background: #dc3545; border: 1px solid #bd2130; }
+        .toast.error::before { font-family: 'Material Symbols Outlined'; content: '\e000'; font-size: 16px; }
+
+        @media (max-width: 600px) {
+            #toast-container {
+                top: 10px;
+                right: 50%;
+                transform: translateX(50%);
+                bottom: auto;
+                flex-direction: column;
+                align-items: center;
+            }
+            .toast {
+                transform: translateY(-20px);
+            }
+        }
     </style>
 </head>
 <body>
     <div id="fps-counter">60 FPS</div>
-    <button id="auto-animate-btn" title="自動アニメーション開始/停止" aria-label="自動アニメーション開始/停止"></button>
+    <button id="auto-animate-btn" title="自動アニメーション開始" aria-label="自動アニメーション開始"></button>
     <button id="fullscreen-btn" title="全画面表示" aria-label="全画面表示"></button>
     <button id="toggle-ui-btn" class="is-close">設定</button>
 
@@ -187,7 +240,7 @@
         </details>
 
         <details>
-            <summary>空間の回転と視野角</summary>
+            <summary>空間の回転とカメラ設定</summary>
             <div class="grid-3cols">
                 <div class="slider-group"><label title="通常の3次元空間におけるX軸周りの回転です。（仰俯角）">X軸回転 (Pitch) <span id="val-rotX" class="val-label"></span></label><input type="range" id="rotX" min="0" max="6.283" step="0.01" value="0"></div>
                 <div class="slider-group"><label title="通常の3次元空間におけるY軸周りの回転です。（左右方位角）">Y軸回転 (Yaw) <span id="val-rotY" class="val-label"></span></label><input type="range" id="rotY" min="0" max="6.283" step="0.01" value="0"></div>
@@ -215,14 +268,14 @@
         </details>
 
         <details>
-            <summary>アニメーション設定の詳細</summary>
+            <summary>アニメーション設定</summary>
             <div class="grid-2cols">
                 <div class="slider-group"><label title="自動アニメーション全体の動く速さを調整します。">全体の速度 <span id="val-anim-speed" class="val-label"></span></label><input type="range" id="anim-speed" min="0.1" max="2.0" step="0.1" value="0.8"></div>
                 <div class="slider-group"><label title="自動アニメーションで変形する大きさ（振れ幅）を調整します。">変形の大きさ (振幅)<span id="val-anim-amp" class="val-label"></span></label><input type="range" id="anim-amp" min="0.0" max="0.5" step="0.05" value="0.4"></div>
             </div>
             
             <details style="margin-top: 10px; background: rgba(255,255,255,0.02);">
-                <summary>各軸の固有パラメータ（速度・振幅・位相）</summary>
+                <summary>各パラメータの個別動作設定</summary>
                 <div style="display: flex; flex-direction: column; gap: 16px; margin-top: 10px;">
                     <div class="grid-3cols">
                         <div class="slider-group"><label title="C.xが変化する速さの比率。">C.x 速度比 <span id="val-speed-x" class="val-label"></span></label><input type="range" id="speed-x" min="0" max="2.0" step="0.05" value="1.0"></div>
@@ -253,7 +306,6 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     
     <script>
-        // グローバルに VRButton を定義するポリフィルスクリプト
         window.VRButton = {
             createButton: function ( renderer ) {
                 const button = document.createElement( 'button' );
@@ -262,13 +314,13 @@
 
                 if ( 'xr' in navigator ) {
                     button.id = 'XRButton';
-                    button.title = 'ENTER VR';
+                    button.title = 'VRモードを開始する';
 
                     navigator.xr.isSessionSupported( 'immersive-vr' ).then( function ( supported ) {
                         if ( supported ) {
                             button.style.display = 'block';
                         } else {
-                            button.title = 'VR NOT SUPPORTED';
+                            button.title = 'このデバイスでVRモードはサポートされていません';
                             button.style.display = 'block';
                             button.style.opacity = '0.5';
                             button.disabled = true;
@@ -280,13 +332,13 @@
                     async function onSessionStarted( session ) {
                         session.addEventListener( 'end', onSessionEnded );
                         await renderer.xr.setSession( session );
-                        button.title = 'EXIT VR';
+                        button.title = 'VRモードを終了する';
                         currentSession = session;
                     }
 
                     function onSessionEnded( ) {
                         currentSession.removeEventListener( 'end', onSessionEnded );
-                        button.title = 'ENTER VR';
+                        button.title = 'VRモードを開始する';
                         currentSession = null;
                     }
 
@@ -300,9 +352,9 @@
                     };
                 } else {
                     if ( window.isSecureContext === false ) {
-                        button.title = 'WEBXR NEEDS HTTPS';
+                        button.title = 'VRモードはHTTPS環境でのみ利用可能です';
                     } else {
-                        button.title = 'WEBXR NOT AVAILABLE';
+                        button.title = 'このブラウザはVRモードをサポートしていません';
                     }
                     button.style.display = 'block';
                     button.style.opacity = '0.5';
@@ -502,7 +554,6 @@
                     if (valLabel) this.uiElements[`val-${id}`] = valLabel;
                 });
                 
-                // 完全なクリーンアップのためのイベントハンドラ束縛の共通化保持
                 this.handlers = {
                     onResize: this.onResize.bind(this),
                     onPointerUp: this.onPointerUp.bind(this),
@@ -517,7 +568,6 @@
                 this.bindEvents();
                 this.loadFromURL();
                 
-                // 初回読み込み完了時の状態を履歴のルートとして保存
                 this.pushHistory();
                 
                 this.animate();
@@ -699,13 +749,6 @@
                     CONFIG.ANIM_UI_IDS.forEach(item => {
                         this.state.params[item.id] = CONFIG.ANIM_PRESETS.preset1[item.key];
                     });
-
-                    // 3. 数式モデルとUIセレクトボックスの初期化
-                    const formulaSelect = document.getElementById('formula-select');
-                    if (formulaSelect) {
-                        formulaSelect.value = "0";
-                        this.material.uniforms.u_formulaType.value = 0;
-                    }
                     
                     document.getElementById('preset-select').value = 'preset1';
                     document.getElementById('anim-preset-select').value = 'preset1'; // [※修正]
@@ -1012,7 +1055,7 @@
                     btn.classList.remove('is-playing');
                     btn.title = "自動アニメーション開始";
                     btn.setAttribute('aria-label', btn.title);
-                    this.pushHistory(); // アニメーション終了時のパラメータをスタックに保存
+                    this.pushHistory();
                 }
             },
 
@@ -1135,6 +1178,59 @@
                 });
             },
 
+            showToast(message, type = 'success', duration = 3000) {
+                // コンテナがなければ作成
+                let container = document.getElementById('toast-container');
+                if (!container) {
+                    container = document.createElement('div');
+                    container.id = 'toast-container';
+                    document.body.appendChild(container);
+                }
+
+                const activeToasts = Array.from(container.children).filter(t => !t.classList.contains('is-removing'));
+                if (activeToasts.length >= 3) {
+                    // 最も古い要素（DOMの先頭要素）を破棄
+                    const oldestToast = activeToasts[0];
+                    oldestToast.classList.remove('show');
+                    oldestToast.classList.add('is-removing');
+                    oldestToast.addEventListener('transitionend', () => oldestToast.remove());
+                }
+
+                // 新しいトースト要素を生成
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                toast.innerText = message;
+                container.appendChild(toast);
+
+                // ブラウザにDOMを認識させた後、アニメーション発火
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        toast.classList.add('show');
+                    });
+                });
+
+                // 消去処理関数
+                const dismiss = () => {
+                    toast.classList.remove('show');
+                    // CSSトランジション終了後にDOMから削除
+                    toast.addEventListener('transitionend', () => toast.remove());
+                };
+
+                if (duration > 0) {
+                    // 自動消去
+                    setTimeout(dismiss, duration);
+                } else {
+                    // 自動で消えない場合はクリックで消去
+                    const clickToDismiss = () => {
+                        dismiss();
+                        window.removeEventListener('pointerdown', clickToDismiss);
+                    };
+                    setTimeout(() => {
+                        window.addEventListener('pointerdown', clickToDismiss);
+                    }, 1000);
+                }
+            },
+
             shareURL() {
                 const values = CONFIG.UI_PARAMS.map(id => {
                     const val = this.state.params[id];
@@ -1145,13 +1241,15 @@
                 const url = `${window.location.origin}${window.location.pathname}?v=1&p=${values.join(',')}`;
                 
                 navigator.clipboard.writeText(url).then(() => {
-                    const btn = document.getElementById('share-btn');
-                    btn.innerText = "コピーしました!";
-                    setTimeout(() => btn.innerText = "URLをコピー", 2000);
-                }).catch(() => alert("URLのコピーに失敗しました。"));
+                    this.showToast("共有URLをクリップボードにコピーしました");
+                }).catch(() => {
+                    this.showToast("URLのコピーに失敗しました", "error");
+                });
             },
 
             downloadImage() {
+                if (document.activeElement) document.activeElement.blur();
+
                 this.state.isDownloading = true;
                 this.controls.enabled = false;
                 document.getElementById('custom-ui').classList.add('is-interacting');
@@ -1232,7 +1330,6 @@
                             requestAnimationFrame(renderNextTile);
                         } else {
                             progressBar.style.width = `100%`;
-                            progressText.innerText = "画像エンコード中...\n\nしばらくお待ちください";
                             
                             setTimeout(() => {
                                 finishDownload();
@@ -1255,19 +1352,32 @@
                             quality = 0.95;
                         }
 
+                        progressText.innerText = "画像エンコード中...\n\nしばらくお待ちください";
                         composeCanvas.toBlob((blob) => {
+                            progressBar.classList.remove('is-encoding');
+
                             if (!blob) {
-                                alert("ダウンロードに失敗しました。");
                                 restoreState();
+                                setTimeout(() => this.showToast("画像の書き出しに失敗しました", "error"), 350);
                                 return;
                             }
+                            
                             const url = URL.createObjectURL(blob);
                             const link = document.createElement('a');
                             link.download = `4d_julia_wallpaper_${targetWidth}x${targetHeight}.${ext}`;
                             link.href = url;
-                            link.click();
-                            setTimeout(() => URL.revokeObjectURL(url), 100);
+                            
                             restoreState();
+                            
+                            setTimeout(() => {
+                                this.showToast(`画像の書き出しが完了しました`, 'success', 5000);
+                                
+                                requestAnimationFrame(() => {
+                                    link.click();
+                                    setTimeout(() => URL.revokeObjectURL(url), 2000);
+                                });
+                            }, 350);
+
                         }, mimeType, quality);
                     };
 
