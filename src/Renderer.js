@@ -142,7 +142,6 @@ export class Renderer {
 
     updateUniforms() {
         const u = this.mesh.material.uniforms;
-        // [変更] 階層化されたパラメータの取得
         const frac = this.appState.params.fractal;
         const mat = this.appState.params.material;
         
@@ -156,7 +155,6 @@ export class Renderer {
         this.tintColor.setRGB(rgb.r, rgb.g, rgb.b);
         u.u_tintColor.value.copy(this.tintColor);
 
-        // [変更] 毎フレームのインスタンス化を廃止し、既存オブジェクトを再利用
         this.tempEuler.set(frac['rotX'], frac['rotY'], frac['rotZ'], 'XYZ');
         u.u_rotMatrix_3D.value.makeRotationFromEuler(this.tempEuler);
 
