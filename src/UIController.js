@@ -1,15 +1,8 @@
 import { CONFIG } from './constants.js';
 import { Downloader } from './Downloader.js';
+import { ColorUtils } from './ColorUtils.js';
 
 export class UIController {
-    static ANIM_UI_IDS = [
-        { id: 'anim-speed', key: 'speed' }, { id: 'anim-amp', key: 'amp' },
-        { id: 'speed-x', key: 'sx' }, { id: 'amp-x', key: 'ax' }, { id: 'phase-x', key: 'px' },
-        { id: 'speed-y', key: 'sy' }, { id: 'amp-y', key: 'ay' }, { id: 'phase-y', key: 'py' },
-        { id: 'speed-z', key: 'sz' }, { id: 'amp-z', key: 'az' }, { id: 'phase-z', key: 'pz' },
-        { id: 'speed-w', key: 'sw' }, { id: 'amp-w', key: 'aw' }, { id: 'phase-w', key: 'pw' }
-    ];
-
     constructor(stateManager, renderer) {
         this.stateManager = stateManager;
         this.renderer = renderer;
@@ -41,13 +34,28 @@ export class UIController {
         return category ? params[category][id] : undefined;
     }
 
+    getStateKey(domId) {
+        const mapping = CONFIG.ANIM_UI_IDS.find(m => m.id === domId);
+        return mapping ? mapping.key : domId;
+    }
+
+    getDomId(stateKey) {
+        const mapping = CONFIG.ANIM_UI_IDS.find(m => m.key === stateKey);
+        return mapping ? mapping.id : stateKey;
+    }
+
     init() {
-        const ids = [...this.getAllParamIds(), 'custom-ui'];
-        ids.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) this.uiElements[id] = el;
-            const valLabel = document.getElementById(`val-${id}`);
-            if (valLabel) this.uiElements[`val-${id}`] = valLabel;
+        const domIds = [
+            ...CONFIG.SCHEMAS.fractal,
+            ...CONFIG.SCHEMAS.material,
+            ...CONFIG.ANIM_UI_IDS.map(m => m.id),
+            'custom-ui'
+        ];
+        domIds.forEach(domId => {
+            const el = document.getElementById(domId);
+            if (el) this.uiElements[domId] = el;
+            const valLabel = document.getElementById(`val-${domId}`);
+            if (valLabel) this.uiElements[`val-${domId}`] = valLabel;
         });
 
         this.bindEvents();
@@ -62,8 +70,8 @@ export class UIController {
         this.stateManager.updateCameraState('target', {
             x: this.renderer.controls.target.x, y: this.renderer.controls.target.y, z: this.renderer.controls.target.z
         });
-        
-        this.pushHistory();
+
+        this.updateHistoryButtons();
     }
 
     bindEvents() {
@@ -79,32 +87,58 @@ export class UIController {
         
         const cParams = ['cx', 'cy', 'cz', 'cw'];
         
-        this.getAllParamIds().forEach(id => {
-            const el = this.uiElements[id];
+        const domIdsToBind = [
+            ...CONFIG.SCHEMAS.fractal,
+            ...CONFIG.SCHEMAS.material,
+            ...CONFIG.ANIM_UI_IDS.map(m => m.id)
+        ];
+        
+        domIdsToBind.forEach(domId => {
+            const el = this.uiElements[domId];
             if (!el) return;
             
+            const stateKey = this.getStateKey(domId);
+
             el.addEventListener('touchstart', stopPropagation, { passive: true });
             el.addEventListener('pointerdown', stopPropagation);
 
             el.addEventListener('input', () => {
+                const state = this.stateManager.getState();
+                const isAnimParam = CONFIG.SCHEMAS.animation.includes(stateKey);
+
+                // 停止中にアニメーション設定が変更された場合、その瞬間の形をBaseCに更新し、位相を0に戻す
+                if (isAnimParam && !state.ui.isAutoAnimating) {
+                    this.stateManager.commitAnimatedC();
+                    this.stateManager.resetAnimPhases();
+                    
+                    // BaseCのUIスライダー（cx, cy, cz, cw）のみを新しい値に同期（操作中のスライダーの干渉を防ぐため）
+                    ['cx', 'cy', 'cz', 'cw'].forEach(id => {
+                        const baseDomId = this.getDomId(id);
+                        if (this.uiElements[baseDomId]) {
+                            this.uiElements[baseDomId].value = this.getParamValue(id);
+                            this.updateSingleValueLabel(baseDomId, id);
+                        }
+                    });
+                }
+
+                // 既存のパラメータ更新処理
                 const val = el.type === 'color' ? el.value : parseFloat(el.value);
-                this.setParamValue(id, val);
+                this.setParamValue(stateKey, val);
                 
-                if (id === 'hue' || id === 'saturation') this.updatePickerFromSliders();
-                if (cParams.includes(id)) this.updateBaseC();
-                if (id === 'fov') {
+                if (stateKey === 'hue' || stateKey === 'saturation') this.updatePickerFromSliders();
+                if (cParams.includes(stateKey)) this.updateBaseC();
+                if (stateKey === 'fov') {
                     this.renderer.camera.fov = this.getParamValue('fov');
                     this.renderer.camera.updateProjectionMatrix();
                 }
 
                 this.onInteractStart();
-                this.updateSingleValueLabel(id);
+                this.updateSingleValueLabel(domId, stateKey);
                 this.renderer.requestRender();
                 
-                const state = this.stateManager.getState();
                 if (!state.ui.isAutoAnimating) {
                     if (!CONFIG.ANIM_PRESETS[document.getElementById('anim-preset-select').value]) {
-                        if(!UIController.ANIM_UI_IDS.map(a=>a.id).includes(id)) {
+                        if(!CONFIG.ANIM_UI_IDS.map(a=>a.key).includes(stateKey)) {
                             document.getElementById('preset-select').value = 'custom';
                         }
                     }
@@ -121,8 +155,8 @@ export class UIController {
         animPresetSelect.addEventListener('change', (e) => {
             const val = e.target.value;
             if (CONFIG.ANIM_PRESETS[val]) {
-                UIController.ANIM_UI_IDS.forEach(item => { 
-                    this.setParamValue(item.id, CONFIG.ANIM_PRESETS[val][item.key]); 
+                CONFIG.ANIM_UI_IDS.forEach(item => {
+                    this.setParamValue(item.key, CONFIG.ANIM_PRESETS[val][item.key]); 
                 });
                 this.updateUIFromState();
                 this.pushHistory();
@@ -131,13 +165,13 @@ export class UIController {
 
         const baseColorPicker = document.getElementById('baseColorPicker');
         baseColorPicker.addEventListener('input', (e) => {
-            const hsvVals = this.hexToHsv(e.target.value);
+            const hsvVals = ColorUtils.hexToHsv(e.target.value);
             this.setParamValue('hue', hsvVals.h);
             this.setParamValue('saturation', hsvVals.s);
             this.onInteractStart();
             document.getElementById('preset-select').value = 'custom';
-            this.updateSingleValueLabel('hue');
-            this.updateSingleValueLabel('saturation');
+            this.updateSingleValueLabel('hue', 'hue');
+            this.updateSingleValueLabel('saturation', 'saturation');
             this.renderer.requestRender();
         });
         baseColorPicker.addEventListener('change', () => {
@@ -149,9 +183,16 @@ export class UIController {
         document.getElementById('reset-btn').addEventListener('click', this.resetAll.bind(this));
         document.getElementById('auto-animate-btn').addEventListener('click', this.toggleAutoAnimate.bind(this));
         document.getElementById('share-btn').addEventListener('click', this.shareURL.bind(this));
-        document.getElementById('download-btn').addEventListener('click', () => {
-            this.downloader.start();
-        });
+        
+        const downloadBtn = document.getElementById('download-btn');
+        if (downloadBtn) {
+            downloadBtn.addEventListener('click', async () => {
+                const format = document.getElementById('dl-format').value;
+                const scale = parseFloat(document.getElementById('dl-scale').value);
+                await this.downloader.downloadHighRes(format, scale); 
+            });
+        }
+        
         document.getElementById('random-btn').addEventListener('click', this.randomizeAll.bind(this));
         document.getElementById('undo-btn').addEventListener('click', this.undo.bind(this));
         document.getElementById('redo-btn').addEventListener('click', this.redo.bind(this));
@@ -195,27 +236,28 @@ export class UIController {
 
     updateUIFromState(stateParams = null) {
         const targetParams = stateParams || this.stateManager.getState().domain.params;
-        this.getAllParamIds().forEach(id => {
-            const el = this.uiElements[id];
-            if (el) el.value = this.getParamValue(id, targetParams);
-            this.updateSingleValueLabel(id);
+        this.getAllParamIds().forEach(stateKey => {
+            const domId = this.getDomId(stateKey);
+            const el = this.uiElements[domId];
+            if (el) el.value = this.getParamValue(stateKey, targetParams);
+            this.updateSingleValueLabel(domId, stateKey);
         });
         
         const picker = document.getElementById('baseColorPicker');
         const hue = this.getParamValue('hue', targetParams);
         const sat = this.getParamValue('saturation', targetParams);
         if (picker && hue !== undefined && sat !== undefined) {
-            picker.value = this.hsvToHex(hue, sat, 1.0);
+            picker.value = ColorUtils.hsvToHex(hue, sat, 1.0);
         }
     }
 
-    updateSingleValueLabel(id) {
-        const labelEl = this.uiElements[`val-${id}`];
-        const val = this.getParamValue(id);
+    updateSingleValueLabel(domId, stateKey) {
+        const labelEl = this.uiElements[`val-${domId}`];
+        const val = this.getParamValue(stateKey);
         if (labelEl && val !== undefined) {
-            if (id.startsWith('rot') || id.startsWith('phase-')) {
+            if (stateKey.startsWith('rot') || stateKey.startsWith('p')) {
                 labelEl.innerText = `${(val * 180 / Math.PI).toFixed(1)}°`;
-            } else if (id === 'fov') {
+            } else if (stateKey === 'fov') {
                 labelEl.innerText = `${val}°`;
             } else if (typeof val === 'number') {
                 labelEl.innerText = val.toFixed(3).replace(/\.?0+$/, '');
@@ -224,8 +266,10 @@ export class UIController {
     }
 
     updatePickerFromSliders() {
+        const hue = parseFloat(this.uiElements['hue'].value);
+        const sat = parseFloat(this.uiElements['saturation'].value);
         const picker = document.getElementById('baseColorPicker');
-        picker.value = this.hsvToHex(this.getParamValue('hue'), this.getParamValue('saturation'), 1.0);
+        if (picker) picker.value = ColorUtils.hsvToHex(hue, sat, 1.0);
     }
 
     pushHistory() {
@@ -259,8 +303,12 @@ export class UIController {
 
     updateHistoryButtons() {
         const status = this.stateManager.getHistoryStatus();
-        document.getElementById('undo-btn').disabled = !status.canUndo;
-        document.getElementById('redo-btn').disabled = !status.canRedo;
+        // アニメーション中かどうかの状態を取得
+        const isAutoAnimating = this.stateManager.getState().ui.isAutoAnimating;
+        
+        // 履歴がない、またはアニメーション中の場合はボタンを無効化
+        document.getElementById('undo-btn').disabled = !status.canUndo || isAutoAnimating;
+        document.getElementById('redo-btn').disabled = !status.canRedo || isAutoAnimating;
     }
 
     toggleAutoAnimate() {
@@ -279,12 +327,14 @@ export class UIController {
             cSliderIds.forEach(id => { if(this.uiElements[id]) this.uiElements[id].disabled = true; });
             btn.classList.add('is-playing');
         } else {
+            this.updateUIFromState(); 
             this.updateHistoryButtons();
             document.getElementById('preset-select').disabled = false;
+            
             if (!state.ui.isInteracting) {
                 this.renderer.setQuality('HIGH');
                 this.renderer.requestRender();
-                this.pushHistory();
+                this.pushHistory(); 
             }
             this.renderer.timer.update();
             cSliderIds.forEach(id => { if(this.uiElements[id]) this.uiElements[id].disabled = false; });
@@ -297,7 +347,6 @@ export class UIController {
         if (CONFIG.PRESETS[val]) {
             this.onInteractStart();
             
-            // プリセット展開時のバッファ構築
             const newFractal = {};
             const newMaterial = {};
             
@@ -307,8 +356,8 @@ export class UIController {
                     if (CONFIG.SCHEMAS.material.includes(id)) newMaterial[id] = CONFIG.PRESETS[val][id];
                 }
             });
-            
-            this.stateManager.updateFractalCurrent(newFractal);
+
+            this.stateManager.updateParamsState('fractal', newFractal);
             this.stateManager.updateParamsState('material', newMaterial);
             
             this.updateUIFromState();
@@ -331,6 +380,7 @@ export class UIController {
         this.renderer.controls.update();
 
         this.updateUIFromState();
+        this.pushHistory();
         this.onInteractEnd();
     }
 
@@ -369,71 +419,73 @@ export class UIController {
 
     loadFromURL() {
         const params = new URLSearchParams(window.location.search);
-        const allIds = this.getAllParamIds();
+        if (!params.has('cx') && !params.has('hue')) return; 
 
-        if (params.has('p') && params.has('v')) { 
-            const version = params.get('v');
-            const values = params.get('p').split(',');
-            
-            if (version === '1' && values.length === allIds.length + 6) {
-                let isValid = true;
-                const parsedValues = [];
-                
-                allIds.forEach((id, index) => {
-                    if (this.uiElements[id] && this.uiElements[id].type === 'color') {
-                        parsedValues.push('#' + values[index]);
-                    } else {
-                        const val = parseFloat(values[index]);
-                        if (Number.isNaN(val)) isValid = false;
-                        parsedValues.push(val);
-                    }
-                });
-                
-                const camIdx = allIds.length;
-                const camVals = values.slice(camIdx, camIdx + 6).map(parseFloat);
-                if (camVals.some(Number.isNaN)) isValid = false;
+        this.stateManager.updateUiState({ isInteracting: true });
 
-                if (isValid) {
-                    allIds.forEach((id, index) => { this.setParamValue(id, parsedValues[index]); });
-                    
-                    this.stateManager.updateState('domain.camera.position', { x: camVals[0], y: camVals[1], z: camVals[2] });
-                    this.stateManager.updateState('domain.camera.target', { x: camVals[3], y: camVals[4], z: camVals[5] });           
-
-                    this.renderer.camera.position.set(camVals[0], camVals[1], camVals[2]);
-                    this.renderer.controls.target.set(camVals[3], camVals[4], camVals[5]);
-                    
-                    this.renderer.camera.fov = this.getParamValue('fov');
-                    this.renderer.camera.updateProjectionMatrix();
-                    this.renderer.controls.update();
-                    
-                    document.getElementById('preset-select').value = 'custom';
-                    document.getElementById('anim-preset-select').value = 'custom';
-                    
-                    this.updateUIFromState();
-                    this.updateBaseC();
-                    return; 
-                }
+        CONFIG.SCHEMAS.fractal.forEach(id => {
+            if (params.has(id)) this.setParamValue(id, parseFloat(params.get(id)));
+        });
+        CONFIG.SCHEMAS.material.forEach(id => {
+            if (params.has(id)) {
+                const val = params.get(id);
+                this.setParamValue(id, id === 'bgColor' ? `#${val}` : parseFloat(val));
             }
-        }
-        
+        });
+        CONFIG.SCHEMAS.animation.forEach(id => {
+            if (params.has(id)) this.setParamValue(id, parseFloat(params.get(id)));
+        });
+
+        const camPos = {
+            x: params.has('cam_px') ? parseFloat(params.get('cam_px')) : this.renderer.camera.position.x,
+            y: params.has('cam_py') ? parseFloat(params.get('cam_py')) : this.renderer.camera.position.y,
+            z: params.has('cam_pz') ? parseFloat(params.get('cam_pz')) : this.renderer.camera.position.z
+        };
+        const camTarget = {
+            x: params.has('cam_tx') ? parseFloat(params.get('cam_tx')) : this.renderer.controls.target.x,
+            y: params.has('cam_ty') ? parseFloat(params.get('cam_ty')) : this.renderer.controls.target.y,
+            z: params.has('cam_tz') ? parseFloat(params.get('cam_tz')) : this.renderer.controls.target.z
+        };
+
+        this.stateManager.updateCameraState('position', camPos);
+        this.stateManager.updateCameraState('target', camTarget);
+
+        this.renderer.camera.position.copy(camPos);
+        this.renderer.controls.target.copy(camTarget);
+        this.renderer.controls.update();
+
+        const presetSelect = document.getElementById('preset-select');
+        const animPresetSelect = document.getElementById('anim-preset-select');
+        if (presetSelect) presetSelect.value = 'custom';
+        if (animPresetSelect) animPresetSelect.value = 'custom';
+
         this.updateUIFromState();
-        this.updateBaseC();
+        this.stateManager.updateUiState({ isInteracting: false });
+        this.renderer.requestRender();
+
+        this.stateManager.replaceInitialHistory();
+        this.updateHistoryButtons();
     }
 
     shareURL() {
         const state = this.stateManager.getState();
         const targetParams = state.domain.params;
+        const params = new URLSearchParams();
         
-        const values = this.getAllParamIds().map(id => {
-            const val = this.getParamValue(id, targetParams);
-            return id === 'bgColor' ? val.replace('#', '') : val;
+        this.getAllParamIds().forEach(stateKey => {
+            const val = this.getParamValue(stateKey, targetParams);
+            params.set(stateKey, stateKey === 'bgColor' ? val.replace('#', '') : val);
         });
  
         const cam = state.domain.camera;
-        values.push(cam.position.x.toFixed(3), cam.position.y.toFixed(3), cam.position.z.toFixed(3));
-        values.push(cam.target.x.toFixed(3), cam.target.y.toFixed(3), cam.target.z.toFixed(3));
+        params.set('cam_px', cam.position.x.toFixed(3));
+        params.set('cam_py', cam.position.y.toFixed(3));
+        params.set('cam_pz', cam.position.z.toFixed(3));
+        params.set('cam_tx', cam.target.x.toFixed(3));
+        params.set('cam_ty', cam.target.y.toFixed(3));
+        params.set('cam_tz', cam.target.z.toFixed(3));
         
-        const url = `${window.location.origin}${window.location.pathname}?v=1&p=${values.join(',')}`;
+        const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
         
         navigator.clipboard.writeText(url).then(() => {
             this.showToast("共有URLをクリップボードにコピーしました");
@@ -496,44 +548,5 @@ export class UIController {
             const clickToDismiss = () => { dismiss(); window.removeEventListener('pointerdown', clickToDismiss); };
             setTimeout(() => window.addEventListener('pointerdown', clickToDismiss), 1000);
         }
-    }
-
-    hsvToHex(h, s, v) {
-        let r, g, b;
-        let i = Math.floor(h * 6);
-        let f = h * 6 - i;
-        let p = v * (1 - s);
-        let q = v * (1 - f * s);
-        let t = v * (1 - (1 - f) * s);
-        switch (i % 6) {
-            case 0: r = v; g = t; b = p; break;
-            case 1: r = q; g = v; b = p; break;
-            case 2: r = p; g = v; b = t; break;
-            case 3: r = p; g = q; b = v; break;
-            case 4: r = t; g = p; b = v; break;
-            case 5: r = v; g = p; b = q; break;
-        }
-        const toHex = x => Math.round(x * 255).toString(16).padStart(2, '0');
-        return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-    }
-
-    hexToHsv(hex) {
-        let r = parseInt(hex.slice(1, 3), 16) / 255;
-        let g = parseInt(hex.slice(3, 5), 16) / 255;
-        let b = parseInt(hex.slice(5, 7), 16) / 255;
-        let max = Math.max(r, g, b), min = Math.min(r, g, b);
-        let h, s, v = max;
-        let d = max - min;
-        s = max === 0 ? 0 : d / max;
-        if (max === min) h = 0; 
-        else {
-            switch (max) {
-                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-                case g: h = (b - r) / d + 2; break;
-                case b: h = (r - g) / d + 4; break;
-            }
-            h /= 6;
-        }
-        return { h, s, v };
     }
 }

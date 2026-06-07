@@ -8,7 +8,7 @@ function calculateAnimatedFractal(frac, anim, phases) {
         cx: frac.cx + (Math.sin(phases.x + anim.px) - Math.sin(anim.px)) * getAmp(frac.cx, anim.ax),
         cy: frac.cy + (Math.sin(phases.y + anim.py) - Math.sin(anim.py)) * getAmp(frac.cy, anim.ay),
         cz: frac.cz + (Math.sin(phases.z + anim.pz) - Math.sin(anim.pz)) * getAmp(frac.cz, anim.az),
-        cw: frac.cw + (Math.sin(phases.w + anim.pw) - Math.sin(anim.pw)) * getAmp(frac.cw, anim.aw) // 修正: すべてのキーを sw, aw, pw の規則に完全統一
+        cw: frac.cw + (Math.sin(phases.w + anim.pw) - Math.sin(anim.pw)) * getAmp(frac.cw, anim.aw)
     };
 }
 
@@ -20,6 +20,7 @@ export class StateManager {
         this.history = [];
         this.historyIndex = -1;
         this.resetToFactoryDefaults();
+        this.pushHistory();
     }
 
     resetToFactoryDefaults() {
@@ -55,10 +56,6 @@ export class StateManager {
         };
         
         this.#animPhases = { x: 0, y: 0, z: 0, w: 0 };
-        this.history = [];
-        this.historyIndex = -1;
-
-        this.pushHistory();
 
         return true;
     }
@@ -66,17 +63,28 @@ export class StateManager {
     getState() {
         const clone = structuredClone(this.#state);
         
-        if (this.#state.ui.isAutoAnimating) {
-            const frac = clone.domain.params.fractal;
-            const anim = clone.domain.params.animation;
-            Object.assign(frac, calculateAnimatedFractal(frac, anim, this.#animPhases));
-        }
+        const frac = clone.domain.params.fractal;
+        const anim = clone.domain.params.animation;
+        Object.assign(frac, calculateAnimatedFractal(frac, anim, this.#animPhases));
         
         return clone;
     }
 
     getRawState() {
         return this.#state;
+    }
+
+    getAnimatedC(outVec) {
+        const frac = this.#state.domain.params.fractal;
+        const anim = this.#state.domain.params.animation;
+        const phases = this.#animPhases;
+        const mAmp = anim.amp;
+        const getAmp = (base, ratio) => Math.min(mAmp * ratio, CONFIG.SYSTEM.AMP_LIMIT - Math.abs(base));
+
+        outVec.cx = frac.cx + (Math.sin(phases.x + anim.px) - Math.sin(anim.px)) * getAmp(frac.cx, anim.ax);
+        outVec.cy = frac.cy + (Math.sin(phases.y + anim.py) - Math.sin(anim.py)) * getAmp(frac.cy, anim.ay);
+        outVec.cz = frac.cz + (Math.sin(phases.z + anim.pz) - Math.sin(anim.pz)) * getAmp(frac.cz, anim.az);
+        outVec.cw = frac.cw + (Math.sin(phases.w + anim.pw) - Math.sin(anim.pw)) * getAmp(frac.cw, anim.aw);
     }
 
     advanceAnimPhases(delta) {
@@ -92,6 +100,16 @@ export class StateManager {
         this.#animPhases = { x: 0, y: 0, z: 0, w: 0 };
     }
 
+    commitAnimatedC() {
+        const out = { cx: 0, cy: 0, cz: 0, cw: 0 };
+        this.getAnimatedC(out);
+        const frac = this.#state.domain.params.fractal;
+        frac.cx = out.cx;
+        frac.cy = out.cy;
+        frac.cz = out.cz;
+        frac.cw = out.cw;
+    }
+
     updateUiState(payload) {
         Object.keys(payload).forEach(key => {
             if (key in this.#state.ui) this.#state.ui[key] = payload[key];
@@ -99,7 +117,7 @@ export class StateManager {
     }
 
     updateCameraState(type, payload) {
-        const allowedCameraTypes = CONFIG.SCHEMAS.camera; // 定数定義 ['position', 'target'] を参照
+        const allowedCameraTypes = CONFIG.SCHEMAS.camera;
         if (allowedCameraTypes.includes(type) && type in this.#state.domain.camera) {
             Object.keys(payload).forEach(key => {
                 if (key in this.#state.domain.camera[type]) {
@@ -127,7 +145,8 @@ export class StateManager {
         
         this.history.push({
             params: structuredClone(this.#state.domain.params),
-            camera: structuredClone(this.#state.domain.camera)
+            camera: structuredClone(this.#state.domain.camera),
+            animPhases: structuredClone(this.#animPhases)
         });
 
         if (this.history.length > CONFIG.SYSTEM.MAX_HISTORY) {
@@ -136,27 +155,38 @@ export class StateManager {
         this.historyIndex = this.history.length - 1;
     }
 
+    replaceInitialHistory() {
+        this.history = [{
+            params: structuredClone(this.#state.domain.params),
+            camera: structuredClone(this.#state.domain.camera),
+            animPhases: structuredClone(this.#animPhases)
+        }];
+        this.historyIndex = 0;
+    }
     undo() {
         if (this.historyIndex > 0) {
             this.historyIndex--;
-            this.#restoreSnapshot(this.history[this.historyIndex]);
-            return true;
+            const snapshot = this.history[this.historyIndex];
+            this.#restoreSnapshot(snapshot);
+            return structuredClone(snapshot);
         }
-        return false;
+        return null;
     }
 
     redo() {
         if (this.historyIndex < this.history.length - 1) {
             this.historyIndex++;
-            this.#restoreSnapshot(this.history[this.historyIndex]);
-            return true;
+            const snapshot = this.history[this.historyIndex];
+            this.#restoreSnapshot(snapshot);
+            return structuredClone(snapshot);
         }
-        return false;
+        return null;
     }
 
     #restoreSnapshot(snapshot) {
         this.#state.domain.params = structuredClone(snapshot.params);
         this.#state.domain.camera = structuredClone(snapshot.camera);
+        this.#animPhases = structuredClone(snapshot.animPhases);
     }
 
     getHistoryStatus() {

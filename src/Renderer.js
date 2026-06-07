@@ -21,11 +21,15 @@ export class Renderer {
         this.uiElements = { fpsCounter: document.getElementById('fps-counter') };
 
         this.tempEuler = new THREE.Euler(0, 0, 0, 'XYZ');
-        this.mXW = new THREE.Matrix4();
-        this.mYW = new THREE.Matrix4();
-        this.mZW = new THREE.Matrix4();
-        this.m4D = new THREE.Matrix4();
-
+        
+        this.matRot3D = new THREE.Matrix4();
+        this.matRot4D_XW = new THREE.Matrix4();
+        this.matRot4D_YW = new THREE.Matrix4();
+        this.matRot4D_ZW = new THREE.Matrix4();
+        this.matCombinedRot = new THREE.Matrix4();
+        
+        this.cameraWorldPos = new THREE.Vector3();
+        this.animatedC = { cx: 0, cy: 0, cz: 0, cw: 0 };
         this.materialPool = {};
     }
 
@@ -41,6 +45,8 @@ export class Renderer {
         this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
         
         this.renderer.xr.enabled = true;
+        this.renderer.xr.setFoveation(1.0); 
+
         document.body.appendChild(VRButton.createButton(this.renderer));
 
         this.renderer.xr.addEventListener('sessionstart', () => {
@@ -69,6 +75,25 @@ export class Renderer {
         this.setQuality('HIGH');
         
         this.mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.material);
+        
+        this.mesh.onBeforeRender = (renderer, scene, camera) => {
+            if (!this.material || !this.material.uniforms) return;
+            const u = this.material.uniforms;
+            
+            if (this.renderer.xr.isPresenting) {
+                if (u.u_cameraWorldMatrix && u.u_cameraWorldMatrix.value) {
+                    u.u_cameraWorldMatrix.value.copy(camera.matrixWorld);
+                }
+                if (u.u_cameraProjectionMatrixInverse && u.u_cameraProjectionMatrixInverse.value) {
+                    u.u_cameraProjectionMatrixInverse.value.copy(camera.projectionMatrixInverse);
+                }
+                if (u.u_cameraPos && u.u_cameraPos.value) {
+                    camera.getWorldPosition(this.cameraWorldPos);
+                    u.u_cameraPos.value.copy(this.cameraWorldPos);
+                }
+            }
+        };
+        
         this.scene.add(this.mesh);
 
         this.updateResolution();
@@ -86,14 +111,16 @@ export class Renderer {
         const config = CONFIG.QUALITY[qualityLevel];
         const isExport = qualityLevel === 'EXPORT';
         const isLow = qualityLevel === 'LOW';
+
         const material = new THREE.ShaderMaterial({
             vertexShader,
             fragmentShader: `#define MAX_STEPS ${config.steps}\n#define MAX_ITER ${config.iter}\n` + fragmentShader,
             defines: isExport ? { IS_EXPORTING: '1' } : (isLow ? { IS_LOW_QUALITY: '1' } : {}),
+            glslVersion: THREE.GLSL3,
             uniforms: {
                 u_resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
                 u_c: { value: new THREE.Vector4() },
-                u_cameraPos: { value: new THREE.Vector3() }, 
+                u_cameraPos: { value: new THREE.Vector3() },
                 u_cameraWorldMatrix: { value: new THREE.Matrix4() },
                 u_cameraProjectionMatrixInverse: { value: new THREE.Matrix4() },
                 u_brightness: { value: 0.0 }, 
@@ -101,7 +128,7 @@ export class Renderer {
                 u_aoPower: { value: 0.0 }, 
                 u_specular: { value: 0.0 }, 
                 u_bgColor: { value: new THREE.Color(0x000000) }, 
-                u_bgAlpha: { value: 1.0 },
+                u_bgAlpha: { value: 0.0 }, 
                 u_rotMatrix_3D: { value: new THREE.Matrix4() },
                 u_rotMatrix_4D: { value: new THREE.Matrix4() },
             }
@@ -119,15 +146,18 @@ export class Renderer {
         const oldMaterial = this.material;
         this.material = this.getOrCreateMaterial(qualityLevel);
         
-        if (oldMaterial && this.material !== oldMaterial) {
-            this.material.uniforms.u_resolution.value.copy(oldMaterial.uniforms.u_resolution.value);
+        if (this.material !== oldMaterial) {
+            // u_resolutionはupdateResolution()で正規化するためここではコピーしない
+            // (EXPORTのタイルサイズ等の誤った値が引き継がれるのを防ぐ)
             if (this.mesh) {
                 this.mesh.material = this.material;
             }
         }
         
-        this.stateManager.updateState('ui', { renderQuality: qualityLevel });
+        this.stateManager.updateUiState({ renderQuality: qualityLevel });
         this.renderState.needsRender = true;
+        // 必ずupdateResolution()で正しいサイズに揃える
+        this.updateResolution();
     }
 
     onResize() {
@@ -139,6 +169,10 @@ export class Renderer {
     }
 
     updateResolution() {
+        // ダウンロード中はrenderer.setSizeを変更しない（タイルレンダリングを破壊するため）
+        const rawState = this.stateManager.getRawState();
+        if (rawState.ui.isDownloading) return;
+
         let w = window.innerWidth; let h = window.innerHeight;
         if (Math.max(w, h) > CONFIG.MAX_RENDER_SIZE) {
             const scale = CONFIG.MAX_RENDER_SIZE / Math.max(w, h);
@@ -157,27 +191,36 @@ export class Renderer {
         const frac = state.domain.params.fractal;
         const mat = state.domain.params.material;
         
-        u.u_c.value.set(frac.cx, frac.cy, frac.cz, frac.cw);
+        // 状態管理から直接アニメーション値を計算させる (フリーズ解決)
+        this.stateManager.getAnimatedC(this.animatedC);
+        u.u_c.value.set(this.animatedC.cx, this.animatedC.cy, this.animatedC.cz, this.animatedC.cw);
+
         u.u_brightness.value = mat.brightness;
         u.u_aoPower.value = mat.aoPower;
         u.u_specular.value = mat.specular;
         u.u_bgColor.value.set(mat.bgColor);
+        u.u_bgAlpha.value = mat.bgAlpha !== undefined ? mat.bgAlpha : 1.0; 
         u.u_hsvColor.value.set(mat.hue, mat.saturation, 1.0);
 
+        // 回転行列の分離 (結合行列を廃止し、3D/4Dを個別に送出)
         this.tempEuler.set(frac.rotX, frac.rotY, frac.rotZ, 'XYZ');
-        u.u_rotMatrix_3D.value.makeRotationFromEuler(this.tempEuler);
+        this.matRot3D.makeRotationFromEuler(this.tempEuler);
 
         const cxw = Math.cos(frac.rotXW), sxw = Math.sin(frac.rotXW);
         const cyw = Math.cos(frac.rotYW), syw = Math.sin(frac.rotYW);
         const czw = Math.cos(frac.rotZW), szw = Math.sin(frac.rotZW);
 
-        this.mXW.set(cxw, 0, 0, -sxw,  0, 1, 0, 0,  0, 0, 1, 0,  sxw, 0, 0, cxw);
-        this.mYW.set(1, 0, 0, 0,  0, cyw, 0, -syw,  0, 0, 1, 0,  0, syw, 0, cyw);
-        this.mZW.set(1, 0, 0, 0,  0, 1, 0, 0,  0, 0, czw, -szw,  0, 0, szw, czw);
+        this.matRot4D_XW.set(cxw, 0, 0, -sxw,  0, 1, 0, 0,  0, 0, 1, 0,  sxw, 0, 0, cxw); 
+        this.matRot4D_YW.set(1, 0, 0, 0,  0, cyw, 0, -syw,  0, 0, 1, 0,  0, syw, 0, cyw);
+        this.matRot4D_ZW.set(1, 0, 0, 0,  0, 1, 0, 0,  0, 0, czw, -szw,  0, 0, szw, czw);
 
-        this.m4D.copy(this.mZW).multiply(this.mYW).multiply(this.mXW);
-        u.u_rotMatrix_4D.value.copy(this.m4D);
+        // 結合せず、3D回転と4D回転の連結行列を個別に送信
+        this.matRot4D_ZW.multiply(this.matRot4D_YW).multiply(this.matRot4D_XW);
         
+        u.u_rotMatrix_3D.value.copy(this.matRot3D);
+        u.u_rotMatrix_4D.value.copy(this.matRot4D_ZW);
+
+        // カメラ系uniform（旧コードから削除されていた）
         u.u_cameraPos.value.copy(this.camera.position);
         u.u_cameraWorldMatrix.value.copy(this.camera.matrixWorld);
         u.u_cameraProjectionMatrixInverse.value.copy(this.camera.projectionMatrixInverse);
@@ -189,15 +232,6 @@ export class Renderer {
 
     animate() {
         this.renderer.setAnimationLoop(() => {
-            this.renderState.fpsFrames++;
-            const now = performance.now();
-            if (now >= this.renderState.fpsLastTime + 1000) {
-                const fps = Math.round((this.renderState.fpsFrames * 1000) / (now - this.renderState.fpsLastTime));
-                if (this.uiElements.fpsCounter) this.uiElements.fpsCounter.innerText = `${fps} FPS`;
-                this.renderState.fpsFrames = 0;
-                this.renderState.fpsLastTime = now;
-            }
-            
             this.timer.update();
             const delta = this.timer.getDelta();
 
@@ -231,6 +265,16 @@ export class Renderer {
             }
 
             this.updateUniforms(); 
+            
+            this.renderState.fpsFrames++;
+            const now = performance.now();
+            if (now >= this.renderState.fpsLastTime + 1000) {
+                const fps = Math.round((this.renderState.fpsFrames * 1000) / (now - this.renderState.fpsLastTime));
+                if (this.uiElements.fpsCounter) this.uiElements.fpsCounter.innerText = `${fps} FPS`;
+                this.renderState.fpsFrames = 0;
+                this.renderState.fpsLastTime = now;
+            }
+
             this.renderer.render(this.scene, this.camera);
             this.renderState.needsRender = false;
         });
@@ -244,7 +288,6 @@ export class Renderer {
         Object.keys(this.materialPool).forEach(key => {
             this.materialPool[key].dispose();
         });
-        
         this.renderer.dispose();
     }
 }

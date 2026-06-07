@@ -8,7 +8,9 @@ export const CONFIG = {
         STEP_DIST_NORMAL: 0.95,
         STEP_DIST_EXPORT: 0.4,
         AO_BASE_NORMAL: 10.0,
-        AO_BASE_EXPORT: 24.0
+        AO_BASE_EXPORT: 24.0,
+        MAX_CANVAS_SIZE: 4096,
+        TILE_MAX: 250
     },
     MAX_RENDER_SIZE: 1200,
     SYSTEM: {
@@ -19,15 +21,22 @@ export const CONFIG = {
     SCHEMAS: {
         camera: ['position', 'target'],
         fractal: ['cx', 'cy', 'cz', 'cw', 'rotX', 'rotY', 'rotZ', 'rotXW', 'rotYW', 'rotZW', 'fov'],
-        material: ['hue', 'saturation', 'brightness', 'aoPower', 'specular', 'bgColor'],
+        material: ['hue', 'saturation', 'brightness', 'aoPower', 'specular', 'bgColor', 'bgAlpha'],
         animation: ['speed', 'amp', 'sx', 'ax', 'px', 'sy', 'ay', 'py', 'sz', 'az', 'pz', 'sw', 'aw', 'pw']
     },
+    ANIM_UI_IDS: [
+        { id: 'anim-speed', key: 'speed' }, { id: 'anim-amp', key: 'amp' },
+        { id: 'speed-x', key: 'sx' }, { id: 'amp-x', key: 'ax' }, { id: 'phase-x', key: 'px' },
+        { id: 'speed-y', key: 'sy' }, { id: 'amp-y', key: 'ay' }, { id: 'phase-y', key: 'py' },
+        { id: 'speed-z', key: 'sz' }, { id: 'amp-z', key: 'az' }, { id: 'phase-z', key: 'pz' },
+        { id: 'speed-w', key: 'sw' }, { id: 'amp-w', key: 'aw' }, { id: 'phase-w', key: 'pw' }
+    ],
     PRESETS: {
-        preset1: { cx: -0.517, cy: -0.341, cz: -0.407, cw: -0.071, rotX: 0, rotY: 0, rotZ: 2.02, rotXW: 0, rotYW: 0, rotZW: 0, hue: 0.586, saturation: 1, brightness: 2.3, aoPower: 1, specular: 10, bgColor: '#0a0c1a', fov: 45 },
-        preset2: { cx: 0.415, cy: 0.56, cz: 0.175, cw: 0.459, rotX: 0, rotY: 0.7, rotZ: 0, rotXW: 0, rotYW: 0, rotZW: 0, hue: 0.35, saturation: 1, brightness: 1.5, aoPower: 1.2, specular: 24, bgColor: '#05220d', fov: 45 },
-        preset3: { cx: 0.497, cy: 0.182, cz: 0.161, cw: -0.178, rotX: 2.25, rotY: 1.29, rotZ: 2.25, rotXW: 2.92, rotYW: 0, rotZW: 0.15, hue: 0, saturation: 0.814, brightness: 2.3, aoPower: 0.1, specular: 64, bgColor: '#fe9f9f', fov: 45 },
-        preset4: { cx: 0.038, cy: 0.681, cz: 0.054, cw: 0.12, rotX: 3.81, rotY: 3.45, rotZ: 0.8, rotXW: 0, rotYW: 0, rotZW: 3.22, hue: 0.114, saturation: 0.898, brightness: 2.3, aoPower: 0.6, specular: 16, bgColor: '#b87d00', fov: 45 },
-        preset5: { cx: 0, cy: 0, cz: 0, cw: 0, rotX: 0, rotY: 0, rotZ: 0, rotXW: 0, rotYW: 0, rotZW: 0, hue: 0, saturation: 0, brightness: 2.7, aoPower: 0.1, specular: 64, bgColor: '#dedede', fov: 45 }
+        preset1: { cx: -0.517, cy: -0.341, cz: -0.407, cw: -0.071, rotX: 0, rotY: 0, rotZ: 2.02, rotXW: 0, rotYW: 0, rotZW: 0, hue: 0.586, saturation: 1, brightness: 2.3, aoPower: 1, specular: 10, bgColor: '#0a0c1a', bgAlpha: 1.0, fov: 45 },
+        preset2: { cx: 0.415, cy: 0.56, cz: 0.175, cw: 0.459, rotX: 0, rotY: 0.7, rotZ: 0, rotXW: 0, rotYW: 0, rotZW: 0, hue: 0.35, saturation: 1, brightness: 1.5, aoPower: 1.2, specular: 24, bgColor: '#05220d', bgAlpha: 1.0, fov: 45 },
+        preset3: { cx: 0.497, cy: 0.182, cz: 0.161, cw: -0.178, rotX: 2.25, rotY: 1.29, rotZ: 2.25, rotXW: 2.92, rotYW: 0, rotZW: 0.15, hue: 0, saturation: 0.814, brightness: 2.3, aoPower: 0.1, specular: 64, bgColor: '#fe9f9f', bgAlpha: 1.0, fov: 45 },
+        preset4: { cx: 0.038, cy: 0.681, cz: 0.054, cw: 0.12, rotX: 3.81, rotY: 3.45, rotZ: 0.8, rotXW: 0, rotYW: 0, rotZW: 3.22, hue: 0.114, saturation: 0.898, brightness: 2.3, aoPower: 0.6, specular: 16, bgColor: '#b87d00', bgAlpha: 1.0, fov: 45 },
+        preset5: { cx: 0, cy: 0, cz: 0, cw: 0, rotX: 0, rotY: 0, rotZ: 0, rotXW: 0, rotYW: 0, rotZW: 0, hue: 0, saturation: 0, brightness: 2.7, aoPower: 0.1, specular: 64, bgColor: '#dedede', bgAlpha: 1.0, fov: 45 }
     },
     ANIM_PRESETS: {
         preset1: { speed: 0.8, amp: 0.45, sx: 1.0, ax: 1.0, px: 0.0, sy: 0.75, ay: 1.0, py: 0.0, sz: 0.5, az: 1.0, pz: 0.0, sw: 0.25, aw: 1.0, pw: 0.0 },

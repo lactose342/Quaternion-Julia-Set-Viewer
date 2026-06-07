@@ -1,7 +1,11 @@
 precision highp float;
 
+in vec2 vUv;
+out vec4 fragColor;
+
 uniform vec2 u_resolution;
 uniform vec4 u_c;
+
 uniform vec3 u_cameraPos;
 uniform mat4 u_cameraWorldMatrix;
 uniform mat4 u_cameraProjectionMatrixInverse;
@@ -43,21 +47,24 @@ vec2 iSphere(vec3 ro, vec3 rd, float r) {
 }
 
 vec2 map4D(vec4 z) {
-    float m2 = max(1e-8, dot(z, z));
+    float m2 = dot(z, z);
     float dz2 = 1.0;
     float iter = 0.0;
 
     for(int i = 0; i < MAX_ITER; i++) {
-        dz2 *= 4.0 * m2;
+        // 微分を先に更新してからzを更新する（チェーンルール順序が重要）
+        dz2 *= 4.0 * max(1e-8, m2);
         if (dz2 > 1e10) dz2 = 1e10;
-        
+
         z = qSq(z) + u_c;
-        m2 = max(1e-8, dot(z, z));
+        m2 = dot(z, z);
         if(m2 > 32.0) {
             iter = float(i) - log2(max(1.0, log2(m2) / 2.0));
             break;
         }
     }
+    
+    m2 = max(1e-8, m2);
     float d = 0.25 * log(m2) * (sqrt(m2) / max(1e-6, sqrt(dz2)));
     return vec2(d, iter);
 }
@@ -95,8 +102,9 @@ vec3 ACESFilm(vec3 x) {
     return clamp((x*(a*x+b))/(x*(c*x+d)+e), 0.0, 1.0);
 }
 
-vec4 render(vec2 fragCoord) {
-    vec2 ndc = (fragCoord / u_resolution.xy) * 2.0 - 1.0;
+vec4 render(vec2 offset) {
+    // vUv は [-1,1] のNDC座標。offsetはサブピクセルずれ（ピクセル単位）をNDCに変換して加算
+    vec2 ndc = vUv + (offset / u_resolution) * 2.0;
     vec4 target = u_cameraProjectionMatrixInverse * vec4(ndc.x, ndc.y, 1.0, 1.0);
     vec3 rayDir = (u_cameraWorldMatrix * vec4(normalize(target.xyz / target.w), 0.0)).xyz;
     vec3 rayPos = u_cameraPos;
@@ -135,7 +143,7 @@ vec4 render(vec2 fragCoord) {
 
     if(hit) {
         vec3 normal = calcNormal(rayPos, total_d);
-        vec3 lightDir = normalize(u_cameraPos - rayPos + vec3(-1.0, -2.0, 2.0));
+        vec3 lightDir = normalize(u_cameraPos - rayPos + vec3(-1.0, -2.0, 2.0)); 
         vec3 viewDir = normalize(u_cameraPos - rayPos);
         vec3 halfDir = normalize(lightDir + viewDir);
         
@@ -171,12 +179,12 @@ vec4 render(vec2 fragCoord) {
 void main() {
     #ifdef IS_EXPORTING
         vec4 col = vec4(0.0);
-        col += render(gl_FragCoord.xy + vec2(-0.25, -0.25));
-        col += render(gl_FragCoord.xy + vec2( 0.25, -0.25));
-        col += render(gl_FragCoord.xy + vec2(-0.25,  0.25));
-        col += render(gl_FragCoord.xy + vec2( 0.25,  0.25));
-        gl_FragColor = col / 4.0;
+        col += render(vec2(-0.25, -0.25));
+        col += render(vec2( 0.25, -0.25));
+        col += render(vec2(-0.25,  0.25));
+        col += render(vec2( 0.25,  0.25));
+        fragColor = col / 4.0;
     #else
-        gl_FragColor = render(gl_FragCoord.xy);
+        fragColor = render(vec2(0.0, 0.0));
     #endif
 }
