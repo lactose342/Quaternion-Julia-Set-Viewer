@@ -436,6 +436,15 @@ export class UIController {
             if (params.has(id)) this.setParamValue(id, parseFloat(params.get(id)));
         });
 
+        if (params.has('ph_x')) {
+            this.stateManager.setAnimPhases({
+                x: parseFloat(params.get('ph_x')),
+                y: parseFloat(params.get('ph_y')),
+                z: parseFloat(params.get('ph_z')),
+                w: parseFloat(params.get('ph_w'))
+            });
+        }
+
         const camPos = {
             x: params.has('cam_px') ? parseFloat(params.get('cam_px')) : this.renderer.camera.position.x,
             y: params.has('cam_py') ? parseFloat(params.get('cam_py')) : this.renderer.camera.position.y,
@@ -471,7 +480,12 @@ export class UIController {
         const state = this.stateManager.getState();
         const targetParams = state.domain.params;
         const params = new URLSearchParams();
-        
+        const phases = this.stateManager.getRawAnimPhases(); 
+        params.set('ph_x', phases.x.toFixed(3));
+        params.set('ph_y', phases.y.toFixed(3));
+        params.set('ph_z', phases.z.toFixed(3));
+        params.set('ph_w', phases.w.toFixed(3));
+            
         this.getAllParamIds().forEach(stateKey => {
             const val = this.getParamValue(stateKey, targetParams);
             params.set(stateKey, stateKey === 'bgColor' ? val.replace('#', '') : val);
