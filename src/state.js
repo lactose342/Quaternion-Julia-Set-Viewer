@@ -1,28 +1,123 @@
-export class StateManager {
-    constructor() {
-        this.current = {
-            isAutoAnimating: false,
-            isInteracting: false,
-            isDownloading: false,
-            camera: {
-                position: { x: 0, y: 0, z: 2 },
-                target: { x: 0, y: 0, z: 0 }
-            },
-            params: {
-                fractal: {
-                    baseCx: -0.517,
-                    baseCy: -0.341,
-                    baseCz: -0.407,
-                    baseCw: -0.071
-                },
-                material: {},
-                animation: {}
-            }
-        };
+import { CONFIG } from './constants.js';
 
+function calculateAnimatedFractal(frac, anim, phases) {
+    const mAmp = anim.amp;
+    const getAmp = (base, ratio) => Math.min(mAmp * ratio, CONFIG.SYSTEM.AMP_LIMIT - Math.abs(base));
+
+    return {
+        cx: frac.cx + (Math.sin(phases.x + anim.px) - Math.sin(anim.px)) * getAmp(frac.cx, anim.ax),
+        cy: frac.cy + (Math.sin(phases.y + anim.py) - Math.sin(anim.py)) * getAmp(frac.cy, anim.ay),
+        cz: frac.cz + (Math.sin(phases.z + anim.pz) - Math.sin(anim.pz)) * getAmp(frac.cz, anim.az),
+        cw: frac.cw + (Math.sin(phases.w + anim.pw) - Math.sin(anim.pw)) * getAmp(frac.cw, anim.aw) // 修正: すべてのキーを sw, aw, pw の規則に完全統一
+    };
+}
+
+export class StateManager {
+    #state;
+    #animPhases = { x: 0, y: 0, z: 0, w: 0 }; 
+
+    constructor() {
         this.history = [];
         this.historyIndex = -1;
-        this.maxHistory = 30;
+        this.resetToFactoryDefaults();
+    }
+
+    resetToFactoryDefaults() {
+        const createInitialParams = (category, rawPreset) => {
+            const allowedKeys = CONFIG.SCHEMAS[category];
+            const filtered = {};
+            allowedKeys.forEach(key => {
+                if (key in rawPreset) {
+                    filtered[key] = rawPreset[key];
+                }
+            });
+            return filtered;
+        };
+
+        this.#state = {
+            ui: {
+                isAutoAnimating: false,
+                isInteracting: false,
+                isDownloading: false,
+                renderQuality: CONFIG.SYSTEM.DEFAULT_QUALITY
+            },
+            domain: {
+                camera: {
+                    position: { x: 0, y: 0, z: 2 },
+                    target: { x: 0, y: 0, z: 0 }
+                },
+                params: {
+                    fractal: createInitialParams('fractal', CONFIG.PRESETS.preset1),
+                    material: createInitialParams('material', CONFIG.PRESETS.preset1),
+                    animation: createInitialParams('animation', CONFIG.ANIM_PRESETS.preset1)
+                }
+            }
+        };
+        
+        this.#animPhases = { x: 0, y: 0, z: 0, w: 0 };
+        this.history = [];
+        this.historyIndex = -1;
+
+        this.pushHistory();
+
+        return true;
+    }
+
+    getState() {
+        const clone = structuredClone(this.#state);
+        
+        if (this.#state.ui.isAutoAnimating) {
+            const frac = clone.domain.params.fractal;
+            const anim = clone.domain.params.animation;
+            Object.assign(frac, calculateAnimatedFractal(frac, anim, this.#animPhases));
+        }
+        
+        return clone;
+    }
+
+    getRawState() {
+        return this.#state;
+    }
+
+    advanceAnimPhases(delta) {
+        if (!this.#state.ui.isAutoAnimating) return;
+        const anim = this.#state.domain.params.animation;
+        this.#animPhases.x += delta * (anim.speed * anim.sx);
+        this.#animPhases.y += delta * (anim.speed * anim.sy);
+        this.#animPhases.z += delta * (anim.speed * anim.sz);
+        this.#animPhases.w += delta * (anim.speed * anim.sw);
+    }
+
+    resetAnimPhases() {
+        this.#animPhases = { x: 0, y: 0, z: 0, w: 0 };
+    }
+
+    updateUiState(payload) {
+        Object.keys(payload).forEach(key => {
+            if (key in this.#state.ui) this.#state.ui[key] = payload[key];
+        });
+    }
+
+    updateCameraState(type, payload) {
+        const allowedCameraTypes = CONFIG.SCHEMAS.camera; // 定数定義 ['position', 'target'] を参照
+        if (allowedCameraTypes.includes(type) && type in this.#state.domain.camera) {
+            Object.keys(payload).forEach(key => {
+                if (key in this.#state.domain.camera[type]) {
+                    this.#state.domain.camera[type][key] = payload[key];
+                }
+            });
+        }
+    }
+
+    updateParamsState(category, payload) {
+        if (category in this.#state.domain.params) {
+            const allowedKeys = CONFIG.SCHEMAS[category];
+            Object.keys(payload).forEach(key => {
+                if (allowedKeys.includes(key)) {
+                    this.#state.domain.params[category][key] = payload[key];
+                }
+            });
+        }
     }
 
     pushHistory() {
@@ -30,13 +125,12 @@ export class StateManager {
             this.history = this.history.slice(0, this.historyIndex + 1);
         }
         
-        const snapshot = {
-            params: structuredClone(this.current.params),
-            camera: structuredClone(this.current.camera)
-        };
+        this.history.push({
+            params: structuredClone(this.#state.domain.params),
+            camera: structuredClone(this.#state.domain.camera)
+        });
 
-        this.history.push(snapshot);
-        if (this.history.length > this.maxHistory) {
+        if (this.history.length > CONFIG.SYSTEM.MAX_HISTORY) {
             this.history.shift();
         }
         this.historyIndex = this.history.length - 1;
@@ -45,17 +139,24 @@ export class StateManager {
     undo() {
         if (this.historyIndex > 0) {
             this.historyIndex--;
-            return structuredClone(this.history[this.historyIndex]);
+            this.#restoreSnapshot(this.history[this.historyIndex]);
+            return true;
         }
-        return null;
+        return false;
     }
 
     redo() {
         if (this.historyIndex < this.history.length - 1) {
             this.historyIndex++;
-            return structuredClone(this.history[this.historyIndex]);
+            this.#restoreSnapshot(this.history[this.historyIndex]);
+            return true;
         }
-        return null;
+        return false;
+    }
+
+    #restoreSnapshot(snapshot) {
+        this.#state.domain.params = structuredClone(snapshot.params);
+        this.#state.domain.camera = structuredClone(snapshot.camera);
     }
 
     getHistoryStatus() {

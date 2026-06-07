@@ -2,36 +2,43 @@ import { CONFIG } from './constants.js';
 import { Downloader } from './Downloader.js';
 
 export class UIController {
+    static ANIM_UI_IDS = [
+        { id: 'anim-speed', key: 'speed' }, { id: 'anim-amp', key: 'amp' },
+        { id: 'speed-x', key: 'sx' }, { id: 'amp-x', key: 'ax' }, { id: 'phase-x', key: 'px' },
+        { id: 'speed-y', key: 'sy' }, { id: 'amp-y', key: 'ay' }, { id: 'phase-y', key: 'py' },
+        { id: 'speed-z', key: 'sz' }, { id: 'amp-z', key: 'az' }, { id: 'phase-z', key: 'pz' },
+        { id: 'speed-w', key: 'sw' }, { id: 'amp-w', key: 'aw' }, { id: 'phase-w', key: 'pw' }
+    ];
+
     constructor(stateManager, renderer) {
         this.stateManager = stateManager;
-        this.appState = stateManager.current;
         this.renderer = renderer;
         this.uiElements = {};
-        this.renderer.onAutoAnimateUpdate = this.updateUIFromState.bind(this);
         this.downloader = new Downloader(this.renderer, this.stateManager, this.showToast.bind(this));
     }
 
     getParamCategory(id) {
-        if (CONFIG.PARAMS.fractal.includes(id)) return 'fractal';
-        if (CONFIG.PARAMS.material.includes(id)) return 'material';
-        if (CONFIG.PARAMS.animation.includes(id)) return 'animation';
+        if (CONFIG.SCHEMAS.fractal.includes(id)) return 'fractal';
+        if (CONFIG.SCHEMAS.material.includes(id)) return 'material';
+        if (CONFIG.SCHEMAS.animation.includes(id)) return 'animation';
         return null;
     }
 
     getAllParamIds() {
-        return [...CONFIG.PARAMS.fractal, ...CONFIG.PARAMS.material, ...CONFIG.PARAMS.animation];
+        return [...CONFIG.SCHEMAS.fractal, ...CONFIG.SCHEMAS.material, ...CONFIG.SCHEMAS.animation];
     }
 
     setParamValue(id, value) {
         const category = this.getParamCategory(id);
         if (category) {
-            this.appState.params[category][id] = value;
+            this.stateManager.updateParamsState(category, { [id]: value });
         }
     }
 
-    getParamValue(id, stateParams = this.appState.params) {
+    getParamValue(id, stateParams = null) {
+        const params = stateParams || this.stateManager.getState().domain.params;
         const category = this.getParamCategory(id);
-        return category ? stateParams[category][id] : undefined;
+        return category ? params[category][id] : undefined;
     }
 
     init() {
@@ -45,14 +52,17 @@ export class UIController {
 
         this.bindEvents();
         this.loadFromURL();
+        
         this.renderer.camera.fov = this.getParamValue('fov');
         this.renderer.camera.updateProjectionMatrix();
-        this.appState.camera.position.x = this.renderer.camera.position.x;
-        this.appState.camera.position.y = this.renderer.camera.position.y;
-        this.appState.camera.position.z = this.renderer.camera.position.z;
-        this.appState.camera.target.x = this.renderer.controls.target.x;
-        this.appState.camera.target.y = this.renderer.controls.target.y;
-        this.appState.camera.target.z = this.renderer.controls.target.z;
+
+        this.stateManager.updateCameraState('position', {
+            x: this.renderer.camera.position.x, y: this.renderer.camera.position.y, z: this.renderer.camera.position.z
+        });
+        this.stateManager.updateCameraState('target', {
+            x: this.renderer.controls.target.x, y: this.renderer.controls.target.y, z: this.renderer.controls.target.z
+        });
+        
         this.pushHistory();
     }
 
@@ -91,9 +101,12 @@ export class UIController {
                 this.updateSingleValueLabel(id);
                 this.renderer.requestRender();
                 
-                if (!CONFIG.ANIM_PRESETS[document.getElementById('anim-preset-select').value]) {
-                    if(!CONFIG.ANIM_UI_IDS.map(a=>a.id).includes(id)) {
-                        document.getElementById('preset-select').value = 'custom';
+                const state = this.stateManager.getState();
+                if (!state.ui.isAutoAnimating) {
+                    if (!CONFIG.ANIM_PRESETS[document.getElementById('anim-preset-select').value]) {
+                        if(!UIController.ANIM_UI_IDS.map(a=>a.id).includes(id)) {
+                            document.getElementById('preset-select').value = 'custom';
+                        }
                     }
                 }
             });
@@ -108,7 +121,7 @@ export class UIController {
         animPresetSelect.addEventListener('change', (e) => {
             const val = e.target.value;
             if (CONFIG.ANIM_PRESETS[val]) {
-                CONFIG.ANIM_UI_IDS.forEach(item => { 
+                UIController.ANIM_UI_IDS.forEach(item => { 
                     this.setParamValue(item.id, CONFIG.ANIM_PRESETS[val][item.key]); 
                 });
                 this.updateUIFromState();
@@ -157,44 +170,40 @@ export class UIController {
     }
 
     onInteractStart() {
-        this.appState.isInteracting = true; 
+        this.stateManager.updateUiState({ isInteracting: true });
         this.uiElements['custom-ui'].classList.add('is-interacting');
-        clearTimeout(this.appState.renderTimer); 
         this.renderer.setQuality('LOW'); 
         this.renderer.requestRender();
     }
 
     onInteractEnd() {
-        this.appState.isInteracting = false; 
+        this.stateManager.updateUiState({ isInteracting: false });
         this.uiElements['custom-ui'].classList.remove('is-interacting');
-        clearTimeout(this.appState.renderTimer); 
-        this.appState.renderTimer = setTimeout(() => { 
-            if (!this.appState.isInteracting && !this.appState.isAutoAnimating) {
-                this.renderer.setQuality('HIGH'); 
-                this.renderer.requestRender();
-            }
-        }, 300);
+
+        const state = this.stateManager.getState();
+        if (!state.ui.isInteracting && !state.ui.isAutoAnimating) {
+            this.renderer.setQuality('HIGH'); 
+            this.renderer.requestRender();
+        }
     }
 
     updateBaseC() {
-        const frac = this.appState.params.fractal;
-        frac.baseCx = frac['cx'];
-        frac.baseCy = frac['cy'];
-        frac.baseCz = frac['cz'];
-        frac.baseCw = frac['cw'];
-        this.renderer.renderState.phases = { x: 0, y: 0, z: 0, w: 0 };
+        if (this.animationController) {
+            this.animationController.resetPhases();
+        }
     }
 
-    updateUIFromState(stateParams = this.appState.params) {
+    updateUIFromState(stateParams = null) {
+        const targetParams = stateParams || this.stateManager.getState().domain.params;
         this.getAllParamIds().forEach(id => {
             const el = this.uiElements[id];
-            if (el) el.value = this.getParamValue(id, stateParams);
+            if (el) el.value = this.getParamValue(id, targetParams);
             this.updateSingleValueLabel(id);
         });
         
         const picker = document.getElementById('baseColorPicker');
-        const hue = this.getParamValue('hue', stateParams);
-        const sat = this.getParamValue('saturation', stateParams);
+        const hue = this.getParamValue('hue', targetParams);
+        const sat = this.getParamValue('saturation', targetParams);
         if (picker && hue !== undefined && sat !== undefined) {
             picker.value = this.hsvToHex(hue, sat, 1.0);
         }
@@ -224,27 +233,28 @@ export class UIController {
         this.updateHistoryButtons();
     }
 
-    applyHistoryState(snapshot) {
-        if (!snapshot) return;
-        this.appState.params = snapshot.params;
-        this.appState.camera = snapshot.camera;
-        
-        this.renderer.camera.position.copy(snapshot.camera.position);
-        this.renderer.controls.target.copy(snapshot.camera.target);
-        this.renderer.controls.update();
-        
-        this.updateUIFromState();
-        this.updateBaseC();
-        this.updateHistoryButtons();
-        this.renderer.requestRender();
-    }
-
     undo() {
-        this.applyHistoryState(this.stateManager.undo());
+        if (this.stateManager.undo()) {
+            this.#applyRestoredState();
+        }
     }
 
     redo() {
-        this.applyHistoryState(this.stateManager.redo());
+        if (this.stateManager.redo()) {
+            this.#applyRestoredState();
+        }
+    }
+
+    #applyRestoredState() {
+        const state = this.stateManager.getState();
+        const cam = state.domain.camera;
+        this.renderer.camera.position.copy(cam.position);
+        this.renderer.controls.target.copy(cam.target);
+        this.renderer.controls.update();
+        
+        this.updateUIFromState(state.domain.params);
+        this.updateHistoryButtons();
+        this.renderer.requestRender();
     }
 
     updateHistoryButtons() {
@@ -254,32 +264,31 @@ export class UIController {
     }
 
     toggleAutoAnimate() {
-        this.appState.isAutoAnimating = !this.appState.isAutoAnimating;
+        const state = this.stateManager.getState();
+        const nextAnimState = !state.ui.isAutoAnimating;
+        this.stateManager.updateUiState({ isAutoAnimating: nextAnimState });
+        
         const btn = document.getElementById('auto-animate-btn');
         const cSliderIds = ['cx', 'cy', 'cz', 'cw'];
 
-        if (this.appState.isAutoAnimating) {
+        if (nextAnimState) {
             document.getElementById('undo-btn').disabled = true;
             document.getElementById('redo-btn').disabled = true;
             document.getElementById('preset-select').disabled = true;
             this.renderer.setQuality('LOW');
             cSliderIds.forEach(id => { if(this.uiElements[id]) this.uiElements[id].disabled = true; });
             btn.classList.add('is-playing');
-            btn.title = "自動アニメーション停止";
-            btn.setAttribute('aria-label', btn.title);
         } else {
             this.updateHistoryButtons();
             document.getElementById('preset-select').disabled = false;
-            if (!this.appState.isInteracting) {
+            if (!state.ui.isInteracting) {
                 this.renderer.setQuality('HIGH');
                 this.renderer.requestRender();
+                this.pushHistory();
             }
             this.renderer.timer.update();
             cSliderIds.forEach(id => { if(this.uiElements[id]) this.uiElements[id].disabled = false; });
             btn.classList.remove('is-playing');
-            btn.title = "自動アニメーション開始";
-            btn.setAttribute('aria-label', btn.title);
-            this.pushHistory();
         }
     }
 
@@ -287,11 +296,21 @@ export class UIController {
         const val = e.target.value;
         if (CONFIG.PRESETS[val]) {
             this.onInteractStart();
+            
+            // プリセット展開時のバッファ構築
+            const newFractal = {};
+            const newMaterial = {};
+            
             this.getAllParamIds().forEach(id => { 
                 if (CONFIG.PRESETS[val][id] !== undefined) {
-                    this.setParamValue(id, CONFIG.PRESETS[val][id]);
+                    if (CONFIG.SCHEMAS.fractal.includes(id)) newFractal[id] = CONFIG.PRESETS[val][id];
+                    if (CONFIG.SCHEMAS.material.includes(id)) newMaterial[id] = CONFIG.PRESETS[val][id];
                 }
             });
+            
+            this.stateManager.updateFractalCurrent(newFractal);
+            this.stateManager.updateParamsState('material', newMaterial);
+            
             this.updateUIFromState();
             this.updateBaseC();
             this.pushHistory();
@@ -301,30 +320,17 @@ export class UIController {
 
     resetAll() {
         this.onInteractStart();
-        this.getAllParamIds().forEach(id => {
-            if (CONFIG.PRESETS.preset1[id] !== undefined) {
-                this.setParamValue(id, CONFIG.PRESETS.preset1[id]);
-            }
-        });
-        CONFIG.ANIM_UI_IDS.forEach(item => {
-            this.setParamValue(item.id, CONFIG.ANIM_PRESETS.preset1[item.key]);
-        });
+        this.stateManager.resetToFactoryDefaults();
         
         document.getElementById('preset-select').value = 'preset1';
         document.getElementById('anim-preset-select').value = 'preset1'; 
 
-        CONFIG.QUALITY.HIGH.iter = 80;
         this.renderer.setQuality('HIGH');
-        
-        this.appState.camera.position = { x: 0, y: 0, z: 2 };
-        this.appState.camera.target = { x: 0, y: 0, z: 0 };
         this.renderer.camera.position.set(0, 0, 2);
         this.renderer.controls.target.set(0, 0, 0);
         this.renderer.controls.update();
 
         this.updateUIFromState();
-        this.updateBaseC();
-        this.pushHistory(); 
         this.onInteractEnd();
     }
 
@@ -390,15 +396,14 @@ export class UIController {
                 if (isValid) {
                     allIds.forEach((id, index) => { this.setParamValue(id, parsedValues[index]); });
                     
-                    this.appState.camera.position = { x: camVals[0], y: camVals[1], z: camVals[2] };
-                    this.appState.camera.target = { x: camVals[3], y: camVals[4], z: camVals[5] };
-                    
+                    this.stateManager.updateState('domain.camera.position', { x: camVals[0], y: camVals[1], z: camVals[2] });
+                    this.stateManager.updateState('domain.camera.target', { x: camVals[3], y: camVals[4], z: camVals[5] });           
+
                     this.renderer.camera.position.set(camVals[0], camVals[1], camVals[2]);
                     this.renderer.controls.target.set(camVals[3], camVals[4], camVals[5]);
                     
                     this.renderer.camera.fov = this.getParamValue('fov');
                     this.renderer.camera.updateProjectionMatrix();
-
                     this.renderer.controls.update();
                     
                     document.getElementById('preset-select').value = 'custom';
@@ -411,27 +416,20 @@ export class UIController {
             }
         }
         
-        document.getElementById('preset-select').value = 'preset1';
-        allIds.forEach(id => { 
-            if (CONFIG.PRESETS.preset1[id] !== undefined) {
-                this.setParamValue(id, CONFIG.PRESETS.preset1[id]); 
-            } else {
-                const el = this.uiElements[id];
-                if(el) this.setParamValue(id, el.type === 'color' ? el.value : parseFloat(el.value));
-            }
-        });
-        
         this.updateUIFromState();
         this.updateBaseC();
     }
 
     shareURL() {
+        const state = this.stateManager.getState();
+        const targetParams = state.domain.params;
+        
         const values = this.getAllParamIds().map(id => {
-            const val = this.getParamValue(id);
+            const val = this.getParamValue(id, targetParams);
             return id === 'bgColor' ? val.replace('#', '') : val;
         });
  
-        const cam = this.appState.camera;
+        const cam = state.domain.camera;
         values.push(cam.position.x.toFixed(3), cam.position.y.toFixed(3), cam.position.z.toFixed(3));
         values.push(cam.target.x.toFixed(3), cam.target.y.toFixed(3), cam.target.z.toFixed(3));
         

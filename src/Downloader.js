@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { CONFIG } from './constants.js';
 
 export class Downloader {
     constructor(rendererInstance, stateManager, showToast) {
@@ -10,7 +11,7 @@ export class Downloader {
     start() {
         if (document.activeElement) document.activeElement.blur();
 
-        this.state.isDownloading = true;
+        this.state.ui.isDownloading = true;
         this.ren.controls.enabled = false;
         
         const customUi = document.getElementById('custom-ui');
@@ -29,23 +30,29 @@ export class Downloader {
         const isWebp = format === 'webp';
         const scale = parseFloat(document.getElementById('dl-scale').value);
 
+        // CSS Transition (0.3s) の完了を安全に待つ
         setTimeout(() => {
-            this._processRender(format, isTransparent, isPng, isWebp, scale, dlModal, progressBar, progressText, customUi);
-        }, 50);
+            requestAnimationFrame(() => {
+                this._processRender(format, isTransparent, isPng, isWebp, scale, dlModal, progressBar, progressText, customUi);
+            });
+        }, 350);
     }
 
     _processRender(format, isTransparent, isPng, isWebp, scale, dlModal, progressBar, progressText, customUi) {
-        const u = this.ren.material.uniforms;
+        // メッシュのマテリアルをエクスポート用に差し替え（初回のみ遅延コンパイルが発生）
+        this.ren.mesh.material = this.ren.createExportMaterial();
+        const u = this.ren.mesh.material.uniforms;
         
-        const origSteps = u.u_maxSteps.value;
-        const origIter = u.u_maxIter.value;
-        const origAlpha = u.u_bgAlpha.value;
+        // 通常マテリアル側の現在の設定値を退避（修復用）
+        const normalU = this.ren.material.uniforms;
+        const origSteps = normalU.u_maxSteps.value;
+        const origIter = normalU.u_maxIter.value;
+        const origAlpha = normalU.u_bgAlpha.value;
 
-        // 書き出し用の高画質設定
-        u.u_maxSteps.value = 4000;
-        u.u_maxIter.value = 120;
+        // エクスポート用マテリアルのUniformを高画質設定に書き換え
+        u.u_maxSteps.value = CONFIG.QUALITY.EXPORT.steps;
+        u.u_maxIter.value = CONFIG.QUALITY.EXPORT.iter;
         u.u_bgAlpha.value = isTransparent ? 0.0 : 1.0;
-        u.u_isExporting.value = true;
 
         const dpr = window.devicePixelRatio || 1;
         let targetWidth = Math.floor(window.innerWidth * dpr * scale);
@@ -145,10 +152,13 @@ export class Downloader {
             this.ren.camera.aspect = originalAspect;
             this.ren.camera.updateProjectionMatrix();
             
-            u.u_maxSteps.value = origSteps;
-            u.u_maxIter.value = origIter;
-            u.u_bgAlpha.value = origAlpha;
-            u.u_isExporting.value = false;
+            // 通常用マテリアルに参照を差し戻す（再コンパイルの発生なし）
+            this.ren.mesh.material = this.ren.material;
+            
+            // 通常マテリアルの値を確実に復元
+            normalU.u_maxSteps.value = origSteps;
+            normalU.u_maxIter.value = origIter;
+            normalU.u_bgAlpha.value = origAlpha;
             
             this.ren.updateResolution();
             this.ren.setQuality('HIGH'); 
@@ -157,10 +167,13 @@ export class Downloader {
             this.ren.controls.enabled = true;
             customUi.classList.remove('is-interacting');
 
-            this.state.isDownloading = false;
+            this.state.ui.isDownloading = false;
             this.ren.renderState.needsRender = true;
         };
         
-        requestAnimationFrame(renderNextTile);
+        // 描画バッファのフラッシュと Paint タイミングを完全に確保するため、2フレーム待ってから回す
+        requestAnimationFrame(() => {
+            requestAnimationFrame(renderNextTile);
+        });
     }
 }

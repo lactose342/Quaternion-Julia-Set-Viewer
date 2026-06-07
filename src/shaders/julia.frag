@@ -2,24 +2,35 @@ precision highp float;
 
 uniform vec2 u_resolution;
 uniform vec4 u_c;
-uniform int u_maxIter;
-uniform int u_maxSteps;
 uniform vec3 u_cameraPos;
 uniform mat4 u_cameraWorldMatrix;
 uniform mat4 u_cameraProjectionMatrixInverse;
 
 uniform float u_brightness;
-uniform vec3 u_tintColor;
+uniform vec3 u_hsvColor; 
 uniform float u_aoPower;
 uniform float u_specular;
 uniform vec3 u_bgColor;
 uniform float u_bgAlpha;
 uniform mat4 u_rotMatrix_3D;
 uniform mat4 u_rotMatrix_4D;
-uniform bool u_isExporting;
+
+#ifndef MAX_STEPS
+#define MAX_STEPS 800
+#endif
+
+#ifndef MAX_ITER
+#define MAX_ITER 80
+#endif
 
 vec4 qSq(vec4 q) {
     return vec4(q.x*q.x - dot(q.yzw, q.yzw), 2.0*q.x*q.yzw);
+}
+
+vec3 hsv2rgb(vec3 c) {
+    vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
 vec2 iSphere(vec3 ro, vec3 rd, float r) {
@@ -32,23 +43,22 @@ vec2 iSphere(vec3 ro, vec3 rd, float r) {
 }
 
 vec2 map4D(vec4 z) {
-    float m2 = dot(z, z);
+    float m2 = max(1e-8, dot(z, z));
     float dz2 = 1.0;
     float iter = 0.0;
-    
-    for(int i = 0; i < 200; i++) {
-        if(i >= u_maxIter) break;
+
+    for(int i = 0; i < MAX_ITER; i++) {
         dz2 *= 4.0 * m2;
         if (dz2 > 1e10) dz2 = 1e10;
         
         z = qSq(z) + u_c;
-        m2 = dot(z, z);
+        m2 = max(1e-8, dot(z, z));
         if(m2 > 32.0) {
             iter = float(i) - log2(max(1.0, log2(m2) / 2.0));
             break;
         }
     }
-    float d = 0.25 * log(m2) * sqrt(m2 / dz2);
+    float d = 0.25 * log(m2) * (sqrt(m2) / max(1e-6, sqrt(dz2)));
     return vec2(d, iter);
 }
 
@@ -59,14 +69,24 @@ vec2 map3D(vec3 p) {
 
 vec3 calcNormal(vec3 p, float d_from_cam) {
     float e_val = max(0.0008, d_from_cam * 0.0002);
-    vec2 e = vec2(1.0, -1.0) * e_val;
-    vec3 n = vec3(
-        e.xyy * map3D(p + e.xyy).x +
-        e.yyx * map3D(p + e.yyx).x +
-        e.yxy * map3D(p + e.yxy).x +
-        e.xxx * map3D(p + e.xxx).x
-    );
-    return normalize(n + 1e-7);
+
+    #if defined(IS_LOW_QUALITY)
+        vec3 n;
+        float d = map3D(p).x;
+        n.x = map3D(p + vec3(e_val, 0.0, 0.0)).x - d;
+        n.y = map3D(p + vec3(0.0, e_val, 0.0)).x - d;
+        n.z = map3D(p + vec3(0.0, 0.0, e_val)).x - d;
+        return normalize(n + 1e-7);
+    #else
+        vec2 e = vec2(1.0, -1.0) * e_val;
+        vec3 n = vec3(
+            e.xyy * map3D(p + e.xyy).x +
+            e.yyx * map3D(p + e.yyx).x +
+            e.yxy * map3D(p + e.yxy).x +
+            e.xxx * map3D(p + e.xxx).x
+        );
+        return normalize(n + 1e-7);
+    #endif
 }
 
 vec3 ACESFilm(vec3 x) {
@@ -88,17 +108,13 @@ vec4 render(vec2 fragCoord) {
     float iter = 0.0;
     float total_d = max(0.0, sph.x);
     rayPos += rayDir * total_d;
-    
     vec4 rPos4D = u_rotMatrix_4D * vec4((u_rotMatrix_3D * vec4(rayPos, 1.0)).xyz, 0.0);
     vec4 rDir4D = u_rotMatrix_4D * vec4((u_rotMatrix_3D * vec4(rayDir, 0.0)).xyz, 0.0);
-    
     bool hit = false;
     int steps_taken = 0;
 
-    for(int i = 0; i < 8000; i++) {
-        if(i >= u_maxSteps) break;
+    for(int i = 0; i < MAX_STEPS; i++) {
         steps_taken = i;
-
         vec2 res = map4D(rPos4D);
         d = res.x;
         iter = res.y;
@@ -106,7 +122,11 @@ vec4 render(vec2 fragCoord) {
         if(d < 0.001) { hit = true; break; }
         if(total_d > sph.y) break;
 
-        float stepDist = u_isExporting ? (d * 0.4) : (d * 0.95);
+        #ifdef IS_EXPORTING
+            float stepDist = d * 0.4;
+        #else
+            float stepDist = d * 0.95;
+        #endif
 
         rPos4D += rDir4D * stepDist;
         rayPos += rayDir * stepDist;
@@ -123,17 +143,19 @@ vec4 render(vec2 fragCoord) {
         float spec = pow(max(dot(halfDir, normal), 0.0), u_specular);
         float shdw_mt = clamp(0.3 + 0.25 * diff + spec, 0.0, 1.0);
         
-        // 歩幅に合わせてAOを補正
-        float aoBase = u_isExporting ? 24.0 : 10.0;
+        #ifdef IS_EXPORTING
+            float aoBase = 24.0;
+        #else
+            float aoBase = 10.0;
+        #endif
         float ao = clamp(aoBase / float(max(1, steps_taken)), 0.0, 1.0);
         ao = pow(ao, u_aoPower);
         
         float colorVariation = 0.85 + 0.15 * sin(iter * 0.5);
-        vec3 baseColor = u_tintColor * colorVariation;
         
+        vec3 baseColor = hsv2rgb(u_hsvColor) * colorVariation;
         float depth_val = max(0.0, 1.0 - total_d / 20.0);
         vec3 finalColor = baseColor * ao * depth_val * shdw_mt;
-        
         if (u_bgAlpha > 0.5) {
             finalColor += u_bgColor * (1.0 - ao) * 0.15;
         }
@@ -147,14 +169,14 @@ vec4 render(vec2 fragCoord) {
 }
 
 void main() {
-    if (u_isExporting) {
+    #ifdef IS_EXPORTING
         vec4 col = vec4(0.0);
         col += render(gl_FragCoord.xy + vec2(-0.25, -0.25));
         col += render(gl_FragCoord.xy + vec2( 0.25, -0.25));
         col += render(gl_FragCoord.xy + vec2(-0.25,  0.25));
         col += render(gl_FragCoord.xy + vec2( 0.25,  0.25));
         gl_FragColor = col / 4.0;
-    } else {
+    #else
         gl_FragColor = render(gl_FragCoord.xy);
-    }
+    #endif
 }
