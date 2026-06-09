@@ -24,13 +24,6 @@ export const CONFIG = {
         material: ['hue', 'saturation', 'brightness', 'aoPower', 'specular', 'bgColor', 'bgAlpha'],
         animation: ['speed', 'amp', 'sx', 'ax', 'px', 'sy', 'ay', 'py', 'sz', 'az', 'pz', 'sw', 'aw', 'pw']
     },
-    ANIM_UI_IDS: [
-        { id: 'anim-speed', key: 'speed' }, { id: 'anim-amp', key: 'amp' },
-        { id: 'speed-x', key: 'sx' }, { id: 'amp-x', key: 'ax' }, { id: 'phase-x', key: 'px' },
-        { id: 'speed-y', key: 'sy' }, { id: 'amp-y', key: 'ay' }, { id: 'phase-y', key: 'py' },
-        { id: 'speed-z', key: 'sz' }, { id: 'amp-z', key: 'az' }, { id: 'phase-z', key: 'pz' },
-        { id: 'speed-w', key: 'sw' }, { id: 'amp-w', key: 'aw' }, { id: 'phase-w', key: 'pw' }
-    ],
     PRESETS: {
         preset1: { cx: -0.517, cy: -0.341, cz: -0.407, cw: -0.071, rotX: 0, rotY: 0, rotZ: 2.02, rotXW: 0, rotYW: 0, rotZW: 0, hue: 0.586, saturation: 1, brightness: 2.3, aoPower: 1, specular: 10, bgColor: '#0a0c1a', bgAlpha: 1.0, fov: 45 },
         preset2: { cx: 0.415, cy: 0.56, cz: 0.175, cw: 0.459, rotX: 0, rotY: 0.7, rotZ: 0, rotXW: 0, rotYW: 0, rotZW: 0, hue: 0.35, saturation: 1, brightness: 1.5, aoPower: 1.2, specular: 24, bgColor: '#05220d', bgAlpha: 1.0, fov: 45 },
