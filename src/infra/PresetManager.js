@@ -1,8 +1,8 @@
 import { CONFIG } from "@/config/config.js";
 
 export class PresetManager {
-  constructor(stateManager) {
-    this.stateManager = stateManager;
+  constructor(domainStore) {
+    this.domainStore = domainStore;
   }
 
   applyPreset(presetName) {
@@ -17,8 +17,8 @@ export class PresetManager {
       if (CONFIG.SCHEMAS.material.includes(id)) newMaterial[id] = preset[id];
     });
 
-    this.stateManager.updateParamsState('fractal', newFractal);
-    this.stateManager.updateParamsState('material', newMaterial);
+    this.domainStore.updateParams('fractal', newFractal);
+    this.domainStore.updateParams('material', newMaterial);
     return true;
   }
 

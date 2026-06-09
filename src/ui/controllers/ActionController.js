@@ -1,11 +1,7 @@
-/**
- * ユーザーのグローバルなUI操作（ボタンクリック等）を検知し、
- * アプリケーション全体へコマンド（CustomEvent）として通知する入力コントローラー
- */
 export class ActionController {
   constructor(signal, eventBus = window) {
     this.signal = signal;
-    this.eventBus = eventBus; // デフォルトはwindow（グローバルイベントバス）を使用
+    this.eventBus = eventBus;
   }
 
   #dispatch(type, payload = {}) {
@@ -28,8 +24,9 @@ export class ActionController {
     bindClick("random-btn", () => this.#dispatch("RANDOMIZE"));
     bindClick("undo-btn", () => this.#dispatch("UNDO"));
     bindClick("redo-btn", () => this.#dispatch("REDO"));
-
-    // エクスポート・共有
+    bindClick("fullscreen-btn", () => {
+      this.#dispatch("TOGGLE_FULLSCREEN", {});
+    });
     bindClick("download-btn", () => {
       const formatEl = document.getElementById("dl-format");
       const scaleEl = document.getElementById("dl-scale");
@@ -39,15 +36,6 @@ export class ActionController {
       });
     });
     bindClick("share-btn", () => this.#dispatch("SHARE_URL"));
-
-    // ブラウザAPI（これらはUI層で完結するため直接実行）
-    bindClick("fullscreen-btn", () => {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(err => console.warn(err));
-      } else {
-        document.exitFullscreen();
-      }
-    });
 
     // UIの開閉
     bindClick("toggle-ui-btn", () => this.#dispatch("TOGGLE_MENU_UI"));

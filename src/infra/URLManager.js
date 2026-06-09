@@ -1,90 +1,99 @@
 import { CONFIG } from "@/config/config.js";
 
 export class URLManager {
-  constructor(stateManager, renderer) {
-    this.stateManager = stateManager;
-    this.renderer = renderer;
-  }
+  constructor() {}
 
-  loadFromURL() {
-    const params = new URLSearchParams(window.location.search);
-    if (Array.from(params.keys()).length === 0) return;
-
-    this.stateManager.updateUiState({ isInteracting: true });
+  /**
+   * 現在のURL文字列を解析し、Storeにそのまま流し込めるプレーンな状態オブジェクトを返す
+   * @param {string} urlString 
+   * @returns {Object|null} パースされた状態データ（クエリがない場合はnull）
+   */
+  parseURL(urlString) {
+    const url = new URL(urlString);
+    const params = url.searchParams;
+    
+    // アプリ固有の主要パラメータが1つも含まれていない場合は、無関係なクエリとみなしてデフォルト初期化へ誘導する
+    const appKeys = ['preset', 'anim_preset', 'cx', 'hue', 'speed', 'cam_px'];
+    const hasAppParams = appKeys.some(key => params.has(key));
+    if (!hasAppParams) return null;
 
     const hasCustomParams = params.has('cx') || params.has('hue');
-    const presetVal = params.get('preset') || (hasCustomParams ? "custom" : "preset1");
-    const animPresetVal = params.get('anim_preset') || (hasCustomParams ? "custom" : "preset1");
+    
+    // 復元用データ構造のひな形を作成
+    const parsedData = {
+      ui: {
+        activePreset: params.get('preset') || (hasCustomParams ? "custom" : "preset1"),
+        activeAnimPreset: params.get('anim_preset') || (hasCustomParams ? "custom" : "preset1"),
+      },
+      params: { fractal: {}, material: {}, animation: {} },
+      camera: { position: {}, target: {} },
+      animPhases: { x: 0, y: 0, z: 0, w: 0 }
+    };
 
-    this.stateManager.updateUiState({ 
-      activePreset: presetVal,
-      activeAnimPreset: animPresetVal
-    });
+    // 安全な数値パース（NaNガード）のためのヘルパー
+    const safeParse = (id, targetObj) => {
+      if (params.has(id)) {
+        const val = parseFloat(params.get(id));
+        if (!Number.isNaN(val)) {
+          targetObj[id] = val;
+        } else {
+          console.warn(`Invalid URL parameter ignored for key [${id}]: ${params.get(id)}`);
+        }
+      }
+    };
 
-    CONFIG.SCHEMAS.fractal.forEach(id => {
-      if (params.has(id)) this.stateManager.updateParamsState('fractal', { [id]: parseFloat(params.get(id)) });
-    });
+    // 各スキーマの解析
+    CONFIG.SCHEMAS.fractal.forEach(id => safeParse(id, parsedData.params.fractal));
+    
     CONFIG.SCHEMAS.material.forEach(id => {
       if (params.has(id)) {
         const val = params.get(id);
-        const parsedVal = id === 'bgColor' ? `#${val}` : parseFloat(val);
-        this.stateManager.updateParamsState('material', { [id]: parsedVal });
+        parsedData.params.material[id] = id === 'bgColor' ? `#${val}` : parseFloat(val);
       }
     });
-    CONFIG.SCHEMAS.animation.forEach(id => {
-      if (params.has(id)) this.stateManager.updateParamsState('animation', { [id]: parseFloat(params.get(id)) });
-    });
+    
+    CONFIG.SCHEMAS.animation.forEach(id => safeParse(id, parsedData.params.animation));
 
+    // アニメーション位相の復元
     if (params.has('ph_x')) {
-      this.stateManager.setAnimPhases({
-        x: parseFloat(params.get('ph_x')),
-        y: parseFloat(params.get('ph_y')),
-        z: parseFloat(params.get('ph_z')),
-        w: parseFloat(params.get('ph_w'))
-      });
+      parsedData.animPhases = {
+        x: parseFloat(params.get('ph_x')) || 0,
+        y: parseFloat(params.get('ph_y')) || 0,
+        z: parseFloat(params.get('ph_z')) || 0,
+        w: parseFloat(params.get('ph_w')) || 0
+      };
     }
 
-    const camPos = {
-      x: params.has('cam_px') ? parseFloat(params.get('cam_px')) : this.renderer.camera.position.x,
-      y: params.has('cam_py') ? parseFloat(params.get('cam_py')) : this.renderer.camera.position.y,
-      z: params.has('cam_pz') ? parseFloat(params.get('cam_pz')) : this.renderer.camera.position.z
-    };
-    const camTarget = {
-      x: params.has('cam_tx') ? parseFloat(params.get('cam_tx')) : this.renderer.controls.target.x,
-      y: params.has('cam_ty') ? parseFloat(params.get('cam_ty')) : this.renderer.controls.target.y,
-      z: params.has('cam_tz') ? parseFloat(params.get('cam_tz')) : this.renderer.controls.target.z
-    };
+    // カメラ状態の復元（Rendererを直接触らず、データとして構築）
+    if (params.has('cam_px')) {
+      parsedData.camera.position = {
+        x: parseFloat(params.get('cam_px')),
+        y: parseFloat(params.get('cam_py')),
+        z: parseFloat(params.get('cam_pz'))
+      };
+      parsedData.camera.target = {
+        x: parseFloat(params.get('cam_tx')),
+        y: parseFloat(params.get('cam_ty')),
+        z: parseFloat(params.get('cam_tz'))
+      };
+    }
 
-    this.stateManager.updateCameraState('position', camPos);
-    this.stateManager.updateCameraState('target', camTarget);
-
-    this.renderer.camera.position.copy(camPos);
-    this.renderer.controls.target.copy(camTarget);
-    this.renderer.controls.update();
-
-    this.stateManager.updateUiState({ isInteracting: false });
+    return parsedData;
   }
 
-  generateShareURL() {
-    this.stateManager.updateCameraState("position", {
-      x: this.renderer.camera.position.x,
-      y: this.renderer.camera.position.y,
-      z: this.renderer.camera.position.z,
-    });
-    this.stateManager.updateCameraState("target", {
-      x: this.renderer.controls.target.x,
-      y: this.renderer.controls.target.y,
-      z: this.renderer.controls.target.z,
-    });
-
-    const state = this.stateManager.getState();
-    const targetParams = state.domain.params;
+  /**
+   * 現在の各種Storeの状態を受け取り、共有用のURL文字列を生成する（副作用なし）
+   * @param {Object} domainSnapshot domainStore.getSnapshot() の戻り値
+   * @param {Object} uiState uiStore.getState() の戻り値
+   * @returns {string} 共有URL
+   */
+  generateShareURL(domainSnapshot, uiState) {
     const params = new URLSearchParams();
-    const phases = this.stateManager.getRawAnimPhases();
     
-    if (state.ui.activePreset) params.set('preset', state.ui.activePreset);
-    if (state.ui.activeAnimPreset) params.set('anim_preset', state.ui.activeAnimPreset);
+    if (uiState.activePreset) params.set('preset', uiState.activePreset);
+    if (uiState.activeAnimPreset) params.set('anim_preset', uiState.activeAnimPreset);
 
+    const phases = domainSnapshot.animPhases;
     params.set('ph_x', phases.x.toFixed(3));
     params.set('ph_y', phases.y.toFixed(3));
     params.set('ph_z', phases.z.toFixed(3));
@@ -93,19 +102,21 @@ export class URLManager {
     const allIds = [...CONFIG.SCHEMAS.fractal, ...CONFIG.SCHEMAS.material, ...CONFIG.SCHEMAS.animation];
     allIds.forEach(id => {
       const category = CONFIG.SCHEMAS.fractal.includes(id) ? 'fractal' : CONFIG.SCHEMAS.material.includes(id) ? 'material' : 'animation';
-      const val = targetParams[category][id];
+      const val = domainSnapshot.params[category][id];
       if (val !== undefined) {
         params.set(id, id === 'bgColor' ? val.replace('#', '') : val);
       }
     });
 
-    const cam = state.domain.camera;
-    params.set('cam_px', cam.position.x.toFixed(3));
-    params.set('cam_py', cam.position.y.toFixed(3));
-    params.set('cam_pz', cam.position.z.toFixed(3));
-    params.set('cam_tx', cam.target.x.toFixed(3));
-    params.set('cam_ty', cam.target.y.toFixed(3));
-    params.set('cam_tz', cam.target.z.toFixed(3));
+    const cam = domainSnapshot.camera;
+    if (cam.position.x !== undefined) {
+      params.set('cam_px', cam.position.x.toFixed(3));
+      params.set('cam_py', cam.position.y.toFixed(3));
+      params.set('cam_pz', cam.position.z.toFixed(3));
+      params.set('cam_tx', cam.target.x.toFixed(3));
+      params.set('cam_ty', cam.target.y.toFixed(3));
+      params.set('cam_tz', cam.target.z.toFixed(3));
+    }
     
     return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
   }

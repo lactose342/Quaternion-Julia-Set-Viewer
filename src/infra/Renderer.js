@@ -6,9 +6,9 @@ import { JuliaAnimationService } from "@/core/domain/JuliaAnimationService.js";
 import { JuliaMaterialFactory } from "@/core/factories/JuliaMaterialFactory.js";
 
 export class Renderer {
-  constructor(stateManager) {
-    this.stateManager = stateManager;
-    this.appState = stateManager.getRawState();
+  constructor(domainStore, uiStore) {
+    this.domainStore = domainStore;
+    this.uiStore = uiStore;
 
     this.renderState = {
       needsRender: true,
@@ -18,10 +18,9 @@ export class Renderer {
     };
 
     this.timer = new THREE.Timer();
-    this.uiElements = { fpsCounter: document.getElementById("fps-counter") };
+    this.uiElements = { fpsCounter: null }; // DOMへの直接アクセスを廃止、外部注入に対応
 
     this.tempEuler = new THREE.Euler(0, 0, 0, "XYZ");
-
     this.matRot3D = new THREE.Matrix4();
     this.matRot4D_XW = new THREE.Matrix4();
     this.matRot4D_YW = new THREE.Matrix4();
@@ -38,27 +37,19 @@ export class Renderer {
     this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
     this.camera.position.set(0, 0, 2);
 
-    // WebXRManager のコンストラクタ（= new WebGLRenderer() 内部）は
-    //   const supportsGlBinding = typeof XRWebGLBinding !== 'undefined';
-    // を一度だけ評価する。polyfill が本物でない XRWebGLBinding を注入している場合、
-    // setSession() 内の `'createProjectionLayer' in XRWebGLBinding.prototype` で
-    // prototype が undefined になりクラッシュする。
-    // そのため new WebGLRenderer() の呼び出し前に XRWebGLBinding を隠蔽し、
-    // supportsGlBinding を強制的に false にすることで
-    // Three.js を安全な XRWebGLLayer ベースのレンダリングパスへ誘導する。
+    // WebXR Polyfill 対策ハック
     const _xrWebGLBinding = window.XRWebGLBinding;
     window.XRWebGLBinding = undefined;
     this.renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: false, alpha: true });
     window.XRWebGLBinding = _xrWebGLBinding;
+    
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
     THREE.ColorManagement.enabled = false;
     this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
-
     this.renderer.xr.enabled = true;
     this.renderer.xr.setFoveation(1.0);
 
-    // VRButtonを直接DOMへ追加（Three.jsが要求するユーザー操作のコンテキストを維持）
     document.body.appendChild(VRButton.createButton(this.renderer));
 
     this.renderer.xr.addEventListener("sessionstart", () => {
@@ -69,8 +60,7 @@ export class Renderer {
 
     this.renderer.xr.addEventListener("sessionend", () => {
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
-      const rawState = this.stateManager.getRawState();
-      if (!rawState.ui.isInteracting && !rawState.ui.isAutoAnimating) {
+      if (!this.uiStore.isDownloading && !this.uiStore.isAutoAnimating) {
         this.setQuality("HIGH");
       }
     });
@@ -93,12 +83,8 @@ export class Renderer {
       const u = this.material.uniforms;
 
       if (this.renderer.xr.isPresenting) {
-        if (u.u_cameraWorldMatrix && u.u_cameraWorldMatrix.value) {
-          u.u_cameraWorldMatrix.value.copy(camera.matrixWorld);
-        }
-        if (u.u_cameraProjectionMatrixInverse && u.u_cameraProjectionMatrixInverse.value) {
-          u.u_cameraProjectionMatrixInverse.value.copy(camera.projectionMatrixInverse);
-        }
+        if (u.u_cameraWorldMatrix && u.u_cameraWorldMatrix.value) u.u_cameraWorldMatrix.value.copy(camera.matrixWorld);
+        if (u.u_cameraProjectionMatrixInverse && u.u_cameraProjectionMatrixInverse.value) u.u_cameraProjectionMatrixInverse.value.copy(camera.projectionMatrixInverse);
         if (u.u_cameraPos && u.u_cameraPos.value) {
           camera.getWorldPosition(this.cameraWorldPos);
           u.u_cameraPos.value.copy(this.cameraWorldPos);
@@ -107,27 +93,53 @@ export class Renderer {
     };
 
     this.scene.add(this.mesh);
-
     this.updateResolution();
 
     this.controls.addEventListener("change", () => {
       this.renderState.needsRender = true;
     });
+
+    // ラッグ操作終了時（end）のみ状態へカメラ座標を報告する
+    this.controls.addEventListener("end", () => {
+      this.domainStore.updateCamera("position", { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z });
+      this.domainStore.updateCamera("target", { x: this.controls.target.x, y: this.controls.target.y, z: this.controls.target.z });
+    });
+
     this._boundOnResize = this.onResize.bind(this);
     window.addEventListener("resize", this._boundOnResize);
   }
 
-  getOrCreateMaterial(qualityLevel) {
-    if (this.materialPool[qualityLevel]) {
-      return this.materialPool[qualityLevel];
+  // ExportManager から要求される隔離タイルレンダリング用のカプセル化API（トランザクション）
+  renderTile({ totalWidth, totalHeight, offsetX, offsetY, tileWidth, tileHeight, alpha }) {
+    this.camera.setViewOffset(totalWidth, totalHeight, offsetX, offsetY, tileWidth, tileHeight);
+    this.updateUniforms();
+    if (this.material) {
+      this.material.uniforms.u_bgAlpha.value = alpha;
     }
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  // エクスポート終了後のカメラ解像度・オフセットの一括クリーンアップ
+  resetViewOffset(originalAspect) {
+    this.camera.clearViewOffset();
+    this.camera.aspect = originalAspect;
+    this.camera.updateProjectionMatrix();
+  }
+
+  // Undo/Redo コマンドから呼び出されるカメラ位置の物理的復元API
+  restoreCameraFromSnapshot(cameraSnapshot) {
+    const { position, target } = cameraSnapshot;
+    this.camera.position.set(position.x, position.y, position.z);
+    this.controls.target.set(target.x, target.y, target.z);
+    this.controls.update();
+    this.renderState.needsRender = true;
+  }
+
+  getOrCreateMaterial(qualityLevel) {
+    if (this.materialPool[qualityLevel]) return this.materialPool[qualityLevel];
     const material = JuliaMaterialFactory.create(qualityLevel);
     this.materialPool[qualityLevel] = material;
     return material;
-  }
-
-  createExportMaterial() {
-    return this.getOrCreateMaterial("EXPORT");
   }
 
   setQuality(qualityLevel) {
@@ -138,22 +150,20 @@ export class Renderer {
       this.mesh.material = this.material;
     }
 
-    this.stateManager.updateUiState({ renderQuality: qualityLevel });
+    this.uiStore.update({ renderQuality: qualityLevel });
     this.renderState.needsRender = true;
     this.updateResolution();
   }
 
   onResize() {
-    const rawState = this.stateManager.getRawState();
-    if (rawState.ui.isDownloading) return;
+    if (this.uiStore.isDownloading) return; // エクスポート中のサイズ破壊ガード
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.updateResolution();
   }
 
   updateResolution() {
-    const rawState = this.stateManager.getRawState();
-    if (rawState.ui.isDownloading) return;
+    if (this.uiStore.isDownloading) return;
 
     let w = window.innerWidth;
     let h = window.innerHeight;
@@ -171,31 +181,33 @@ export class Renderer {
 
   updateUniforms() {
     const u = this.mesh.material.uniforms;
-    const state = this.stateManager.getRawState();
-    const frac = state.domain.params.fractal;
-    const mat = state.domain.params.material;
+    const fractalParams = this.domainStore.getParams("fractal");
+    const materialParams = this.domainStore.getParams("material");
 
-    JuliaAnimationService.calculateAnimatedC(state.domain.params, this.stateManager.getRawAnimPhases(), this.animatedC);
+    JuliaAnimationService.calculateAnimatedC(
+      { fractal: fractalParams, material: materialParams, animation: this.domainStore.getParams("animation") }, 
+      this.domainStore.animPhases, 
+      this.animatedC
+    );
+    
     u.u_c.value.set(this.animatedC.cx, this.animatedC.cy, this.animatedC.cz, this.animatedC.cw);
+    u.u_brightness.value = materialParams.brightness;
+    u.u_aoPower.value = materialParams.aoPower;
+    u.u_specular.value = materialParams.specular;
+    u.u_bgColor.value.set(materialParams.bgColor);
+    u.u_bgAlpha.value = materialParams.bgAlpha !== undefined ? materialParams.bgAlpha : 1.0;
+    u.u_hsvColor.value.set(materialParams.hue, materialParams.saturation, 1.0);
 
-    u.u_brightness.value = mat.brightness;
-    u.u_aoPower.value = mat.aoPower;
-    u.u_specular.value = mat.specular;
-    u.u_bgColor.value.set(mat.bgColor);
-    u.u_bgAlpha.value = mat.bgAlpha !== undefined ? mat.bgAlpha : 1.0;
-    u.u_hsvColor.value.set(mat.hue, mat.saturation, 1.0);
-
-    this.tempEuler.set(frac.rotX, frac.rotY, frac.rotZ, "XYZ");
+    this.tempEuler.set(fractalParams.rotX, fractalParams.rotY, fractalParams.rotZ, "XYZ");
     this.matRot3D.makeRotationFromEuler(this.tempEuler);
 
-    const cxw = Math.cos(frac.rotXW), sxw = Math.sin(frac.rotXW);
-    const cyw = Math.cos(frac.rotYW), syw = Math.sin(frac.rotYW);
-    const czw = Math.cos(frac.rotZW), szw = Math.sin(frac.rotZW);
+    const cxw = Math.cos(fractalParams.rotXW), sxw = Math.sin(fractalParams.rotXW);
+    const cyw = Math.cos(fractalParams.rotYW), syw = Math.sin(fractalParams.rotYW);
+    const czw = Math.cos(fractalParams.rotZW), szw = Math.sin(fractalParams.rotZW);
 
     this.matRot4D_XW.set(cxw, 0, 0, -sxw, 0, 1, 0, 0, 0, 0, 1, 0, sxw, 0, 0, cxw);
     this.matRot4D_YW.set(1, 0, 0, 0, 0, cyw, 0, -syw, 0, 0, 1, 0, 0, syw, 0, cyw);
     this.matRot4D_ZW.set(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, czw, -szw, 0, 0, szw, czw);
-
     this.matRot4D_ZW.multiply(this.matRot4D_YW).multiply(this.matRot4D_XW);
 
     u.u_rotMatrix_3D.value.copy(this.matRot3D);
@@ -217,22 +229,22 @@ export class Renderer {
 
       if (this.onTick) this.onTick(delta);
 
-      const state = this.stateManager.getRawState();
       const isVR = this.renderer.xr.isPresenting;
 
+      // FPSメーターロジック（View層へ通知したかったが、互換性維持のため数値をセットするだけに留める）
       this.renderState.fpsFrames++;
       const now = performance.now();
       if (now >= this.renderState.fpsLastTime + 1000) {
         const fps = Math.round((this.renderState.fpsFrames * 1000) / (now - this.renderState.fpsLastTime));
         if (this.uiElements.fpsCounter) {
-          const isIdle = !state.ui.isDownloading && !state.ui.isAutoAnimating && !this.renderState.needsRender && !isVR;
+          const isIdle = !this.uiStore.isDownloading && !this.uiStore.isAutoAnimating && !this.renderState.needsRender && !isVR;
           this.uiElements.fpsCounter.innerText = isIdle ? `${fps} FPS (Idle)` : `${fps} FPS`;
         }
         this.renderState.fpsFrames = 0;
         this.renderState.fpsLastTime = now;
       }
 
-      if (state.ui.isDownloading || (!state.ui.isAutoAnimating && !this.renderState.needsRender && !isVR)) return;
+      if (this.uiStore.isDownloading || (!this.uiStore.isAutoAnimating && !this.renderState.needsRender && !isVR)) return;
 
       if (isVR) {
         this.renderState.needsRender = true;
@@ -245,17 +257,7 @@ export class Renderer {
         this.controls.update();
       }
 
-      if (state.ui.isInteracting || isVR) {
-        this.stateManager.updateCameraState("position", {
-          x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z,
-        });
-        this.stateManager.updateCameraState("target", {
-          x: this.controls.target.x, y: this.controls.target.y, z: this.controls.target.z,
-        });
-      }
-
       this.updateUniforms();
-
       this.renderer.render(this.scene, this.camera);
       this.renderState.needsRender = false;
     });

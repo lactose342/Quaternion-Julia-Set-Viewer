@@ -1,25 +1,23 @@
 import { JuliaAnimationService } from "@/core/domain/JuliaAnimationService.js";
 
 export class AnimationController {
-  constructor(stateManager) {
-    this.stateManager = stateManager;
+  constructor(domainStore, uiStore) {
+    this.domainStore = domainStore;
+    this.uiStore = uiStore;
   }
 
   update(delta) {
-    const state = this.stateManager.getRawState();
-    if (!state.ui.isAutoAnimating) return;
+    if (!this.uiStore.isAutoAnimating) return;
 
-    const currentPhases = this.stateManager.getRawAnimPhases();
-    const animParams = state.domain.params.animation;
+    const currentPhases = this.domainStore.animPhases;
+    const animParams = this.domainStore.getParams("animation");
 
-    // ドメインサービスで計算
     const nextPhases = JuliaAnimationService.calculateNextPhases(currentPhases, animParams, delta);
 
-    // 結果をストアに保存
-    this.stateManager.setAnimPhases(nextPhases);
+    this.domainStore.setAnimPhases(nextPhases);
   }
 
   stopAnimation() {
-    this.stateManager.updateUiState({ isAutoAnimating: false });
+    this.uiStore.update({ isAutoAnimating: false });
   }
 }

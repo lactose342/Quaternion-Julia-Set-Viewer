@@ -1,18 +1,18 @@
 import { CONFIG } from "@/config/config.js";
 import { ANIM_UI_MAPPING } from "@/ui/uiConstants.js";
 import { ColorUtils } from "@/infra/ColorUtils.js";
-import { JuliaAnimationService } from "@/core/domain/JuliaAnimationService.js";
 
 export class ParameterController {
-  constructor(stateManager, uiElements, signal) {
-    this.stateManager = stateManager;
+  constructor(domainStore, uiStore, uiElements, signal) {
+    this.domainStore = domainStore;
+    this.uiStore = uiStore;
     this.uiElements = uiElements;
     this.signal = signal;
+    this.isTickPending = new Map(); // 要素ごとのrAFフラグ管理
   }
 
   bindEvents() {
     const stopPropagation = (e) => e.stopPropagation();
-    const cParams = ["cx", "cy", "cz", "cw"];
     const domIdsToBind = [
       ...CONFIG.SCHEMAS.fractal,
       ...CONFIG.SCHEMAS.material,
@@ -24,81 +24,61 @@ export class ParameterController {
       if (!el) return;
 
       const stateKey = this._getStateKey(domId);
+      this.isTickPending.set(domId, false);
 
       el.addEventListener("touchstart", stopPropagation, { passive: true, signal: this.signal });
       el.addEventListener("pointerdown", stopPropagation, { signal: this.signal });
 
       el.addEventListener("input", () => {
-        requestAnimationFrame(() => {
-          const state = this.stateManager.getRawState();
-          const isAnimParam = CONFIG.SCHEMAS.animation.includes(stateKey);
-          const isAngleParam = stateKey.startsWith("rot") || ["px", "py", "pz", "pw"].includes(stateKey);
+        this.uiStore.update({ isInteracting: true });
+        // 1. レースコンディションを防ぐため、イベント発火瞬間の生値を即座にキャプチャ
+        const currentRawValue = el.value;
+        const inputType = el.type;
 
-          let val = el.type === "color" ? el.value : parseFloat(el.value);
+        if (this.isTickPending.get(domId)) return; // すでにフレーム内で待機中なら弾く
+        this.isTickPending.set(domId, true);
+
+        requestAnimationFrame(() => {
+          this.isTickPending.set(domId, false);
+
+          let val = inputType === "color" ? currentRawValue : parseFloat(currentRawValue);
+          const isAngleParam = stateKey.startsWith("rot") || ["px", "py", "pz", "pw"].includes(stateKey);
           
           if (typeof val === "number" && isAngleParam) {
-            val = (val * Math.PI) / 180;
+            val = (val * Math.PI) / 180; // ラジアン変換
           }
 
           const category = CONFIG.SCHEMAS.fractal.includes(stateKey) ? "fractal" 
                          : CONFIG.SCHEMAS.material.includes(stateKey) ? "material" 
                          : "animation";
 
-          this.stateManager.updateParamsState(category, { [stateKey]: val });
-
-          if (category === "fractal" || category === "material") {
-            this.stateManager.updateUiState({ activePreset: "custom" });
-          } else if (category === "animation") {
-            this.stateManager.updateUiState({ activeAnimPreset: "custom" });
-          }
-
-          if (isAnimParam && !state.ui.isAutoAnimating) {
-            // 一時停止中のアニメパラメータを変更した場合現在形状をBaseCに確定し、位相をリセット
-            const animatedCVec = { cx: 0, cy: 0, cz: 0, cw: 0 };
-            JuliaAnimationService.calculateAnimatedC(state.domain.params, this.stateManager.getRawAnimPhases(), animatedCVec);
-            
-            this.stateManager.updateParamsState("fractal", {
-              cx: animatedCVec.cx,
-              cy: animatedCVec.cy,
-              cz: animatedCVec.cz,
-              cw: animatedCVec.cw
-            });
-            this.stateManager.resetAnimPhases();
-            this.stateManager.notifyChange({ type: 'ALL' });
-          } else if (cParams.includes(stateKey)) {
-            // 手動でBaseCを動かしたときも位相をリセット
-            this.stateManager.resetAnimPhases();
-            this.stateManager.notifyChange({ type: 'PARAMS', category, keys: [stateKey] });
-          } else {
-            this.stateManager.notifyChange({ type: 'PARAMS', category, keys: [stateKey] });
-          }
+          // コマンドを経由して各Storeへ安全に入力値をコミット
+          window.dispatchEvent(new CustomEvent("app-command", {
+            detail: { type: "UPDATE_PARAM_INPUT", category, key: stateKey, value: val }
+          }));
         });
       }, { signal: this.signal });
 
       el.addEventListener("change", () => {
-        const state = this.stateManager.getRawState();
-        if (!state.ui.isAutoAnimating) {
-          this.stateManager.notifyChange({ type: 'COMMIT_HISTORY' });
-        }
-        this.stateManager.updateUiState({ isInteracting: false });
+        window.dispatchEvent(new CustomEvent("app-command", { detail: { type: "COMMIT_HISTORY" } }));
+        this.uiStore.update({ isInteracting: false });
       }, { signal: this.signal });
     });
 
-    const baseColorPicker = document.getElementById("baseColorPicker");
+    // カラーピッカー要素への document 直接アクセスを廃止し、注入オブジェクトから安全に取得
+    const baseColorPicker = this.uiElements["baseColorPicker"];
     if (baseColorPicker) {
       baseColorPicker.addEventListener("input", (e) => {
+        this.uiStore.update({ isInteracting: true });
         const hsvVals = ColorUtils.hexToHsv(e.target.value);
-        this.stateManager.updateParamsState("material", { hue: hsvVals.h, saturation: hsvVals.s });
-        this.stateManager.updateUiState({ activePreset: "custom" });
-        this.stateManager.notifyChange({ type: 'PARAMS', category: 'material', keys: ['hue', 'saturation'] });
+        window.dispatchEvent(new CustomEvent("app-command", {
+          detail: { type: "UPDATE_COLOR_INPUT", hue: hsvVals.h, saturation: hsvVals.s }
+        }));
       }, { signal: this.signal });
       
       baseColorPicker.addEventListener("change", () => {
-        const state = this.stateManager.getRawState();
-        if (!state.ui.isAutoAnimating) {
-          this.stateManager.notifyChange({ type: 'COMMIT_HISTORY' });
-        }
-        this.stateManager.updateUiState({ isInteracting: false });
+        window.dispatchEvent(new CustomEvent("app-command", { detail: { type: "COMMIT_HISTORY" } }));
+        this.uiStore.update({ isInteracting: false });
       }, { signal: this.signal });
     }
   }

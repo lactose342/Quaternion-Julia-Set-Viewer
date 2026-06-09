@@ -1,10 +1,11 @@
 import { CONFIG } from "@/config/config.js";
 
 export class ExportManager extends EventTarget {
-  constructor(renderer, stateManager) {
+  constructor(renderer, domainStore, uiStore) {
     super();
     this.renderer = renderer;
-    this.stateManager = stateManager;
+    this.domainStore = domainStore;
+    this.uiStore = uiStore;
   }
 
   #sleep(ms) {
@@ -22,10 +23,13 @@ export class ExportManager extends EventTarget {
   async downloadHighRes(format, scale) {
     if (document.activeElement) document.activeElement.blur();
 
-    const rawState = this.stateManager.getRawState();
-    if (rawState.ui.isDownloading) return;
+    // 軽量ゲッターで二重ダウンロードをガード
+    if (this.uiStore.isDownloading) return;
 
-    const originalState = this.#captureOriginalState();
+    // Storeの安全なゲッターから元の状態を退避
+    const originalSnapshot = this.domainStore.getSnapshot();
+    const originalQuality = this.uiStore.getState().renderQuality;
+    const originalAspect = this.renderer.camera.aspect; 
 
     try {
       await this.#startDownloadState();
@@ -52,22 +56,13 @@ export class ExportManager extends EventTarget {
         detail: { message: "画像の書き出しに失敗しました", type: "error" } 
       }));
     } finally {
-      this.#restoreOriginalState(originalState);
-      this.#endDownloadState(originalState.quality);
+      this.renderer.resetViewOffset(originalAspect);
+      this.#endDownloadState(originalQuality);
     }
   }
 
-  #captureOriginalState() {
-    const rawState = this.stateManager.getRawState();
-    return {
-      quality: rawState.ui.renderQuality,
-      aspect: this.renderer.camera.aspect,
-      alpha: this.renderer.material ? this.renderer.material.uniforms.u_bgAlpha.value : 1.0,
-    };
-  }
-
   async #startDownloadState() {
-    this.stateManager.updateUiState({ 
+    this.uiStore.update({ 
       isDownloading: true,
       downloadProgress: 0,
       downloadMessage: "0%"
@@ -79,13 +74,14 @@ export class ExportManager extends EventTarget {
   }
 
   #endDownloadState(originalQuality) {
-    this.stateManager.updateUiState({ isDownloading: false });
+    this.uiStore.update({ isDownloading: false });
 
     this.renderer.setQuality(originalQuality);
     this.renderer.controls.enabled = true;
     this.renderer.renderState.needsRender = true;
   }
 
+  // 解像度計算ロジック
   #calculateDimensions(scale) {
     const dpr = window.devicePixelRatio || 1;
     let targetWidth = Math.floor(window.innerWidth * dpr * scale);
@@ -119,11 +115,7 @@ export class ExportManager extends EventTarget {
     this.renderer.setQuality("EXPORT");
     this.renderer.camera.aspect = dims.targetWidth / dims.targetHeight;
     this.renderer.camera.updateProjectionMatrix();
-
     this.renderer.renderer.setSize(dims.tileW, dims.tileH, false);
-    if (this.renderer.material) {
-      this.renderer.material.uniforms.u_resolution.value.set(dims.tileW, dims.tileH);
-    }
   }
 
   async #renderTiles(ctx, dims, isTransparent) {
@@ -134,20 +126,24 @@ export class ExportManager extends EventTarget {
         const sx = tx * tileW;
         const sy = ty * tileH;
 
-        this.renderer.camera.setViewOffset(targetWidth, targetHeight, sx, sy, tileW, tileH);
-        this.renderer.updateUniforms();
-
-        if (this.renderer.material) {
-          this.renderer.material.uniforms.u_bgAlpha.value = isTransparent ? 0.0 : 1.0;
-        }
+        // Rendererの外側からプロパティを直接いじらず、カプセル化されたタイル描画メソッドを呼ぶ
+        this.renderer.renderTile({
+          totalWidth: targetWidth,
+          totalHeight: targetHeight,
+          offsetX: sx,
+          offsetY: sy,
+          tileWidth: tileW,
+          tileHeight: tileH,
+          alpha: isTransparent ? 0.0 : 1.0
+        });
 
         await this.#nextFrame();
-        this.renderer.renderer.render(this.renderer.scene, this.renderer.camera);
+        // 描画結果だけをキャンバスに転送
         ctx.drawImage(this.renderer.renderer.domElement, sx, sy, tileW, tileH);
 
         const progress = Math.round(((ty * tilesX + tx + 1) / (tilesX * tilesY)) * 100);
         
-        this.stateManager.updateUiState({
+        this.uiStore.update({
           downloadProgress: progress,
           downloadMessage: `${progress}%`
         });
@@ -157,8 +153,9 @@ export class ExportManager extends EventTarget {
     }
   }
 
+  // エンコード・保存処理
   async #encodeAndDownload(canvas, format, width, height) {
-    this.stateManager.updateUiState({
+    this.uiStore.update({
       downloadProgress: 100,
       downloadMessage: "画像エンコード中...\n\nしばらくお待ちください"
     });
@@ -200,15 +197,5 @@ export class ExportManager extends EventTarget {
         quality,
       );
     });
-  }
-
-  #restoreOriginalState(originalState) {
-    this.renderer.camera.clearViewOffset();
-    this.renderer.camera.aspect = originalState.aspect;
-    this.renderer.camera.updateProjectionMatrix();
-
-    if (this.renderer.material) {
-      this.renderer.material.uniforms.u_bgAlpha.value = originalState.alpha;
-    }
   }
 }
