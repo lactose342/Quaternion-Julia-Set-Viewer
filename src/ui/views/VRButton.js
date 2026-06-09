@@ -24,7 +24,6 @@ export const VRButton = {
       button.title = "VRモードを開始する";
       button.onclick = function () {
         if (currentSession === null) {
-          // エラーの温床となる layers などの不要なオプションを削除し安定化
           const sessionInit = { optionalFeatures: ["local-floor", "hand-tracking"] };
           navigator.xr.requestSession("immersive-vr", sessionInit).then(onSessionStarted);
         } else {

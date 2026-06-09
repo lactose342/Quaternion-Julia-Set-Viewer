@@ -43,7 +43,6 @@ export class ExportManager extends EventTarget {
 
       await this.#encodeAndDownload(canvas, format, dims.targetWidth, dims.targetHeight);
 
-      // コールバックを排除し、Mediator(App.js)にイベントで成功を通知
       this.dispatchEvent(new CustomEvent('export-toast', { 
         detail: { message: "画像の書き出しが完了しました", type: "success", duration: 5000 } 
       }));

@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { CONFIG } from "@/config/config.js";
-// 古い仕様のVRButtonをインポート
 import { VRButton } from "@/ui/views/VRButton.js";
 import { JuliaAnimationService } from "@/core/domain/JuliaAnimationService.js";
 import { JuliaMaterialFactory } from "@/core/factories/JuliaMaterialFactory.js";
@@ -39,7 +38,6 @@ export class Renderer {
     this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
     this.camera.position.set(0, 0, 2);
 
-    // 【重要ハック】webxr-polyfill と Three.js r184 の互換性問題を修正
     // WebXRManager のコンストラクタ（= new WebGLRenderer() 内部）は
     //   const supportsGlBinding = typeof XRWebGLBinding !== 'undefined';
     // を一度だけ評価する。polyfill が本物でない XRWebGLBinding を注入している場合、
@@ -60,7 +58,7 @@ export class Renderer {
     this.renderer.xr.enabled = true;
     this.renderer.xr.setFoveation(1.0);
 
-    // 【重要】VRButtonを直接DOMへ追加（Three.jsが要求するユーザー操作のコンテキストを維持）
+    // VRButtonを直接DOMへ追加（Three.jsが要求するユーザー操作のコンテキストを維持）
     document.body.appendChild(VRButton.createButton(this.renderer));
 
     this.renderer.xr.addEventListener("sessionstart", () => {
