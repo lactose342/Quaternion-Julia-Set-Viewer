@@ -1,5 +1,4 @@
 import { Command } from "./Command.js";
-import { JuliaAnimationService } from "@/core/domain/JuliaAnimationService.js";
 
 export class ApplyAnimPresetCommand extends Command {
   constructor(domainStore, uiStore, animPresetsConfig) {
@@ -10,35 +9,29 @@ export class ApplyAnimPresetCommand extends Command {
   }
 
   execute({ value: presetName }) {
-    this.uiStore.update({ isInteracting: true, activeAnimPreset: presetName });
-    
     const animPreset = this.animPresetsConfig[presetName];
-    if (animPreset) {
-      // 再生中でない場合、現在の位相をBaseCへ固定するドメイン計算を実行
-      if (!this.uiStore.isAutoAnimating) {
-        const animatedCVec = { cx: 0, cy: 0, cz: 0, cw: 0 };
-        const currentParams = {
-          fractal: this.domainStore.getParams("fractal"),
-          material: this.domainStore.getParams("material"),
-          animation: this.domainStore.getParams("animation"),
-        };
+    if (!animPreset) return;
 
-        JuliaAnimationService.calculateAnimatedC(
-          currentParams, 
-          this.domainStore.animPhases, 
-          animatedCVec
-        );
+    // 1. 再生中でない場合、現在の位相のアニメーション計算値をベース値に固定する
+    if (!this.uiStore.isAutoAnimating) {
+      // ★修正: インスタンス変数ではなく、ローカル変数として正しく取得
+      const animatedC = this.domainStore.getAnimatedC();
 
-        this.domainStore.updateParams("fractal", {
-          cx: animatedCVec.cx, cy: animatedCVec.cy, cz: animatedCVec.cz, cw: animatedCVec.cw
-        });
-      }
-
-      // 新しいアニメーション設定の適用と、位相のリセット
-      this.domainStore.updateParams("animation", animPreset);
-      this.domainStore.setAnimPhases({ x: 0, y: 0, z: 0, w: 0 });
+      this.domainStore.updateParams("fractal", {
+        cx: animatedC.cx, 
+        cy: animatedC.cy, 
+        cz: animatedC.cz, 
+        cw: animatedC.cw
+      });
     }
 
-    this.uiStore.update({ isInteracting: false });
+    // 2. 新しいアニメーションプリセットパラメータの適用と、位相（フェーズ）のリセット
+    this.domainStore.updateParams("animation", animPreset);
+    this.domainStore.setAnimPhases({ x: 0, y: 0, z: 0, w: 0 });
+
+    // 3. UI状態の更新（インタラクション中の状態をクリーンに通知）
+    this.uiStore.update({ 
+      activeAnimPreset: presetName
+    });
   }
 }

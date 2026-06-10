@@ -9,6 +9,9 @@ export class UpdateColorInputCommand extends Command {
 
   execute({ hue, saturation }) {
     this.domainStore.updateParams("material", { hue, saturation });
-    this.uiStore.update({ activePreset: "custom" });
+    this.uiStore.update({ 
+      activePreset: "custom",
+      isInteracting: true 
+    });
   }
 }

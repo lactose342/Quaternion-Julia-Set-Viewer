@@ -28,6 +28,5 @@ export class RedoCommand extends Command {
         activeAnimPreset: state.presets.activeAnimPreset
       });
     }
-    window.dispatchEvent(new CustomEvent("history-updated"));
   }
 }

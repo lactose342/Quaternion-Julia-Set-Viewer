@@ -9,11 +9,10 @@ export class CommitHistoryCommand extends Command {
   }
 
   execute() {
-    // 2つのStoreから生データをクローンしてかき集める
+    // 1. 手を離した瞬間の、最新かつ完全な状態の snapshot をかき集める
     const domainSnapshot = this.domainStore.getSnapshot();
     const uiState = this.uiStore.getState();
 
-    // HistoryManager が要求する旧形式と同一のフラットなスナップショット構造に翻訳・統合する
     const fullSnapshot = {
       params: domainSnapshot.params,
       camera: domainSnapshot.camera,
@@ -24,8 +23,11 @@ export class CommitHistoryCommand extends Command {
       }
     };
 
-    // 綺麗にラッピングされたオブジェクトを渡す
+    // 2. 履歴管理（歴史）に安全に push する
     this.historyManager.pushHistory(fullSnapshot);
-    window.dispatchEvent(new CustomEvent("history-updated"));
+
+    this.uiStore.update({ 
+      isInteracting: false 
+    });
   }
 }

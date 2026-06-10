@@ -23,13 +23,10 @@ export class ExportManager extends EventTarget {
   async downloadHighRes(format, scale) {
     if (document.activeElement) document.activeElement.blur();
 
-    // 軽量ゲッターで二重ダウンロードをガード
     if (this.uiStore.isDownloading) return;
 
-    // Storeの安全なゲッターから元の状態を退避
-    const originalSnapshot = this.domainStore.getSnapshot();
     const originalQuality = this.uiStore.getState().renderQuality;
-    const originalAspect = this.renderer.camera.aspect; 
+    const originalAspect = this.renderer.camera.aspect;
 
     try {
       await this.#startDownloadState();
@@ -43,18 +40,19 @@ export class ExportManager extends EventTarget {
       this.#setupRendererForExport(dims);
 
       const isTransparent = format === "transparent_png";
-      await this.#renderTiles(ctx, dims, isTransparent);
 
+      const renderParams = {
+        animatedC: this.domainStore.getAnimatedC(),
+        fractalParams: this.domainStore.getParams("fractal"),
+        materialParams: this.domainStore.getParams("material")
+      };
+
+      await this.#renderTiles(ctx, dims, isTransparent, renderParams);
       await this.#encodeAndDownload(canvas, format, dims.targetWidth, dims.targetHeight);
 
-      this.dispatchEvent(new CustomEvent('export-toast', { 
-        detail: { message: "画像の書き出しが完了しました", type: "success", duration: 5000 } 
-      }));
     } catch (error) {
       console.error(error);
-      this.dispatchEvent(new CustomEvent('export-toast', { 
-        detail: { message: "画像の書き出しに失敗しました", type: "error" } 
-      }));
+      throw error;
     } finally {
       this.renderer.resetViewOffset(originalAspect);
       this.#endDownloadState(originalQuality);
@@ -62,7 +60,7 @@ export class ExportManager extends EventTarget {
   }
 
   async #startDownloadState() {
-    this.uiStore.update({ 
+    this.uiStore.update({
       isDownloading: true,
       downloadProgress: 0,
       downloadMessage: "0%"
@@ -81,7 +79,6 @@ export class ExportManager extends EventTarget {
     this.renderer.renderState.needsRender = true;
   }
 
-  // 解像度計算ロジック
   #calculateDimensions(scale) {
     const dpr = window.devicePixelRatio || 1;
     let targetWidth = Math.floor(window.innerWidth * dpr * scale);
@@ -118,7 +115,7 @@ export class ExportManager extends EventTarget {
     this.renderer.renderer.setSize(dims.tileW, dims.tileH, false);
   }
 
-  async #renderTiles(ctx, dims, isTransparent) {
+  async #renderTiles(ctx, dims, isTransparent, renderParams) {
     const { targetWidth, targetHeight, tilesX, tilesY, tileW, tileH } = dims;
 
     for (let ty = 0; ty < tilesY; ty++) {
@@ -126,7 +123,6 @@ export class ExportManager extends EventTarget {
         const sx = tx * tileW;
         const sy = ty * tileH;
 
-        // Rendererの外側からプロパティを直接いじらず、カプセル化されたタイル描画メソッドを呼ぶ
         this.renderer.renderTile({
           totalWidth: targetWidth,
           totalHeight: targetHeight,
@@ -134,15 +130,17 @@ export class ExportManager extends EventTarget {
           offsetY: sy,
           tileWidth: tileW,
           tileHeight: tileH,
-          alpha: isTransparent ? 0.0 : 1.0
+          alpha: isTransparent ? 0.0 : 1.0,
+          animatedC: renderParams.animatedC,
+          fractalParams: renderParams.fractalParams,
+          materialParams: renderParams.materialParams
         });
 
         await this.#nextFrame();
-        // 描画結果だけをキャンバスに転送
         ctx.drawImage(this.renderer.renderer.domElement, sx, sy, tileW, tileH);
 
         const progress = Math.round(((ty * tilesX + tx + 1) / (tilesX * tilesY)) * 100);
-        
+
         this.uiStore.update({
           downloadProgress: progress,
           downloadMessage: `${progress}%`
@@ -153,7 +151,6 @@ export class ExportManager extends EventTarget {
     }
   }
 
-  // エンコード・保存処理
   async #encodeAndDownload(canvas, format, width, height) {
     this.uiStore.update({
       downloadProgress: 100,

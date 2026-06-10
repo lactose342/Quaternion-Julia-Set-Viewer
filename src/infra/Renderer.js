@@ -2,14 +2,10 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { CONFIG } from "@/config/config.js";
 import { VRButton } from "@/ui/views/VRButton.js";
-import { JuliaAnimationService } from "@/core/domain/JuliaAnimationService.js";
 import { JuliaMaterialFactory } from "@/core/factories/JuliaMaterialFactory.js";
 
 export class Renderer {
-  constructor(domainStore, uiStore) {
-    this.domainStore = domainStore;
-    this.uiStore = uiStore;
-
+  constructor() {
     this.renderState = {
       needsRender: true,
       renderTimer: null,
@@ -18,18 +14,21 @@ export class Renderer {
     };
 
     this.timer = new THREE.Timer();
-    this.uiElements = { fpsCounter: null }; // DOMへの直接アクセスを廃止、外部注入に対応
+    this.uiElements = { fpsCounter: null };
 
     this.tempEuler = new THREE.Euler(0, 0, 0, "XYZ");
     this.matRot3D = new THREE.Matrix4();
     this.matRot4D_XW = new THREE.Matrix4();
     this.matRot4D_YW = new THREE.Matrix4();
     this.matRot4D_ZW = new THREE.Matrix4();
-    this.matCombinedRot = new THREE.Matrix4();
 
     this.cameraWorldPos = new THREE.Vector3();
     this.animatedC = { cx: 0, cy: 0, cz: 0, cw: 0 };
     this.materialPool = {};
+
+    this.onCameraChange = null;
+    this.onFpsUpdate = null;
+    this.isDownloading = false;
   }
 
   init() {
@@ -37,12 +36,11 @@ export class Renderer {
     this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
     this.camera.position.set(0, 0, 2);
 
-    // WebXR Polyfill 対策ハック
     const _xrWebGLBinding = window.XRWebGLBinding;
     window.XRWebGLBinding = undefined;
     this.renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: false, alpha: true });
     window.XRWebGLBinding = _xrWebGLBinding;
-    
+
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
     THREE.ColorManagement.enabled = false;
@@ -60,9 +58,7 @@ export class Renderer {
 
     this.renderer.xr.addEventListener("sessionend", () => {
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
-      if (!this.uiStore.isDownloading && !this.uiStore.isAutoAnimating) {
-        this.setQuality("HIGH");
-      }
+      this.setQuality("HIGH");
     });
 
     document.body.appendChild(this.renderer.domElement);
@@ -99,34 +95,34 @@ export class Renderer {
       this.renderState.needsRender = true;
     });
 
-    // ラッグ操作終了時（end）のみ状態へカメラ座標を報告する
     this.controls.addEventListener("end", () => {
-      this.domainStore.updateCamera("position", { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z });
-      this.domainStore.updateCamera("target", { x: this.controls.target.x, y: this.controls.target.y, z: this.controls.target.z });
+      if (this.onCameraChange) {
+        this.onCameraChange({
+          position: { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z },
+          target: { x: this.controls.target.x, y: this.controls.target.y, z: this.controls.target.z }
+        });
+      }
     });
 
     this._boundOnResize = this.onResize.bind(this);
     window.addEventListener("resize", this._boundOnResize);
   }
 
-  // ExportManager から要求される隔離タイルレンダリング用のカプセル化API（トランザクション）
-  renderTile({ totalWidth, totalHeight, offsetX, offsetY, tileWidth, tileHeight, alpha }) {
+  renderTile({ totalWidth, totalHeight, offsetX, offsetY, tileWidth, tileHeight, alpha, animatedC, fractalParams, materialParams }) {
     this.camera.setViewOffset(totalWidth, totalHeight, offsetX, offsetY, tileWidth, tileHeight);
-    this.updateUniforms();
+    this.updateUniforms(animatedC, fractalParams, materialParams);
     if (this.material) {
       this.material.uniforms.u_bgAlpha.value = alpha;
     }
     this.renderer.render(this.scene, this.camera);
   }
 
-  // エクスポート終了後のカメラ解像度・オフセットの一括クリーンアップ
   resetViewOffset(originalAspect) {
     this.camera.clearViewOffset();
     this.camera.aspect = originalAspect;
     this.camera.updateProjectionMatrix();
   }
 
-  // Undo/Redo コマンドから呼び出されるカメラ位置の物理的復元API
   restoreCameraFromSnapshot(cameraSnapshot) {
     const { position, target } = cameraSnapshot;
     this.camera.position.set(position.x, position.y, position.z);
@@ -150,20 +146,19 @@ export class Renderer {
       this.mesh.material = this.material;
     }
 
-    this.uiStore.update({ renderQuality: qualityLevel });
     this.renderState.needsRender = true;
     this.updateResolution();
   }
 
   onResize() {
-    if (this.uiStore.isDownloading) return; // エクスポート中のサイズ破壊ガード
+    if (this.isDownloading) return;
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.updateResolution();
   }
 
   updateResolution() {
-    if (this.uiStore.isDownloading) return;
+    if (this.isDownloading) return;
 
     let w = window.innerWidth;
     let h = window.innerHeight;
@@ -179,24 +174,26 @@ export class Renderer {
     this.renderState.needsRender = true;
   }
 
-  updateUniforms() {
+  updateUniforms(animatedC, fractalParams, materialParams) {
     const u = this.mesh.material.uniforms;
-    const fractalParams = this.domainStore.getParams("fractal");
-    const materialParams = this.domainStore.getParams("material");
 
-    JuliaAnimationService.calculateAnimatedC(
-      { fractal: fractalParams, material: materialParams, animation: this.domainStore.getParams("animation") }, 
-      this.domainStore.animPhases, 
-      this.animatedC
-    );
-    
-    u.u_c.value.set(this.animatedC.cx, this.animatedC.cy, this.animatedC.cz, this.animatedC.cw);
+    u.u_c.value.set(animatedC.cx, animatedC.cy, animatedC.cz, animatedC.cw);
     u.u_brightness.value = materialParams.brightness;
     u.u_aoPower.value = materialParams.aoPower;
     u.u_specular.value = materialParams.specular;
     u.u_bgColor.value.set(materialParams.bgColor);
     u.u_bgAlpha.value = materialParams.bgAlpha !== undefined ? materialParams.bgAlpha : 1.0;
     u.u_hsvColor.value.set(materialParams.hue, materialParams.saturation, 1.0);
+
+    // fovをfractalParamsから正しく取得し、物理カメラに反映
+    if (fractalParams.fov !== undefined && this.camera.fov !== fractalParams.fov) {
+      this.camera.fov = fractalParams.fov;
+      this.camera.updateProjectionMatrix();
+    }
+    if (materialParams.zoom !== undefined && this.camera.zoom !== materialParams.zoom) {
+      this.camera.zoom = materialParams.zoom;
+      this.camera.updateProjectionMatrix();
+    }
 
     this.tempEuler.set(fractalParams.rotX, fractalParams.rotY, fractalParams.rotZ, "XYZ");
     this.matRot3D.makeRotationFromEuler(this.tempEuler);
@@ -222,7 +219,7 @@ export class Renderer {
     this.renderState.needsRender = true;
   }
 
-  animate() {
+  animate(getAppState) {
     this.renderer.setAnimationLoop(() => {
       this.timer.update();
       const delta = this.timer.getDelta();
@@ -230,21 +227,21 @@ export class Renderer {
       if (this.onTick) this.onTick(delta);
 
       const isVR = this.renderer.xr.isPresenting;
+      const { isDownloading, isAutoAnimating } = getAppState();
 
-      // FPSメーターロジック（View層へ通知したかったが、互換性維持のため数値をセットするだけに留める）
       this.renderState.fpsFrames++;
       const now = performance.now();
       if (now >= this.renderState.fpsLastTime + 1000) {
         const fps = Math.round((this.renderState.fpsFrames * 1000) / (now - this.renderState.fpsLastTime));
-        if (this.uiElements.fpsCounter) {
-          const isIdle = !this.uiStore.isDownloading && !this.uiStore.isAutoAnimating && !this.renderState.needsRender && !isVR;
-          this.uiElements.fpsCounter.innerText = isIdle ? `${fps} FPS (Idle)` : `${fps} FPS`;
+        if (this.onFpsUpdate) {
+          const isIdle = !isDownloading && !isAutoAnimating && !this.renderState.needsRender && !isVR;
+          this.onFpsUpdate(fps, isIdle);
         }
         this.renderState.fpsFrames = 0;
         this.renderState.fpsLastTime = now;
       }
 
-      if (this.uiStore.isDownloading || (!this.uiStore.isAutoAnimating && !this.renderState.needsRender && !isVR)) return;
+      if (isDownloading || (!isAutoAnimating && !this.renderState.needsRender && !isVR)) return;
 
       if (isVR) {
         this.renderState.needsRender = true;
@@ -257,7 +254,9 @@ export class Renderer {
         this.controls.update();
       }
 
-      this.updateUniforms();
+      if (this.onBeforeUpdateUniforms) {
+        this.onBeforeUpdateUniforms(this);
+      }
       this.renderer.render(this.scene, this.camera);
       this.renderState.needsRender = false;
     });

@@ -1,22 +1,38 @@
 import { CONFIG } from "@/config/config.js";
 import { ANIM_UI_MAPPING } from "@/ui/uiConstants.js";
 import { ColorUtils } from "@/infra/ColorUtils.js";
+import { parseParamFromUI } from "@/ui/utils/uiParamFormatter.js";
 
 export class ParameterController {
-  constructor(domainStore, uiStore, uiElements, signal) {
-    this.domainStore = domainStore;
-    this.uiStore = uiStore;
+  constructor(uiElements, signal) {
     this.uiElements = uiElements;
     this.signal = signal;
-    this.isTickPending = new Map(); // 要素ごとのrAFフラグ管理
+    this.rafIds = new Map();
+    this.pendingPayloads = new Map();
+    this.categoryMap = this.#buildCategoryMap();
+  }
+
+  #buildCategoryMap() {
+    const map = new Map();
+    CONFIG.SCHEMAS.fractal.forEach(k => map.set(k, "fractal"));
+    CONFIG.SCHEMAS.material.forEach(k => map.set(k, "material"));
+    CONFIG.SCHEMAS.animation.forEach(k => map.set(k, "animation"));
+    map.set("zoom", "material");
+    return map;
+  }
+
+  #dispatch(type, payload = {}) {
+    window.dispatchEvent(new CustomEvent("app-command", { detail: { type, ...payload } }));
   }
 
   bindEvents() {
     const stopPropagation = (e) => e.stopPropagation();
+    
     const domIdsToBind = [
       ...CONFIG.SCHEMAS.fractal,
       ...CONFIG.SCHEMAS.material,
       ...ANIM_UI_MAPPING.map((m) => m.id),
+      "zoom" 
     ];
 
     domIdsToBind.forEach((domId) => {
@@ -24,61 +40,83 @@ export class ParameterController {
       if (!el) return;
 
       const stateKey = this._getStateKey(domId);
-      this.isTickPending.set(domId, false);
+      let isOperating = false;
+
+      const flushPending = () => {
+        const rafId = this.rafIds.get(domId);
+        if (rafId !== undefined) {
+          cancelAnimationFrame(rafId);
+          this.rafIds.delete(domId);
+          
+          const payload = this.pendingPayloads.get(domId);
+          if (payload) {
+             this.#dispatch("UPDATE_PARAM_INPUT", payload);
+             this.pendingPayloads.delete(domId);
+          }
+        }
+      };
+
+      const commit = () => {
+        if (isOperating) {
+           isOperating = false;
+           flushPending();
+           this.#dispatch("COMMIT_HISTORY");
+        }
+      };
 
       el.addEventListener("touchstart", stopPropagation, { passive: true, signal: this.signal });
-      el.addEventListener("pointerdown", stopPropagation, { signal: this.signal });
+      
+      el.addEventListener("pointerdown", (e) => {
+        stopPropagation(e);
+        isOperating = true;
+        
+        const handleGlobalUp = () => {
+          commit();
+          window.removeEventListener("pointerup", handleGlobalUp);
+          window.removeEventListener("pointercancel", handleGlobalUp);
+        };
+        
+        window.addEventListener("pointerup", handleGlobalUp, { signal: this.signal });
+        window.addEventListener("pointercancel", handleGlobalUp, { signal: this.signal });
+      }, { signal: this.signal });
 
       el.addEventListener("input", () => {
-        this.uiStore.update({ isInteracting: true });
-        // 1. レースコンディションを防ぐため、イベント発火瞬間の生値を即座にキャプチャ
+        isOperating = true;
         const currentRawValue = el.value;
         const inputType = el.type;
 
-        if (this.isTickPending.get(domId)) return; // すでにフレーム内で待機中なら弾く
-        this.isTickPending.set(domId, true);
+        const val = parseParamFromUI(stateKey, currentRawValue, inputType);
+        const category = this.categoryMap.get(stateKey) || "fractal";
+        
+        this.pendingPayloads.set(domId, { category, key: stateKey, value: val });
 
-        requestAnimationFrame(() => {
-          this.isTickPending.set(domId, false);
+        if (this.rafIds.has(domId)) return;
 
-          let val = inputType === "color" ? currentRawValue : parseFloat(currentRawValue);
-          const isAngleParam = stateKey.startsWith("rot") || ["px", "py", "pz", "pw"].includes(stateKey);
-          
-          if (typeof val === "number" && isAngleParam) {
-            val = (val * Math.PI) / 180; // ラジアン変換
+        const id = requestAnimationFrame(() => {
+          this.rafIds.delete(domId);
+          const payload = this.pendingPayloads.get(domId);
+          if (payload) {
+             this.#dispatch("UPDATE_PARAM_INPUT", payload);
+             this.pendingPayloads.delete(domId);
           }
-
-          const category = CONFIG.SCHEMAS.fractal.includes(stateKey) ? "fractal" 
-                         : CONFIG.SCHEMAS.material.includes(stateKey) ? "material" 
-                         : "animation";
-
-          // コマンドを経由して各Storeへ安全に入力値をコミット
-          window.dispatchEvent(new CustomEvent("app-command", {
-            detail: { type: "UPDATE_PARAM_INPUT", category, key: stateKey, value: val }
-          }));
         });
+        this.rafIds.set(domId, id);
       }, { signal: this.signal });
 
       el.addEventListener("change", () => {
-        window.dispatchEvent(new CustomEvent("app-command", { detail: { type: "COMMIT_HISTORY" } }));
-        this.uiStore.update({ isInteracting: false });
+         commit();
       }, { signal: this.signal });
     });
 
-    // カラーピッカー要素への document 直接アクセスを廃止し、注入オブジェクトから安全に取得
     const baseColorPicker = this.uiElements["baseColorPicker"];
     if (baseColorPicker) {
       baseColorPicker.addEventListener("input", (e) => {
-        this.uiStore.update({ isInteracting: true });
         const hsvVals = ColorUtils.hexToHsv(e.target.value);
-        window.dispatchEvent(new CustomEvent("app-command", {
-          detail: { type: "UPDATE_COLOR_INPUT", hue: hsvVals.h, saturation: hsvVals.s }
-        }));
+        this.#dispatch("UPDATE_COLOR_INPUT", { hue: hsvVals.h, saturation: hsvVals.s });
       }, { signal: this.signal });
       
       baseColorPicker.addEventListener("change", () => {
-        window.dispatchEvent(new CustomEvent("app-command", { detail: { type: "COMMIT_HISTORY" } }));
-        this.uiStore.update({ isInteracting: false });
+        this.#dispatch("COMMIT_HISTORY");
       }, { signal: this.signal });
     }
   }

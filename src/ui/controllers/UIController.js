@@ -1,21 +1,22 @@
 import { CONFIG } from "@/config/config.js";
 import { ANIM_UI_MAPPING, UI_IDS } from "@/ui/uiConstants.js";
-import { JuliaAnimationService } from "@/core/domain/JuliaAnimationService.js";
+import { formatParamForUI } from "@/ui/utils/uiParamFormatter.js";
+import { ColorUtils } from "@/infra/ColorUtils.js";
 
 export class UIController {
   constructor(
-    domainStore, // 1
-    uiStore, // 2
-    renderer, // 3
-    historyManager, // 4
-    exportManager, // 5
-    toastView, // 6
-    paramController, // 7
-    actionController, // 8
-    parameterView, // 9
-    exportView, // 10
-    mainMenuView, // 11
-    sharedUiElements, // 12
+    domainStore,
+    uiStore,
+    renderer,
+    historyManager,
+    exportManager,
+    toastView,
+    paramController,
+    actionController,
+    parameterView,
+    exportView,
+    mainMenuView,
+    sharedUiElements,
   ) {
     this.domainStore = domainStore;
     this.uiStore = uiStore;
@@ -33,7 +34,6 @@ export class UIController {
   }
 
   init() {
-    // 各種Viewが要求するDOM要素のIDを完全に網羅して一元収集する
     const domIds = [
       ...CONFIG.SCHEMAS.fractal,
       ...CONFIG.SCHEMAS.material,
@@ -48,6 +48,8 @@ export class UIController {
       "preset-select",
       "anim-preset-select",
       "fps-counter",
+      "baseColorPicker",
+      "zoom"
     ];
 
     domIds.forEach((domId) => {
@@ -58,20 +60,39 @@ export class UIController {
       if (valLabel) this.uiElements[`val-${domId}`] = valLabel;
     });
 
-    // 各種Viewのコンストラクタでプロパティが展開されるようにバインド情報を確定
     Object.assign(this.exportView.uiElements, this.uiElements);
     Object.assign(this.mainMenuView.uiElements, this.uiElements);
     Object.assign(this.parameterView.uiElements, this.uiElements);
 
-    if (this.uiElements["fps-counter"]) {
-      this.renderer.uiElements.fpsCounter = this.uiElements["fps-counter"];
-    }
-
-    window.addEventListener("history-updated", () => this.updateHistoryButtons());
     this.updateHistoryButtons();
   }
 
-  // 1. ドメイン状態（数式）の変更をViewへ安全に同期する
+  watchStores(domainStore, uiStore, historyManager) {
+    const signal = this.abortController.signal;
+
+    domainStore.addEventListener("domain-updated", (e) => {
+      const { type, category, keys } = e.detail;
+      if (type === "PARAMS") {
+        this.synchronizeParameterValues(category, keys);
+      } else if (type === "ALL") {
+        this.updateUIFromState();
+      } else if (type === "ANIM_PHASES") {
+        this.synchronizeParameterValues("fractal", ["cx", "cy", "cz", "cw"]);
+      }
+    }, { signal });
+
+    uiStore.addEventListener("ui-updated", (e) => {
+      const { keys } = e.detail;
+      this.synchronizeUIState(keys);
+    }, { signal });
+
+    if (historyManager) {
+      historyManager.addEventListener("history-updated", () => {
+        this.updateHistoryButtons();
+      }, { signal: this.abortController.signal });
+    }
+  }
+
   synchronizeParameterValues(category, changedKeys) {
     const params = {
       fractal: this.domainStore.getParams("fractal"),
@@ -79,21 +100,10 @@ export class UIController {
       animation: this.domainStore.getParams("animation"),
     };
     const isAutoAnimating = this.uiStore.isAutoAnimating;
-
-    // ユーザーが手動スライダー操作中であれば、activeElementのIDを取得してViewへ伝える
     const activeElementId = document.activeElement ? document.activeElement.id : null;
 
-    // アニメーション適用時の現在C値を計算する
-    const animatedCVec = { cx: 0, cy: 0, cz: 0, cw: 0 };
-    if (params.fractal && params.material && params.animation) {
-      JuliaAnimationService.calculateAnimatedC(
-        { fractal: params.fractal, material: params.material, animation: params.animation },
-        this.domainStore.animPhases,
-        animatedCVec
-      );
-    }
+    const animatedCVec = this.domainStore.getAnimatedC();
 
-    // View層に計算をやらせず、あらかじめ表示用の形式（180度変換や桁数制御など）に整形したオブジェクトを渡す
     const displayParams = {};
     Object.keys(params).forEach((cat) => {
       if (!params[cat]) return;
@@ -102,40 +112,30 @@ export class UIController {
       Object.entries(params[cat]).forEach(([key, value]) => {
         let displayValue = value;
 
-        // アニメーション中等のCの現在形状リアルタイム同期
         if (cat === "fractal" && ["cx", "cy", "cz", "cw"].includes(key)) {
           displayValue = animatedCVec[key];
         }
 
-        let uiValue = displayValue;
-        const isAngleParam = key.startsWith("rot") || ["px", "py", "pz", "pw"].includes(key);
-        if (typeof uiValue === "number" && isAngleParam) {
-          uiValue = (uiValue * 180) / Math.PI;
-        }
-
-        let displayText = String(uiValue);
-
-        // 数値型であり、かつ変換可能なもののみに toFixed を適用する
-        if (typeof uiValue === "number") {
-          if (isAngleParam || key === "fov") {
-            displayText = `${uiValue.toFixed(1)}°`;
-          } else {
-            displayText = uiValue.toFixed(3).replace(/\.?0+$/, "");
-          }
-        }
-        // カラーコードやその他の文字列はそのまま displayText として扱われる
+        const { numericValue, displayString } = formatParamForUI(key, displayValue);
 
         displayParams[cat][key] = {
-          value: uiValue,
-          displayText: displayText,
+          value: numericValue,
+          displayText: displayString,
         };
       });
     });
 
+    if (params.material && params.material.hue !== undefined && params.material.saturation !== undefined) {
+      const hexColor = ColorUtils.hsvToHex(params.material.hue, params.material.saturation, 1.0);
+      displayParams.material["baseColorPicker"] = {
+        value: hexColor,
+        displayText: hexColor
+      };
+    }
+
     this.parameterView.update(displayParams, isAutoAnimating, activeElementId);
   }
 
-  // 2. UI状態（ダウンロードやアニメ再生フラグ）の変更をViewへ同期する
   synchronizeUIState(changedKeys) {
     const uiState = this.uiStore.getState();
     this.exportView.update(uiState);
@@ -143,7 +143,7 @@ export class UIController {
 
     const customUi = this.uiElements["custom-ui"];
     if (customUi) {
-      customUi.classList.toggle("is-interacting", uiState.isInteracting);
+      customUi.classList.toggle("is-interacting", !!uiState.isInteracting);
     }
 
     if (changedKeys && (changedKeys.includes("isAutoAnimating") || changedKeys.includes("isDownloading"))) {

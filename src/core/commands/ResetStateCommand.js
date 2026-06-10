@@ -2,17 +2,15 @@ import { Command } from "./Command.js";
 import { CONFIG } from "@/config/config.js";
 
 export class ResetStateCommand extends Command {
-  constructor(domainStore, uiStore, renderer) {
+  constructor(domainStore, uiStore, renderer, historyManager) {
     super();
     this.domainStore = domainStore;
     this.uiStore = uiStore;
     this.renderer = renderer;
+    this.historyManager = historyManager;
   }
 
   execute() {
-    this.uiStore.update({ isInteracting: true });
-
-    // 初期状態の安全なマッピング構築
     const defaultParams = { fractal: {}, material: {}, animation: {} };
     const srcPreset = CONFIG.PRESETS.preset1;
     const srcAnimPreset = CONFIG.ANIM_PRESETS.preset1;
@@ -32,10 +30,20 @@ export class ResetStateCommand extends Command {
     this.uiStore.update({
       activePreset: "preset1",
       activeAnimPreset: "preset1",
-      isInteracting: false,
-      isAutoAnimating: false
+      isAutoAnimating: false,
+      isInteracting: false
     });
 
-    window.dispatchEvent(new CustomEvent("app-command", { detail: { type: "COMMIT_HISTORY" } }));
+    const fullSnapshot = {
+      params: defaultParams,
+      camera: { position: { x: 0, y: 0, z: 2 }, target: { x: 0, y: 0, z: 0 } },
+      animPhases: { x: 0, y: 0, z: 0, w: 0 },
+      presets: {
+        activePreset: "preset1",
+        activeAnimPreset: "preset1"
+      }
+    };
+    
+    this.historyManager.pushHistory(fullSnapshot); 
   }
 }

@@ -15,16 +15,14 @@ export class UIStore extends EventTarget {
     };
   }
 
-  // 生参照は渡さず、必要な場合はシャローコピーを返す
   getState() {
     return { ...this.#state };
   }
 
-  // 単一のプロパティを安全に取得するゲッター
   get isAutoAnimating() { return this.#state.isAutoAnimating; }
   get isDownloading() { return this.#state.isDownloading; }
 
-  update(payload) {
+  update(payload = {}) {
     let hasChanged = false;
     const changedKeys = [];
 

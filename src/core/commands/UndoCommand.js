@@ -13,7 +13,6 @@ export class UndoCommand extends Command {
     const state = this.historyManager.undo();
     if (!state) return;
 
-    // stateがそのまま渡されて階層がズレるのを防ぐ
     const targetParams = state.params ? state.params : state;
     this.domainStore.init(targetParams);
 
@@ -29,6 +28,5 @@ export class UndoCommand extends Command {
         activeAnimPreset: state.presets.activeAnimPreset
       });
     }
-    window.dispatchEvent(new CustomEvent("history-updated"));
   }
 }

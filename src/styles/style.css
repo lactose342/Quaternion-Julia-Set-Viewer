@@ -58,7 +58,6 @@ canvas {
 
 #custom-ui.is-interacting {
     opacity: 0.25;
-    pointer-events: none;
 }
 
 details {

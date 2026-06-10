@@ -24,9 +24,18 @@ export class ActionController {
     bindClick("random-btn", () => this.#dispatch("RANDOMIZE"));
     bindClick("undo-btn", () => this.#dispatch("UNDO"));
     bindClick("redo-btn", () => this.#dispatch("REDO"));
+
+    // フルスクリーンボタンのクリック
     bindClick("fullscreen-btn", () => {
       this.#dispatch("TOGGLE_FULLSCREEN", {});
     });
+
+    // DOMイベントの監視
+    document.addEventListener("fullscreenchange", () => {
+      const isFullscreen = !!document.fullscreenElement;
+      this.#dispatch("TOGGLE_FULLSCREEN", { isFullscreen });
+    }, { signal: this.signal });
+
     bindClick("download-btn", () => {
       const formatEl = document.getElementById("dl-format");
       const scaleEl = document.getElementById("dl-scale");

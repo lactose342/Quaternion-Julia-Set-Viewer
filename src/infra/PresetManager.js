@@ -1,13 +1,11 @@
 import { CONFIG } from "@/config/config.js";
 
 export class PresetManager {
-  constructor(domainStore) {
-    this.domainStore = domainStore;
-  }
+  constructor() {}
 
-  applyPreset(presetName) {
+  getPresetData(presetName) {
     const preset = CONFIG.PRESETS[presetName];
-    if (!preset) return false;
+    if (!preset) return null;
 
     const newFractal = {};
     const newMaterial = {};
@@ -17,9 +15,9 @@ export class PresetManager {
       if (CONFIG.SCHEMAS.material.includes(id)) newMaterial[id] = preset[id];
     });
 
-    this.domainStore.updateParams('fractal', newFractal);
-    this.domainStore.updateParams('material', newMaterial);
-    return true;
+    const camera = preset.camera || { position: { x: 0, y: 0, z: 2 }, target: { x: 0, y: 0, z: 0 } };
+
+    return { fractal: newFractal, material: newMaterial, camera };
   }
 
   generateRandomParams() {
@@ -38,6 +36,7 @@ export class PresetManager {
         rotXW: parseFloat(randRange(0, 6.283).toFixed(2)),
         rotYW: parseFloat(randRange(0, 6.283).toFixed(2)),
         rotZW: parseFloat(randRange(0, 6.283).toFixed(2)),
+        fov: 45
       },
       material: {
         hue: parseFloat(Math.random().toFixed(3)),
@@ -45,7 +44,8 @@ export class PresetManager {
         brightness: parseFloat(randRange(1.0, 2.5).toFixed(1)),
         aoPower: parseFloat(randRange(0.5, 2.2).toFixed(1)),
         specular: parseFloat(Math.pow(2, Math.floor(randRange(2, 6))).toFixed(1)),
-        bgColor: `#${toHex(Math.random())}${toHex(Math.random())}${toHex(Math.random())}`
+        bgColor: `#${toHex(Math.random())}${toHex(Math.random())}${toHex(Math.random())}`,
+        zoom: 1.0
       }
     };
   }

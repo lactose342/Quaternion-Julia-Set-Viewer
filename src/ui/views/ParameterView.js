@@ -13,6 +13,7 @@ export class ParameterView {
       
       Object.entries(displayParams[category]).forEach(([key, paramData]) => {
         let domId = key;
+        
         if (category === "animation") {
           const found = ANIM_UI_MAPPING.find((m) => m.key === key);
           if (found) domId = found.id;
@@ -21,13 +22,15 @@ export class ParameterView {
         const inputEl = this.uiElements[domId];
         if (!inputEl) return;
 
-        // 判定用のメタデータを上位から貰う形に変更
         const isFocused = domId === activeElementId;
         const isChangingCAndAnimating = isAutoAnimating && ["cx", "cy", "cz", "cw"].includes(key);
 
         // 1. インプット要素の同期
         if (!isFocused || isChangingCAndAnimating) {
-          if (inputEl.value !== String(paramData.value)) {
+          const currentValue = inputEl.type === "color" ? inputEl.value.toLowerCase() : String(inputEl.value);
+          const targetValue = inputEl.type === "color" ? String(paramData.value).toLowerCase() : String(paramData.value);
+          
+          if (currentValue !== targetValue) {
             inputEl.value = paramData.value;
           }
         }

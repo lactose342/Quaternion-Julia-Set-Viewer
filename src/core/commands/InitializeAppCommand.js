@@ -31,7 +31,6 @@ export class InitializeAppCommand {
       const srcPreset = this.config.PRESETS.preset1;
       const srcAnimPreset = this.config.ANIM_PRESETS.preset1;
       
-      // スケルトン構造にプレーンに値を代入
       this.config.SCHEMAS.fractal.forEach(key => {
         defaultParams.fractal[key] = (srcPreset && srcPreset[key] !== undefined) ? srcPreset[key] : 0;
       });
@@ -51,7 +50,6 @@ export class InitializeAppCommand {
 
     this.uiController.updateUIFromState();
     
-    // UI状態も含んだ完全なスナップショットオブジェクトを渡す
     const domainSnapshot = this.domainStore.getSnapshot();
     const uiState = this.uiStore.getState();
     const fullSnapshot = {

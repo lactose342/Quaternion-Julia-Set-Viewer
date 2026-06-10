@@ -9,13 +9,13 @@ export class RandomizeCommand extends Command {
   }
 
   execute() {
-    this.uiStore.update({ isInteracting: true, activePreset: "custom" });
+    this.uiStore.update({ activePreset: "custom" });
     
     const randomParams = this.presetManager.generateRandomParams();
     this.domainStore.updateParams("fractal", randomParams.fractal);
     this.domainStore.updateParams("material", randomParams.material);
+    this.domainStore.setAnimPhases({ x: 0, y: 0, z: 0, w: 0 });
     
     window.dispatchEvent(new CustomEvent("app-command", { detail: { type: "COMMIT_HISTORY" } }));
-    this.uiStore.update({ isInteracting: false });
   }
 }
