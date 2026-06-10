@@ -15,10 +15,10 @@ const animationKeys = Object.entries(PARAMETER_DEFINITIONS)
 
 export const CONFIG = {
     QUALITY: {
-        LOW: { steps: 150, iter: 15 },
+        LOW: { steps: 250, iter: 15 },
         HIGH: { steps: 800, iter: 80 },
         EXPORT: { steps: 4000, iter: 120 },
-        XR: { steps: 80, iter: 12 }
+        XR: { steps: 200, iter: 12 }
     },
     RENDER_SETTINGS: {
         STEP_DIST_NORMAL: 0.95,

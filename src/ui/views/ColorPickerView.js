@@ -1,4 +1,4 @@
-import { ColorUtils } from "@/infra/ColorUtils.js";
+import { hsvToHex, hexToHsv } from "@/infra/ColorUtils.js";
 
 export class ColorPickerView {
   constructor() {
@@ -119,7 +119,7 @@ export class ColorPickerView {
     }
 
     // Draw SV Canvas
-    const hex = ColorUtils.hsvToHex(state.hue / 360, 1.0, 1.0);
+    const hex = hsvToHex(state.hue / 360, 1.0, 1.0);
     const gradH = ctx.createLinearGradient(0, 0, w, 0);
     gradH.addColorStop(0, "#ffffff");
     gradH.addColorStop(1, hex);
@@ -140,7 +140,7 @@ export class ColorPickerView {
     state.hueSlider.value = state.hue;
 
     // Calculate current selected hex color
-    const currentHex = ColorUtils.hsvToHex(state.hue / 360, state.sat, state.val);
+    const currentHex = hsvToHex(state.hue / 360, state.sat, state.val);
     state.lastHex = currentHex;
 
     // Update preview element & text in the UI
@@ -161,7 +161,7 @@ export class ColorPickerView {
   syncFromInput(state, force = false) {
     const hex = state.hiddenInput.value;
     if (!force && hex === state.lastHex) return;
-    const hsv = ColorUtils.hexToHsv(hex);
+    const hsv = hexToHsv(hex);
     state.hue = hsv.h * 360;
     state.sat = hsv.s;
     state.val = hsv.v;

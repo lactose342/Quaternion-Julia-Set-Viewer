@@ -1,5 +1,3 @@
-// core/CommandDispatcher.js の全コードをこれに上書きしてください
-
 export class CommandDispatcher {
   constructor() {
     this.commands = new Map();
@@ -16,9 +14,9 @@ export class CommandDispatcher {
     window.addEventListener("app-command", async (e) => {
       const { type, ...payload } = e.detail;
       console.log(`[Dispatcher] コマンド受信: ${type}`);
-      
+
       const command = this.commands.get(type);
-      
+
       if (command) {
         console.log(`[Dispatcher] コマンド実行開始: ${type}`);
         try {

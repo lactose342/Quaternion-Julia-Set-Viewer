@@ -48,7 +48,16 @@ export class URLManager {
     this.config.SCHEMAS.material.forEach(id => {
       if (params.has(id)) {
         const val = params.get(id);
-        parsedData.params.material[id] = id === 'bgColor' ? `#${val}` : parseFloat(val);
+        if (id === 'bgColor') {
+          parsedData.params.material[id] = `#${val}`;
+        } else {
+          const numVal = parseFloat(val);
+          if (!Number.isNaN(numVal)) {
+            parsedData.params.material[id] = numVal;
+          } else {
+            console.warn(`Invalid URL parameter ignored for key [${id}]: ${val}`);
+          }
+        }
       }
     });
     

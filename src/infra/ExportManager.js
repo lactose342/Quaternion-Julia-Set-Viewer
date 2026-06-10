@@ -65,6 +65,7 @@ export class ExportManager extends EventTarget {
       downloadMessage: "0%"
     });
     this.renderer.controls.enabled = false;
+    this.renderer.stopLoop();
 
     await this.#flushDOM();
     await this.#sleep(50);
@@ -76,6 +77,7 @@ export class ExportManager extends EventTarget {
     this.renderer.setQuality(originalQuality);
     this.renderer.controls.enabled = true;
     this.renderer.renderState.needsRender = true;
+    this.renderer.startLoop();
   }
 
   #calculateDimensions(scale) {

@@ -52,7 +52,11 @@ export class Renderer {
 
     const _xrWebGLBinding = window.XRWebGLBinding;
     window.XRWebGLBinding = undefined;
-    this.renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: false, alpha: true });
+    this.renderer = new THREE.WebGLRenderer({
+      preserveDrawingBuffer: false,
+      alpha: true,
+      powerPreference: "high-performance"
+    });
     window.XRWebGLBinding = _xrWebGLBinding;
 
     this.renderer.setClearColor(0x000000, 0);
@@ -257,21 +261,21 @@ export class Renderer {
   startLoop() {
     if (this.isLoopRunning) return;
     this.isLoopRunning = true;
-    
+
     // Reset FPS counter tracking to ignore the idle sleep time
     this.renderState.fpsFrames = 0;
     this.renderState.fpsLastTime = performance.now();
     this.renderState.lastRenderTime = 0;
-    
+
     // Reset the timer's previous timestamp to prevent delta spike upon resuming
     if (this.timer) {
       this.timer.update();
     }
-    
+
     if (this.onFpsUpdate) {
       this.onFpsUpdate(this.lastFps || 60, false);
     }
-    
+
     this.renderer.setAnimationLoop(this.loopCallback);
   }
 
@@ -312,8 +316,7 @@ export class Renderer {
       const fps = Math.round((this.renderState.fpsFrames * 1000) / (now - this.renderState.fpsLastTime));
       this.lastFps = fps;
 
-      // --- Adaptive Quality (P1) ---
-      if (!isDownloading && (isAutoAnimating || this.renderState.needsRender || isVR)) {
+      if (!isDownloading && (isAutoAnimating || this.renderState.needsRender || isInteracting || isVR)) {
         if (fps < 30) {
           const nextRatio = Math.max(0.35, this.currentPixelRatio - 0.15);
           if (nextRatio !== this.currentPixelRatio) {
@@ -329,7 +332,6 @@ export class Renderer {
           }
         }
       }
-      // ------------------------------
 
       if (this.onFpsUpdate) {
         this.onFpsUpdate(fps, false);
@@ -338,7 +340,7 @@ export class Renderer {
       this.renderState.fpsLastTime = now;
     }
 
-    const needsRenderThisFrame = !isDownloading && (isAutoAnimating || this.renderState.needsRender || isVR);
+    const needsRenderThisFrame = !isDownloading && (isAutoAnimating || this.renderState.needsRender || isInteracting || isVR);
 
     if (needsRenderThisFrame) {
       if (isVR) {

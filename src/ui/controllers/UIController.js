@@ -1,7 +1,7 @@
 import { UI_IDS } from "@/ui/uiConstants.js";
 import { PARAMETER_DEFINITIONS } from "@/core/domain/ParameterDefinitions.js";
 import { formatParamForUI } from "@/ui/utils/uiParamFormatter.js";
-import { ColorUtils } from "@/infra/ColorUtils.js";
+import { hsvToHex } from "@/infra/ColorUtils.js";
 
 function createParameterElement(key, def) {
   const sliderGroup = document.createElement("div");
@@ -49,7 +49,7 @@ function createColorPickerElement(key, def) {
   if (def.tooltip) {
     label.setAttribute("title", def.tooltip);
   }
-  
+
   // Left label text
   const labelText = document.createElement("span");
   labelText.textContent = def.label;
@@ -294,6 +294,11 @@ export class UIController {
     const signal = this.abortController.signal;
 
     domainStore.addEventListener("domain-updated", (e) => {
+      // VRプレゼンテーション中はデスクトップUIの更新をスキップ（VR内FPSの安定化）
+      if (this.renderer.renderer && this.renderer.renderer.xr.isPresenting) {
+        return;
+      }
+
       const { type, category, keys } = e.detail;
       if (type === "PARAMS") {
         this.synchronizeParameterValues(category, keys);
@@ -317,30 +322,39 @@ export class UIController {
   }
 
   synchronizeParameterValues(category, changedKeys) {
-    const params = {
-      fractal: this.domainStore.getParams("fractal"),
-      material: this.domainStore.getParams("material"),
-      animation: this.domainStore.getParams("animation"),
-    };
     const isAutoAnimating = this.uiStore.isAutoAnimating;
     const activeElementId = document.activeElement ? document.activeElement.id : null;
 
+    const displayParams = {};
     const animatedCVec = this.domainStore.getAnimatedC();
 
-    const displayParams = {};
-    Object.keys(params).forEach((cat) => {
-      if (!params[cat]) return;
+    let categoriesToSync = ["fractal", "material", "animation"];
+    let keysToSync = null;
+
+    if (category !== "ALL" && category) {
+      categoriesToSync = [category];
+      if (changedKeys && Array.isArray(changedKeys)) {
+        keysToSync = changedKeys;
+      }
+    }
+
+    categoriesToSync.forEach((cat) => {
+      const catParams = this.domainStore.getParams(cat);
+      if (!catParams) return;
+
       displayParams[cat] = {};
+      const targetKeys = keysToSync || Object.keys(catParams);
 
-      Object.entries(params[cat]).forEach(([key, value]) => {
+      targetKeys.forEach((key) => {
+        const value = catParams[key];
+        if (value === undefined) return;
+
         let displayValue = value;
-
         if (cat === "fractal" && ["cx", "cy", "cz", "cw"].includes(key)) {
           displayValue = animatedCVec[key];
         }
 
         const { numericValue, displayString } = formatParamForUI(key, displayValue);
-
         displayParams[cat][key] = {
           value: numericValue,
           displayText: displayString,
@@ -348,17 +362,27 @@ export class UIController {
       });
     });
 
-    if (params.material && params.material.hue !== undefined && params.material.saturation !== undefined) {
-      const hexColor = ColorUtils.hsvToHex(params.material.hue, params.material.saturation, 1.0);
-      displayParams.material["baseColorPicker"] = {
-        value: hexColor,
-        displayText: hexColor
-      };
+    const isAll = (category === "ALL" || !category);
+    const hasColorChange = category === "material" && (changedKeys && (changedKeys.includes("hue") || changedKeys.includes("saturation")));
+
+    if (isAll || hasColorChange) {
+      const matParams = this.domainStore.getParams("material");
+      if (matParams && matParams.hue !== undefined && matParams.saturation !== undefined) {
+        const hexColor = hsvToHex(matParams.hue, matParams.saturation, 1.0);
+        if (!displayParams.material) displayParams.material = {};
+        displayParams.material["baseColorPicker"] = {
+          value: hexColor,
+          displayText: hexColor
+        };
+      }
     }
 
     this.parameterView.update(displayParams, isAutoAnimating, activeElementId);
+
     if (this.colorPickerView) {
-      this.colorPickerView.syncAll();
+      if (isAll || hasColorChange) {
+        this.colorPickerView.syncAll();
+      }
     }
   }
 

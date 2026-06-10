@@ -4,7 +4,7 @@ export class StatusView {
   }
 
   /**
-   * 計測されたFPS数値を基に、DOMの表示を更新する（表示ロジックの局所化）
+   * 計測されたFPS数値を基に、DOMの表示を更新する
    * @param {number} fps 
    * @param {boolean} isIdle 
    */
@@ -12,7 +12,7 @@ export class StatusView {
     const fpsCounterEl = this.uiElements["fps-counter"];
     if (!fpsCounterEl) return;
 
-    // 文字列の組み立て（プレゼンテーションの関心事）をViewで完結させる
-    fpsCounterEl.textContent = isIdle ? `${fps} FPS (Idle)` : `${fps} FPS`;
+    // 文字列の組み立て
+    fpsCounterEl.textContent = isIdle ? `-- FPS (Idle)` : `${fps} FPS`;
   }
 }

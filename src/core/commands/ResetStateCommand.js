@@ -29,7 +29,7 @@ export class ResetStateCommand extends Command {
     this.domainStore.init(defaultParams);
     this.domainStore.setAnimPhases({ x: 0, y: 0, z: 0, w: 0 });
 
-    const defaultCamera = { 
+    const defaultCamera = (srcPreset && srcPreset.camera) ? srcPreset.camera : { 
       position: { x: 0, y: 0, z: 2 }, 
       target: { x: 0, y: 0, z: 0 } 
     };
@@ -54,7 +54,7 @@ export class ResetStateCommand extends Command {
         activeAnimPreset: "preset1"
       }
     };
-    
-    this.historyManager.pushHistory(fullSnapshot); 
+
+    this.historyManager.pushHistory(fullSnapshot);
   }
 }

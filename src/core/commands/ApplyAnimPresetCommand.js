@@ -20,13 +20,12 @@ export class ApplyAnimPresetCommand extends Command {
 
     // 1. 再生中でない場合、現在の位相のアニメーション計算値をベース値に固定する
     if (!this.uiStore.isAutoAnimating) {
-      // ★修正: インスタンス変数ではなく、ローカル変数として正しく取得
       const animatedC = this.domainStore.getAnimatedC();
 
       this.domainStore.updateParams("fractal", {
-        cx: animatedC.cx, 
-        cy: animatedC.cy, 
-        cz: animatedC.cz, 
+        cx: animatedC.cx,
+        cy: animatedC.cy,
+        cz: animatedC.cz,
         cw: animatedC.cw
       });
     }
@@ -36,7 +35,7 @@ export class ApplyAnimPresetCommand extends Command {
     this.domainStore.setAnimPhases({ x: 0, y: 0, z: 0, w: 0 });
 
     // 3. UI状態の更新（インタラクション中の状態をクリーンに通知）
-    this.uiStore.update({ 
+    this.uiStore.update({
       activeAnimPreset: presetName
     });
   }

@@ -1,5 +1,5 @@
 import { PARAMETER_DEFINITIONS } from "@/core/domain/ParameterDefinitions.js";
-import { ColorUtils } from "@/infra/ColorUtils.js";
+import { hexToHsv } from "@/infra/ColorUtils.js";
 import { parseParamFromUI } from "@/ui/utils/uiParamFormatter.js";
 
 export class ParameterController {
@@ -99,12 +99,37 @@ export class ParameterController {
 
     const baseColorPicker = this.uiElements["baseColorPicker"];
     if (baseColorPicker) {
+      let colorRafId = null;
+      let pendingColor = null;
+
+      const flushColor = () => {
+        if (colorRafId !== null) {
+          cancelAnimationFrame(colorRafId);
+          colorRafId = null;
+        }
+        if (pendingColor) {
+          this.#dispatch("UPDATE_COLOR_INPUT", pendingColor);
+          pendingColor = null;
+        }
+      };
+
       baseColorPicker.addEventListener("input", (e) => {
-        const hsvVals = ColorUtils.hexToHsv(e.target.value);
-        this.#dispatch("UPDATE_COLOR_INPUT", { hue: hsvVals.h, saturation: hsvVals.s });
+        const hsvVals = hexToHsv(e.target.value);
+        pendingColor = { hue: hsvVals.h, saturation: hsvVals.s };
+
+        if (colorRafId !== null) return;
+
+        colorRafId = requestAnimationFrame(() => {
+          colorRafId = null;
+          if (pendingColor) {
+            this.#dispatch("UPDATE_COLOR_INPUT", pendingColor);
+            pendingColor = null;
+          }
+        });
       }, { signal: this.signal });
       
       baseColorPicker.addEventListener("change", () => {
+        flushColor();
         this.#dispatch("COMMIT_HISTORY");
       }, { signal: this.signal });
     }
@@ -122,5 +147,13 @@ export class ParameterController {
   _getStateKey(domId) {
     const entry = Object.entries(PARAMETER_DEFINITIONS).find(([_, def]) => def.domId === domId);
     return entry ? entry[0] : domId;
+  }
+
+  clearPendingUpdates() {
+    this.rafIds.forEach((rafId) => {
+      cancelAnimationFrame(rafId);
+    });
+    this.rafIds.clear();
+    this.pendingPayloads.clear();
   }
 }

@@ -12,16 +12,16 @@ export class XRManager {
     this.uiStore = uiStore;
 
     // VR/AR用の初期設定 (高さをさらに引き上げ: y を -0.05 から 0.05 へ変更)
-    this.vrScale = 0.3; 
-    this.vrOffset = { x: 0.0, y: 0.05, z: -1.2 }; 
+    this.vrScale = 0.3;
+    this.vrOffset = { x: 0.0, y: 0.05, z: -1.2 };
 
     this.activeSession = null;
     this.isAR = false;
     this.originalBgAlpha = 1.0;
 
     // ドラッグ・掴み（グラブ）インタラクションの状態管理
-    this.dragging = [false, false]; 
-    this.startPos = [null, null]; 
+    this.dragging = [false, false];
+    this.startPos = [null, null];
     this.grabRelativeMatrix = [null, null]; // コントローラーとフラクタルの相対トランスフォーム行列
     this.startVrScale = 1.0;
     this.initialTwoHandDist = null;
@@ -30,7 +30,7 @@ export class XRManager {
   init() {
     this.renderer.renderer.xr.addEventListener("sessionstart", () => {
       this.activeSession = this.renderer.renderer.xr.getSession();
-      
+
       // ARパススルーセッションかどうかを判定
       this.isAR = this.activeSession.environmentBlendMode && this.activeSession.environmentBlendMode !== "opaque";
 
@@ -43,8 +43,8 @@ export class XRManager {
 
       // VR/AR専用の超軽量画質「XR」を適用し、解像度比を下げてパフォーマンスを最大化 (目標60FPS超)
       this.renderer.setQuality("XR");
-      this.renderer.setPixelRatio(0.55); // 0.6 からさらに 0.55 へ微調整し負荷軽減
-      this.renderer.renderer.xr.setFoveation(1.0); 
+      this.renderer.setPixelRatio(0.55);
+      this.renderer.renderer.xr.setFoveation(1.0);
 
       this.renderer.renderState.needsRender = true;
     });
@@ -60,6 +60,9 @@ export class XRManager {
       // 画質とピクセル解像度の復元
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
       this.renderer.setQuality("HIGH");
+
+      // VRセッション終了時にデスクトップUIを最新状態に一括同期する
+      this.domainStore.dispatchEvent(new CustomEvent("domain-updated", { detail: { type: "ALL" } }));
     });
 
     // コントローラーや手を表示するための光源を追加 (これらがないとモデルが真っ黒で不可視になります)
@@ -95,17 +98,17 @@ export class XRManager {
 
   onSelectStart(id, controller) {
     this.dragging[id] = true;
-    
+
     // 現在のフラクタルのワールドトランスフォーム行列を構築
     const fractalMatrix = new THREE.Matrix4();
     const position = new THREE.Vector3(this.vrOffset.x, this.vrOffset.y, this.vrOffset.z);
-    
+
     // ドメインストアから現在の3D回転情報を取得してクォータニオンを生成
     const params = this.domainStore.getParams("fractal");
     const euler = new THREE.Euler(params.rotX, params.rotY, params.rotZ, "XYZ");
     const rotation = new THREE.Quaternion().setFromEuler(euler);
     const scale = new THREE.Vector3(this.vrScale, this.vrScale, this.vrScale);
-    
+
     fractalMatrix.compose(position, rotation, scale);
 
     // コントローラーの現在のワールド行列を強制更新し、その逆行列を掛けることで「相対位置・回転」を記録
@@ -201,8 +204,8 @@ export class XRManager {
   }
 
   updateJoystickInput(session, delta) {
-    const speed = 1.5 * delta; 
-    const scaleSpeed = 0.5 * delta; 
+    const speed = 1.5 * delta;
+    const scaleSpeed = 0.5 * delta;
 
     // デバッグ用のログ出力 (2秒おきに入力デバイス状況を出力)
     if (!this._lastLogTime || performance.now() - this._lastLogTime > 2000) {
@@ -216,7 +219,7 @@ export class XRManager {
     for (const source of session.inputSources) {
       if (!source.gamepad) continue;
 
-      const axes = source.gamepad.axes; 
+      const axes = source.gamepad.axes;
       if (axes.length < 2) continue;
 
       const deadzone = 0.15;
