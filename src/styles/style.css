@@ -4,12 +4,12 @@
 body {
     margin: 0;
     overflow: hidden;
-    background: #000;
+    background-color: #000;
     color: #fff;
     font-family: sans-serif;
 }
 
-body > canvas {
+body>canvas {
     width: 100vw !important;
     height: 100dvh !important;
     display: block;
@@ -29,9 +29,17 @@ body > canvas {
     margin-top: 10px;
 }
 
-.grid-2cols { grid-template-columns: repeat(2, 1fr); }
-.grid-3cols { grid-template-columns: repeat(3, 1fr); }
-.grid-4cols { grid-template-columns: repeat(4, 1fr); }
+.grid-2cols {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.grid-3cols {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.grid-4cols {
+    grid-template-columns: repeat(4, 1fr);
+}
 
 /* ==========================================
    UI Container & Details
@@ -44,7 +52,7 @@ body > canvas {
     width: 100%;
     max-height: 80dvh;
     overflow-y: auto;
-    background: rgba(20, 20, 20, 0.9);
+    background-color: rgba(20, 20, 20, 0.9);
     border-top: 1px solid #444;
     padding: 15px 15px 70px 15px;
     box-sizing: border-box;
@@ -59,7 +67,7 @@ body > canvas {
 
 
 details {
-    background: rgba(255, 255, 255, 0.05);
+    background-color: rgba(255, 255, 255, 0.05);
     border-radius: 5px;
     margin-bottom: 10px;
     padding: 5px 10px;
@@ -117,7 +125,7 @@ summary {
 
 .slider-group select,
 .slider-group button {
-    background: #333;
+    background-color: #333;
     color: #fff;
     border: 1px solid #555;
     padding: 5px;
@@ -132,7 +140,7 @@ summary {
 }
 
 .slider-group button:hover {
-    background: #444;
+    background-color: #444;
 }
 
 .slider-group button:disabled {
@@ -161,42 +169,108 @@ summary {
     bottom: 20px;
     right: 20px;
     z-index: 150;
-    background: rgba(40, 40, 40, 0.9);
+    background-color: rgba(40, 40, 40, 0.9);
     color: white;
     border: 1px solid #666;
     padding: 10px 15px;
     border-radius: 20px;
     cursor: pointer;
     font-size: 14px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
 }
 
-#toggle-ui-btn.is-close::before { font-family: 'Material Symbols Outlined'; content: '\e8b8'; line-height: 1; font-size: 16px; }
-#toggle-ui-btn.is-open::before { font-family: 'Material Symbols Outlined'; content: '\e5cd'; line-height: 1; font-size: 16px; }
+#toggle-ui-btn.is-close::before {
+    font-family: 'Material Symbols Outlined';
+    content: '\e8b8';
+    line-height: 1;
+    font-size: 16px;
+}
 
-#download-btn { background: #0055ff; border-color: #0044cc; font-weight: bold; }
-#download-btn::before { font-family: 'Material Symbols Outlined'; content: '\f090'; font-size: 16px; }
-#download-btn:hover { background: #0066ff; }
-#download-btn:disabled { background: #555; color: #aaa; border-color: #444; }
+#toggle-ui-btn.is-open::before {
+    font-family: 'Material Symbols Outlined';
+    content: '\e5cd';
+    line-height: 1;
+    font-size: 16px;
+}
 
-#share-btn { background: #28a745; border-color: #218838; font-weight: bold; }
-#share-btn::before { font-family: 'Material Symbols Outlined'; content: '\e157'; font-size: 16px; }
-#share-btn:hover { background: #218838; }
+#download-btn {
+    background-color: #0055ff;
+    border-color: #0044cc;
+    font-weight: bold;
+}
 
-#random-btn { background: #8a2be2; border-color: #6a1b9a; font-weight: bold; }
-#random-btn::before { font-family: 'Material Symbols Outlined'; content: '\e043'; font-size: 16px; }
-#random-btn:hover { background: #9400d3; }
+#download-btn::before {
+    font-family: 'Material Symbols Outlined';
+    content: '\f090';
+    font-size: 16px;
+}
 
-#undo-btn::before { font-family: 'Material Symbols Outlined'; content: '\e166'; font-size: 16px; }
-#redo-btn::before { font-family: 'Material Symbols Outlined'; content: '\e15a'; font-size: 16px; }
-#reset-btn::before { font-family: 'Material Symbols Outlined'; content: '\e872'; font-size: 16px; }
+#download-btn:hover {
+    background-color: #0066ff;
+}
+
+#download-btn:disabled {
+    background-color: #555;
+    color: #aaa;
+    border-color: #444;
+}
+
+#share-btn {
+    background-color: #28a745;
+    border-color: #218838;
+    font-weight: bold;
+}
+
+#share-btn::before {
+    font-family: 'Material Symbols Outlined';
+    content: '\e157';
+    font-size: 16px;
+}
+
+#share-btn:hover {
+    background-color: #218838;
+}
+
+#random-btn {
+    background-color: #8a2be2;
+    border-color: #6a1b9a;
+    font-weight: bold;
+}
+
+#random-btn::before {
+    font-family: 'Material Symbols Outlined';
+    content: '\e043';
+    font-size: 16px;
+}
+
+#random-btn:hover {
+    background-color: #9400d3;
+}
+
+#undo-btn::before {
+    font-family: 'Material Symbols Outlined';
+    content: '\e166';
+    font-size: 16px;
+}
+
+#redo-btn::before {
+    font-family: 'Material Symbols Outlined';
+    content: '\e15a';
+    font-size: 16px;
+}
+
+#reset-btn::before {
+    font-family: 'Material Symbols Outlined';
+    content: '\e872';
+    font-size: 16px;
+}
 
 #fullscreen-btn,
 #auto-animate-btn {
     position: absolute;
     top: 10px;
     z-index: 150;
-    background: rgba(40, 40, 40, 0.7);
+    background-color: rgba(40, 40, 40, 0.7);
     color: white;
     border: 1px solid #666;
     padding: 8px;
@@ -205,49 +279,84 @@ summary {
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-    transition: background 0.2s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    transition: background-color 0.2s;
     width: 42px;
     height: 42px;
 }
 
-#fullscreen-btn { right: 10px; }
-#fullscreen-btn:hover { background: rgba(80, 80, 80, 0.9); }
-#fullscreen-btn::before { font-family: 'Material Symbols Outlined'; content: '\e5d0'; font-size: 20px; }
-#fullscreen-btn.is-fullscreen::before { content: '\e5d1'; }
+#fullscreen-btn {
+    right: 10px;
+}
 
-#auto-animate-btn { left: 10px; }
-#auto-animate-btn:hover { background: rgba(80, 80, 80, 0.9); }
-#auto-animate-btn::before { font-family: 'Material Symbols Outlined'; content: '\e037'; font-size: 20px; }
-#auto-animate-btn.is-playing::before { content: '\e034'; }
+#fullscreen-btn:hover {
+    background-color: rgba(80, 80, 80, 0.9);
+}
 
-#VRButton { 
-    position: absolute !important; 
-    right: 60px !important; 
-    top: 10px !important; 
-    left: auto !important; 
+#fullscreen-btn::before {
+    font-family: 'Material Symbols Outlined';
+    content: '\e5d0';
+    font-size: 20px;
+}
+
+#fullscreen-btn.is-fullscreen::before {
+    content: '\e5d1';
+}
+
+#auto-animate-btn {
+    left: 10px;
+}
+
+#auto-animate-btn:hover {
+    background-color: rgba(80, 80, 80, 0.9);
+}
+
+#auto-animate-btn::before {
+    font-family: 'Material Symbols Outlined';
+    content: '\e037';
+    font-size: 20px;
+}
+
+#auto-animate-btn.is-playing::before {
+    content: '\e034';
+}
+
+#VRButton {
+    position: absolute !important;
+    right: 60px !important;
+    top: 10px !important;
+    left: auto !important;
     bottom: auto !important;
     z-index: 150 !important;
-    background: rgba(40, 40, 40, 0.7) !important; 
+    background-color: rgba(40, 40, 40, 0.7) !important;
     color: #fff !important;
-    border: 1px solid #666 !important; 
-    border-radius: 5px !important; 
-    font-size: 12px !important; 
+    border: 1px solid #666 !important;
+    border-radius: 5px !important;
+    font-size: 12px !important;
     font-weight: bold !important;
-    padding: 8px 12px !important; 
-    box-shadow: 0 2px 4px rgba(0,0,0,0.5) !important;
+    padding: 8px 12px !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5) !important;
     cursor: pointer !important;
-    transition: background 0.2s !important;
+    transition: background-color 0.2s !important;
     width: 42px;
     height: 42px;
 }
+
 #VRButton:disabled {
     opacity: 0.3 !important;
     cursor: not-allowed !important;
-    background: rgba(40, 40, 40, 0.7) !important;
+    background-color: rgba(40, 40, 40, 0.7) !important;
 }
-#VRButton:hover { background: rgba(80, 80, 80, 0.9) !important; }
-#VRButton::after { font-family: 'Material Symbols Outlined'; content: '\f4c5'; font-size: 20px; }
+
+#VRButton:hover {
+    background-color: rgba(80, 80, 80, 0.9) !important;
+}
+
+#VRButton::after {
+    font-family: 'Material Symbols Outlined';
+    content: '\f4c5';
+    font-size: 20px;
+}
 
 /* ==========================================
    Indicators
@@ -257,7 +366,7 @@ summary {
     bottom: 10px;
     left: 10px;
     z-index: 150;
-    background: rgba(0,0,0,0.7);
+    background-color: rgba(0, 0, 0, 0.7);
     color: #0f0;
     padding: 4px 8px;
     border-radius: 5px;
@@ -275,7 +384,7 @@ summary {
     left: 0;
     width: 100vw;
     height: 100dvh;
-    background: rgba(0, 0, 0, 0.85);
+    background-color: rgba(0, 0, 0, 0.85);
     z-index: 9999;
     display: flex;
     align-items: center;
@@ -290,22 +399,27 @@ summary {
 }
 
 .modal-content {
-    background: #1a1a1a;
+    background-color: #1a1a1a;
     padding: 30px;
     border-radius: 8px;
     border: 1px solid #333;
     text-align: center;
     width: 80%;
     max-width: 400px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
 }
 
-.modal-title { font-size: 16px; font-weight: bold; margin-bottom: 20px; color: #ddd; }
+.modal-title {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: #ddd;
+}
 
 .progress-container {
     width: 100%;
     height: 12px;
-    background: #333;
+    background-color: #333;
     border-radius: 6px;
     overflow: hidden;
     margin-bottom: 10px;
@@ -314,24 +428,27 @@ summary {
 .progress-bar {
     width: 0%;
     height: 100%;
-    background: #0055ff;
+    background-color: #0055ff;
     transition: width 0.1s linear;
-    background-image: linear-gradient(
-        90deg,
-        rgba(255, 255, 255, 0) 0%,
-        rgba(255, 255, 255, 0.4) 50%,
-        rgba(255, 255, 255, 0) 100%
-    );
+    background-image: linear-gradient(90deg,
+            rgba(255, 255, 255, 0) 0%,
+            rgba(255, 255, 255, 0.4) 50%,
+            rgba(255, 255, 255, 0) 100%);
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite linear;
 }
 
-.progress-text { font-size: 14px; font-weight: bold; color: #fff; }
+.progress-text {
+    font-size: 14px;
+    font-weight: bold;
+    color: #fff;
+}
 
 @keyframes shimmer {
     0% {
         background-position: 200% 0;
     }
+
     100% {
         background-position: -200% 0;
     }
@@ -364,7 +481,7 @@ summary {
     font-size: 14px;
     font-weight: bold;
     color: #fff;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
     opacity: 0;
     transform: translateY(20px);
     transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
@@ -375,10 +492,27 @@ summary {
     transform: translateY(0);
 }
 
-.toast.success { background: #28a745; border: 1px solid #1e7e34; }
-.toast.success::before { font-family: 'Material Symbols Outlined'; content: '\e5ca'; font-size: 16px; }
-.toast.error   { background: #dc3545; border: 1px solid #bd2130; }
-.toast.error::before { font-family: 'Material Symbols Outlined'; content: '\e000'; font-size: 16px; }
+.toast.success {
+    background-color: #28a745;
+    border: 1px solid #1e7e34;
+}
+
+.toast.success::before {
+    font-family: 'Material Symbols Outlined';
+    content: '\e5ca';
+    font-size: 16px;
+}
+
+.toast.error {
+    background-color: #dc3545;
+    border: 1px solid #bd2130;
+}
+
+.toast.error::before {
+    font-family: 'Material Symbols Outlined';
+    content: '\e000';
+    font-size: 16px;
+}
 
 /* ==========================================
    Media Queries
@@ -392,6 +526,7 @@ summary {
         flex-direction: column;
         align-items: center;
     }
+
     .toast {
         transform: translateY(-20px);
     }
@@ -475,18 +610,18 @@ summary {
     outline: none;
     margin: 0;
     cursor: pointer;
-    background: transparent !important;
+    background-color: transparent !important;
 }
 
 /* Style the slider track with rainbow gradient */
 .hue-slider::-webkit-slider-runnable-track {
-    background: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+    background-image: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
     height: 12px;
     border-radius: 6px;
 }
 
 .hue-slider::-moz-range-track {
-    background: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+    background-image: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
     height: 12px;
     border-radius: 6px;
 }
@@ -498,19 +633,20 @@ summary {
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    background: #fff;
+    background-color: #fff;
     border: 2px solid #333;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
     cursor: pointer;
-    margin-top: -2px; /* Center thumb vertically on track */
+    margin-top: -2px;
+    /* Center thumb vertically on track */
 }
 
 .hue-slider::-moz-range-thumb {
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    background: #fff;
+    background-color: #fff;
     border: 2px solid #333;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
     cursor: pointer;
 }
