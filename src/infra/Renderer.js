@@ -255,6 +255,11 @@ export class Renderer {
   startLoop() {
     if (this.isLoopRunning) return;
     this.isLoopRunning = true;
+    
+    // Reset FPS counter tracking to ignore the idle sleep time
+    this.renderState.fpsFrames = 0;
+    this.renderState.fpsLastTime = performance.now();
+    
     this.renderer.setAnimationLoop(this.loopCallback);
   }
 
