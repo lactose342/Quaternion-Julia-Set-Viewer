@@ -16,6 +16,7 @@ export class Renderer {
       renderTimer: null,
       fpsFrames: 0,
       fpsLastTime: performance.now(),
+      lastRenderTime: 0,
     };
 
     this.timer = new THREE.Timer();
@@ -260,6 +261,12 @@ export class Renderer {
     // Reset FPS counter tracking to ignore the idle sleep time
     this.renderState.fpsFrames = 0;
     this.renderState.fpsLastTime = performance.now();
+    this.renderState.lastRenderTime = 0;
+    
+    // Reset the timer's previous timestamp to prevent delta spike upon resuming
+    if (this.timer) {
+      this.timer.update();
+    }
     
     if (this.onFpsUpdate) {
       this.onFpsUpdate(this.lastFps || 60, false);
@@ -278,6 +285,20 @@ export class Renderer {
   }
 
   tick() {
+    const isVR = this.renderer.xr.isPresenting;
+    const { isDownloading, isAutoAnimating } = this.getAppState ? this.getAppState() : { isDownloading: false, isAutoAnimating: false };
+    const isInteracting = this.uiStore.getState().isInteracting;
+    const isActive = isAutoAnimating || isInteracting;
+    const now = performance.now();
+
+    // Cap normal screen rendering at 60 FPS (approx 16ms per frame) to prevent GPU queue clogging on high-refresh monitors
+    if (!isVR && isActive && this.renderState.lastRenderTime) {
+      const elapsed = now - this.renderState.lastRenderTime;
+      if (elapsed < 16.0) {
+        return;
+      }
+    }
+
     this.timer.update();
     const delta = this.timer.getDelta();
 
@@ -287,10 +308,6 @@ export class Renderer {
 
     if (this.onTick) this.onTick(delta);
 
-    const isVR = this.renderer.xr.isPresenting;
-    const { isDownloading, isAutoAnimating } = this.getAppState ? this.getAppState() : { isDownloading: false, isAutoAnimating: false };
-
-    const now = performance.now();
     if (now >= this.renderState.fpsLastTime + 500) {
       const fps = Math.round((this.renderState.fpsFrames * 1000) / (now - this.renderState.fpsLastTime));
       this.lastFps = fps;
@@ -341,9 +358,10 @@ export class Renderer {
       this.renderer.render(this.scene, this.camera);
       this.renderState.fpsFrames++;
       this.renderState.needsRender = false;
+      this.renderState.lastRenderTime = now;
     }
 
-    const needsLoopNextFrame = isVR || isAutoAnimating || this.renderState.needsRender || this.uiStore.getState().isInteracting;
+    const needsLoopNextFrame = isVR || isAutoAnimating || this.renderState.needsRender || isInteracting;
     if (!needsLoopNextFrame) {
       this.stopLoop();
     }
