@@ -37,6 +37,10 @@ export class Renderer {
 
     this.maxPixelRatio = Math.min(window.devicePixelRatio, 1.0);
     this.currentPixelRatio = this.maxPixelRatio;
+
+    this.isLoopRunning = false;
+    this.getAppState = null;
+    this.loopCallback = this.tick.bind(this);
   }
 
   init() {
@@ -94,10 +98,12 @@ export class Renderer {
 
     this.controls.addEventListener("change", () => {
       this.renderState.needsRender = true;
+      this.startLoop();
     });
 
     this.controls.addEventListener("start", () => {
       this.uiStore.update({ isInteracting: true });
+      this.startLoop();
     });
 
     this.controls.addEventListener("end", () => {
@@ -135,6 +141,7 @@ export class Renderer {
     this.controls.target.set(target.x, target.y, target.z);
     this.controls.update();
     this.renderState.needsRender = true;
+    this.startLoop();
   }
 
   getOrCreateMaterial(qualityLevel) {
@@ -175,6 +182,7 @@ export class Renderer {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.updateResolution();
+    this.startLoop();
   }
 
   updateResolution() {
@@ -241,59 +249,72 @@ export class Renderer {
 
   requestRender() {
     this.renderState.needsRender = true;
+    this.startLoop();
   }
 
-  animate(getAppState) {
-    this.renderer.setAnimationLoop(() => {
-      this.timer.update();
-      const delta = this.timer.getDelta();
+  startLoop() {
+    if (this.isLoopRunning) return;
+    this.isLoopRunning = true;
+    this.renderer.setAnimationLoop(this.loopCallback);
+  }
 
-      if (this.xrManager) {
-        this.xrManager.update(delta);
-      }
+  stopLoop() {
+    if (!this.isLoopRunning) return;
+    this.isLoopRunning = false;
+    this.renderer.setAnimationLoop(null);
+    if (this.onFpsUpdate) {
+      this.onFpsUpdate(0, true);
+    }
+  }
 
-      if (this.onTick) this.onTick(delta);
+  tick() {
+    this.timer.update();
+    const delta = this.timer.getDelta();
 
-      const isVR = this.renderer.xr.isPresenting;
-      const { isDownloading, isAutoAnimating } = getAppState();
+    if (this.xrManager) {
+      this.xrManager.update(delta);
+    }
 
-      this.renderState.fpsFrames++;
-      const now = performance.now();
-      if (now >= this.renderState.fpsLastTime + 1000) {
-        const fps = Math.round((this.renderState.fpsFrames * 1000) / (now - this.renderState.fpsLastTime));
+    if (this.onTick) this.onTick(delta);
 
-        // --- Adaptive Quality (P1) ---
-        const isVR = this.renderer.xr.isPresenting;
-        const { isDownloading, isAutoAnimating } = getAppState();
+    const isVR = this.renderer.xr.isPresenting;
+    const { isDownloading, isAutoAnimating } = this.getAppState ? this.getAppState() : { isDownloading: false, isAutoAnimating: false };
 
-        if (!isDownloading && (isAutoAnimating || this.renderState.needsRender || isVR)) {
-          if (fps < 30) {
-            const nextRatio = Math.max(0.35, this.currentPixelRatio - 0.15);
-            if (nextRatio !== this.currentPixelRatio) {
-              this.setPixelRatio(nextRatio);
-              console.log(`[Adaptive Quality] FPS dropped to ${fps}. Reducing pixel ratio to ${this.currentPixelRatio.toFixed(2)}`);
-            }
-          } else if (fps > 55) {
-            const targetMax = isVR ? 0.55 : this.maxPixelRatio;
-            const nextRatio = Math.min(targetMax, this.currentPixelRatio + 0.05);
-            if (nextRatio !== this.currentPixelRatio) {
-              this.setPixelRatio(nextRatio);
-              console.log(`[Adaptive Quality] FPS is healthy (${fps}). Increasing pixel ratio to ${this.currentPixelRatio.toFixed(2)}`);
-            }
+    this.renderState.fpsFrames++;
+    const now = performance.now();
+    if (now >= this.renderState.fpsLastTime + 1000) {
+      const fps = Math.round((this.renderState.fpsFrames * 1000) / (now - this.renderState.fpsLastTime));
+
+      // --- Adaptive Quality (P1) ---
+      if (!isDownloading && (isAutoAnimating || this.renderState.needsRender || isVR)) {
+        if (fps < 30) {
+          const nextRatio = Math.max(0.35, this.currentPixelRatio - 0.15);
+          if (nextRatio !== this.currentPixelRatio) {
+            this.setPixelRatio(nextRatio);
+            console.log(`[Adaptive Quality] FPS dropped to ${fps}. Reducing pixel ratio to ${this.currentPixelRatio.toFixed(2)}`);
+          }
+        } else if (fps > 55) {
+          const targetMax = isVR ? 0.55 : this.maxPixelRatio;
+          const nextRatio = Math.min(targetMax, this.currentPixelRatio + 0.05);
+          if (nextRatio !== this.currentPixelRatio) {
+            this.setPixelRatio(nextRatio);
+            console.log(`[Adaptive Quality] FPS is healthy (${fps}). Increasing pixel ratio to ${this.currentPixelRatio.toFixed(2)}`);
           }
         }
-        // ------------------------------
-
-        if (this.onFpsUpdate) {
-          const isIdle = !isDownloading && !isAutoAnimating && !this.renderState.needsRender && !isVR;
-          this.onFpsUpdate(fps, isIdle);
-        }
-        this.renderState.fpsFrames = 0;
-        this.renderState.fpsLastTime = now;
       }
+      // ------------------------------
 
-      if (isDownloading || (!isAutoAnimating && !this.renderState.needsRender && !isVR)) return;
+      if (this.onFpsUpdate) {
+        const isIdle = !isDownloading && !isAutoAnimating && !this.renderState.needsRender && !isVR;
+        this.onFpsUpdate(fps, isIdle);
+      }
+      this.renderState.fpsFrames = 0;
+      this.renderState.fpsLastTime = now;
+    }
 
+    const needsRenderThisFrame = !isDownloading && (isAutoAnimating || this.renderState.needsRender || isVR);
+
+    if (needsRenderThisFrame) {
       if (isVR) {
         this.renderState.needsRender = true;
       } else {
@@ -310,7 +331,17 @@ export class Renderer {
       }
       this.renderer.render(this.scene, this.camera);
       this.renderState.needsRender = false;
-    });
+    }
+
+    const needsLoopNextFrame = isVR || isAutoAnimating || this.renderState.needsRender || this.uiStore.getState().isInteracting;
+    if (!needsLoopNextFrame) {
+      this.stopLoop();
+    }
+  }
+
+  animate(getAppState) {
+    this.getAppState = getAppState;
+    this.startLoop();
   }
 
   dispose() {

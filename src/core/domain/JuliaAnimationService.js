@@ -30,4 +30,15 @@ export class JuliaAnimationService {
       w: currentPhases.w + delta * (animParams.speed * animParams.sw),
     };
   }
+
+  /**
+   * 経過時間(delta)に基づいて、インプレースで位相を更新する（GCアロケーションの削減用）
+   */
+  static updatePhasesInPlace(phases, animParams, delta) {
+    const speed = animParams.speed;
+    phases.x += delta * (speed * animParams.sx);
+    phases.y += delta * (speed * animParams.sy);
+    phases.z += delta * (speed * animParams.sz);
+    phases.w += delta * (speed * animParams.sw);
+  }
 }

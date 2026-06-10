@@ -15,6 +15,8 @@ export class DomainStore extends EventTarget {
     this.#animPhases = { x: 0, y: 0, z: 0, w: 0 };
     this.#params = { fractal: {}, material: {}, animation: {} };
     this.#animatedCCache = { cx: 0, cy: 0, cz: 0, cw: 0 };
+
+    this.animPhasesEvent = new CustomEvent("domain-updated", { detail: { type: "ANIM_PHASES" } });
   }
 
   init(initialParams) {
@@ -25,18 +27,13 @@ export class DomainStore extends EventTarget {
   getAnimatedC() {
     if (this.#params.fractal && this.#params.material && this.#params.animation) {
       JuliaAnimationService.calculateAnimatedC(
-        {
-          fractal: this.#params.fractal,
-          material: this.#params.material,
-          animation: this.#params.animation
-        },
+        this.#params,
         this.#animPhases,
         this.#animatedCCache,
         this.config.SYSTEM.AMP_LIMIT
       );
     }
-    // 呼び出し側での誤変換や意図せぬ書き換えを防ぐためシャローコピーを返す
-    return { ...this.#animatedCCache };
+    return this.#animatedCCache;
   }
 
   // 構造全体が必要な履歴保存時などでのみ使用（負荷高）
@@ -50,11 +47,11 @@ export class DomainStore extends EventTarget {
 
   // レンダリングループ等で高頻度に呼ばれるゲッター（負荷低）
   getParams(category) {
-    return this.#params[category] ? { ...this.#params[category] } : null;
+    return this.#params[category] || null;
   }
 
   get cameraPosition() { return { ...this.#camera.position }; }
-  get animPhases() { return { ...this.#animPhases }; }
+  get animPhases() { return this.#animPhases; }
 
   updateParams(category, payload) {
     if (!this.#params[category]) return;
@@ -86,6 +83,11 @@ export class DomainStore extends EventTarget {
 
   setAnimPhases(phases) {
     Object.assign(this.#animPhases, phases);
-    this.dispatchEvent(new CustomEvent("domain-updated", { detail: { type: "ANIM_PHASES" } }));
+    this.dispatchEvent(this.animPhasesEvent);
+  }
+
+  updateAnimPhases(delta) {
+    JuliaAnimationService.updatePhasesInPlace(this.#animPhases, this.#params.animation, delta);
+    this.dispatchEvent(this.animPhasesEvent);
   }
 }

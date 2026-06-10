@@ -8,13 +8,7 @@ export class AnimationController {
 
   update(delta) {
     if (!this.uiStore.isAutoAnimating) return;
-
-    const currentPhases = this.domainStore.animPhases;
-    const animParams = this.domainStore.getParams("animation");
-
-    const nextPhases = JuliaAnimationService.calculateNextPhases(currentPhases, animParams, delta);
-
-    this.domainStore.setAnimPhases(nextPhases);
+    this.domainStore.updateAnimPhases(delta);
   }
 
   stopAnimation() {
