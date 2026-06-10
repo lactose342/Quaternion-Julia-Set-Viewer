@@ -30,7 +30,8 @@ export class ColorPickerView {
         sat: 1.0,
         val: 1.0,
         draggingSV: false,
-        draggingHue: false
+        draggingHue: false,
+        lastHex: null
       };
 
       this.pickers.push(state);
@@ -102,7 +103,7 @@ export class ColorPickerView {
     });
 
     window.addEventListener("resize", () => {
-      this.syncAll();
+      this.syncAll(true);
     });
   }
 
@@ -140,6 +141,7 @@ export class ColorPickerView {
 
     // Calculate current selected hex color
     const currentHex = ColorUtils.hsvToHex(state.hue / 360, state.sat, state.val);
+    state.lastHex = currentHex;
 
     // Update preview element & text in the UI
     if (state.preview) {
@@ -156,8 +158,9 @@ export class ColorPickerView {
     }
   }
 
-  syncFromInput(state) {
+  syncFromInput(state, force = false) {
     const hex = state.hiddenInput.value;
+    if (!force && hex === state.lastHex) return;
     const hsv = ColorUtils.hexToHsv(hex);
     state.hue = hsv.h * 360;
     state.sat = hsv.s;
@@ -165,10 +168,10 @@ export class ColorPickerView {
     this.updatePicker(state, false);
   }
 
-  syncAll() {
+  syncAll(force = false) {
     this.pickers.forEach(state => {
       if (state.draggingSV || state.draggingHue) return;
-      this.syncFromInput(state);
+      this.syncFromInput(state, force);
     });
   }
 }

@@ -14,8 +14,8 @@ const animationKeys = Object.entries(PARAMETER_DEFINITIONS)
     .map(([k]) => k);
 
 export const CONFIG = {
-    QUALITY: { 
-        LOW: { steps: 150, iter: 15 }, 
+    QUALITY: {
+        LOW: { steps: 150, iter: 15 },
         HIGH: { steps: 800, iter: 80 },
         EXPORT: { steps: 4000, iter: 120 },
         XR: { steps: 80, iter: 12 }
@@ -41,11 +41,11 @@ export const CONFIG = {
         animation: animationKeys
     },
     PRESETS: {
-        preset1: { cx: -0.517, cy: -0.341, cz: -0.407, cw: -0.071, rotX: 0, rotY: 0, rotZ: 2.02, rotXW: 0, rotYW: 0, rotZW: 0, hue: 0.586, saturation: 1, brightness: 2.3, aoPower: 1, specular: 10, bgColor: '#0a0c1a', bgAlpha: 1.0, fov: 45, zoom: 1.0, camera: { position: { x: 0, y: 0, z: 2 }, target: { x: 0, y: 0, z: 0 } } },
+        preset1: { cx: -0.517, cy: -0.341, cz: -0.407, cw: -0.071, rotX: 0, rotY: 0, rotZ: 2.02, rotXW: 0, rotYW: 0, rotZW: 0, hue: 0.586, saturation: 1, brightness: 2.3, aoPower: 1, specular: 10, bgColor: '#0a0c1a', bgAlpha: 1.0, fov: 45, zoom: 1.0, camera: { position: { x: 0, y: 0, z: 4.6 }, target: { x: 0, y: 0, z: 0 } } },
         preset2: { cx: 0.415, cy: 0.56, cz: 0.175, cw: 0.459, rotX: 0, rotY: 0.7, rotZ: 0, rotXW: 0, rotYW: 0, rotZW: 0, hue: 0.35, saturation: 1, brightness: 1.5, aoPower: 1.2, specular: 24, bgColor: '#05220d', bgAlpha: 1.0, fov: 45, zoom: 1.0, camera: { position: { x: 0, y: 0, z: 2 }, target: { x: 0, y: 0, z: 0 } } },
         preset3: { cx: 0.497, cy: 0.182, cz: 0.161, cw: -0.178, rotX: 2.25, rotY: 1.29, rotZ: 2.25, rotXW: 2.92, rotYW: 0, rotZW: 0.15, hue: 0, saturation: 0.814, brightness: 2.3, aoPower: 0.1, specular: 64, bgColor: '#fe9f9f', bgAlpha: 1.0, fov: 45, zoom: 1.0, camera: { position: { x: 0, y: 0, z: 2 }, target: { x: 0, y: 0, z: 0 } } },
-        preset4: { cx: 0.038, cy: 0.681, cz: 0.054, cw: 0.12, rotX: 3.81, rotY: 3.45, rotZ: 0.8, rotXW: 0, rotYW: 0, rotZW: 3.22, hue: 0.114, saturation: 0.898, brightness: 2.3, aoPower: 0.6, specular: 16, bgColor: '#b87d00', bgAlpha: 1.0, fov: 45, zoom: 1.0, camera: { position: { x: 0, y: 0, z: 2 }, target: { x: 0, y: 0, z: 0 } } },
-        preset5: { cx: 0, cy: 0, cz: 0, cw: 0, rotX: 0, rotY: 0, rotZ: 0, rotXW: 0, rotYW: 0, rotZW: 0, hue: 0, saturation: 0, brightness: 2.7, aoPower: 0.1, specular: 64, bgColor: '#dedede', bgAlpha: 1.0, fov: 45, zoom: 1.0, camera: { position: { x: 0, y: 0, z: 2 }, target: { x: 0, y: 0, z: 0 } } }
+        preset4: { cx: 0.038, cy: 0.681, cz: 0.054, cw: 0.12, rotX: 3.81, rotY: 3.45, rotZ: 0.8, rotXW: 0, rotYW: 0, rotZW: 3.22, hue: 0.114, saturation: 0.898, brightness: 3, aoPower: 2.1, specular: 32, bgColor: '#b87d00', bgAlpha: 1.0, fov: 45, zoom: 1.0, camera: { position: { x: -2.429, y: -1.757, z: 2.171 }, target: { x: 0, y: 0, z: 0 } } },
+        preset5: { cx: 0, cy: 0, cz: 0, cw: 0, rotX: 0, rotY: 0, rotZ: 0, rotXW: 0, rotYW: 0, rotZW: 0, hue: 0, saturation: 0, brightness: 2.7, aoPower: 0.1, specular: 64, bgColor: '#dedede', bgAlpha: 1.0, fov: 45, zoom: 1.0, camera: { position: { x: 0, y: 0, z: 4 }, target: { x: 0, y: 0, z: 0 } } }
     },
     ANIM_PRESETS: {
         preset1: { speed: 0.8, amp: 0.45, sx: 1.0, ax: 1.0, px: 0.0, sy: 0.75, ay: 1.0, py: 0.0, sz: 0.5, az: 1.0, pz: 0.0, sw: 0.25, aw: 1.0, pw: 0.0 },

@@ -46,6 +46,14 @@ export class InitializeAppCommand {
       });
 
       this.domainStore.init(defaultParams);
+
+      // デフォルト初期プリセット(preset1)に含まれるカメラ状態を物理カメラおよびストアに復元する
+      if (srcPreset && srcPreset.camera) {
+        this.renderer.restoreCameraFromSnapshot(srcPreset.camera);
+        this.domainStore.updateCamera("position", srcPreset.camera.position);
+        this.domainStore.updateCamera("target", srcPreset.camera.target);
+      }
+
       this.uiStore.update({
         activePreset: "preset1",
         activeAnimPreset: "preset1"

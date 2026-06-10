@@ -93,6 +93,10 @@ export class Renderer {
       this.renderState.needsRender = true;
     });
 
+    this.controls.addEventListener("start", () => {
+      this.uiStore.update({ isInteracting: true });
+    });
+
     this.controls.addEventListener("end", () => {
       if (this.onCameraChange) {
         this.onCameraChange({
@@ -100,6 +104,7 @@ export class Renderer {
           target: { x: this.controls.target.x, y: this.controls.target.y, z: this.controls.target.z }
         });
       }
+      this.uiStore.update({ isInteracting: false });
     });
 
     this._boundOnResize = this.onResize.bind(this);

@@ -148,6 +148,7 @@ export class UIController {
     this.uiElements = sharedUiElements;
     this.colorPickerView = colorPickerView;
     this.abortController = new AbortController();
+    this.qualityTimeoutId = null;
   }
 
   #generateUI() {
@@ -371,6 +372,10 @@ export class UIController {
       customUi.classList.toggle("is-interacting", !!uiState.isInteracting);
     }
 
+    if (changedKeys && (changedKeys.includes("isInteracting") || changedKeys.includes("isAutoAnimating"))) {
+      this.updateRenderQuality();
+    }
+
     if (changedKeys && (changedKeys.includes("isAutoAnimating") || changedKeys.includes("isDownloading"))) {
       this.updateHistoryButtons();
     }
@@ -406,7 +411,34 @@ export class UIController {
     });
   }
 
+  updateRenderQuality() {
+    const uiState = this.uiStore.getState();
+    if (uiState.isDownloading) return;
+
+    if (uiState.isInteracting || uiState.isAutoAnimating) {
+      if (this.qualityTimeoutId) {
+        clearTimeout(this.qualityTimeoutId);
+        this.qualityTimeoutId = null;
+      }
+      this.renderer.setQuality("LOW");
+    } else {
+      if (this.qualityTimeoutId) {
+        clearTimeout(this.qualityTimeoutId);
+      }
+      this.qualityTimeoutId = setTimeout(() => {
+        const currentUiState = this.uiStore.getState();
+        if (!currentUiState.isInteracting && !currentUiState.isAutoAnimating) {
+          this.renderer.setQuality(currentUiState.renderQuality || "HIGH");
+        }
+        this.qualityTimeoutId = null;
+      }, 300);
+    }
+  }
+
   dispose() {
     this.abortController.abort();
+    if (this.qualityTimeoutId) {
+      clearTimeout(this.qualityTimeoutId);
+    }
   }
 }
