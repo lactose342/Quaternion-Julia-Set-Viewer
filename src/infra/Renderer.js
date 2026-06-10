@@ -41,6 +41,7 @@ export class Renderer {
     this.isLoopRunning = false;
     this.getAppState = null;
     this.loopCallback = this.tick.bind(this);
+    this.lastFps = 60;
   }
 
   init() {
@@ -260,6 +261,10 @@ export class Renderer {
     this.renderState.fpsFrames = 0;
     this.renderState.fpsLastTime = performance.now();
     
+    if (this.onFpsUpdate) {
+      this.onFpsUpdate(this.lastFps || 60, false);
+    }
+    
     this.renderer.setAnimationLoop(this.loopCallback);
   }
 
@@ -287,8 +292,9 @@ export class Renderer {
 
     this.renderState.fpsFrames++;
     const now = performance.now();
-    if (now >= this.renderState.fpsLastTime + 1000) {
+    if (now >= this.renderState.fpsLastTime + 500) {
       const fps = Math.round((this.renderState.fpsFrames * 1000) / (now - this.renderState.fpsLastTime));
+      this.lastFps = fps;
 
       // --- Adaptive Quality (P1) ---
       if (!isDownloading && (isAutoAnimating || this.renderState.needsRender || isVR)) {
@@ -310,8 +316,7 @@ export class Renderer {
       // ------------------------------
 
       if (this.onFpsUpdate) {
-        const isIdle = !isDownloading && !isAutoAnimating && !this.renderState.needsRender && !isVR;
-        this.onFpsUpdate(fps, isIdle);
+        this.onFpsUpdate(fps, false);
       }
       this.renderState.fpsFrames = 0;
       this.renderState.fpsLastTime = now;
