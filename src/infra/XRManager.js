@@ -43,7 +43,7 @@ export class XRManager {
 
       // VR/AR専用の超軽量画質「XR」を適用し、解像度比を下げてパフォーマンスを最大化 (目標60FPS超)
       this.renderer.setQuality("XR");
-      this.renderer.renderer.setPixelRatio(0.55); // 0.6 からさらに 0.55 へ微調整し負荷軽減
+      this.renderer.setPixelRatio(0.55); // 0.6 からさらに 0.55 へ微調整し負荷軽減
       this.renderer.renderer.xr.setFoveation(1.0); 
 
       this.renderer.renderState.needsRender = true;
@@ -58,7 +58,7 @@ export class XRManager {
       this.isAR = false;
 
       // 画質とピクセル解像度の復元
-      this.renderer.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
       this.renderer.setQuality("HIGH");
     });
 

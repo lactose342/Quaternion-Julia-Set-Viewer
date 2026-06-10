@@ -34,6 +34,9 @@ export class Renderer {
     this.onCameraChange = null;
     this.onFpsUpdate = null;
     this.isDownloading = false;
+
+    this.maxPixelRatio = Math.min(window.devicePixelRatio, 1.0);
+    this.currentPixelRatio = this.maxPixelRatio;
   }
 
   init() {
@@ -47,7 +50,7 @@ export class Renderer {
     window.XRWebGLBinding = _xrWebGLBinding;
 
     this.renderer.setClearColor(0x000000, 0);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
+    this.renderer.setPixelRatio(this.currentPixelRatio);
     THREE.ColorManagement.enabled = false;
     this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
     this.renderer.xr.enabled = true;
@@ -141,12 +144,26 @@ export class Renderer {
     return material;
   }
 
+  setPixelRatio(ratio) {
+    this.currentPixelRatio = Math.max(0.35, Math.min(ratio, this.maxPixelRatio));
+    if (this.renderer) {
+      this.renderer.setPixelRatio(this.currentPixelRatio);
+      this.updateResolution();
+    }
+  }
+
   setQuality(qualityLevel) {
     const oldMaterial = this.material;
     this.material = this.getOrCreateMaterial(qualityLevel);
 
     if (this.material !== oldMaterial && this.mesh) {
       this.mesh.material = this.material;
+    }
+
+    if (qualityLevel === "HIGH" || qualityLevel === "EXPORT") {
+      this.setPixelRatio(this.maxPixelRatio);
+    } else if (qualityLevel === "XR") {
+      this.setPixelRatio(0.55);
     }
 
     this.renderState.needsRender = true;
@@ -244,6 +261,29 @@ export class Renderer {
       const now = performance.now();
       if (now >= this.renderState.fpsLastTime + 1000) {
         const fps = Math.round((this.renderState.fpsFrames * 1000) / (now - this.renderState.fpsLastTime));
+
+        // --- Adaptive Quality (P1) ---
+        const isVR = this.renderer.xr.isPresenting;
+        const { isDownloading, isAutoAnimating } = getAppState();
+
+        if (!isDownloading && (isAutoAnimating || this.renderState.needsRender || isVR)) {
+          if (fps < 30) {
+            const nextRatio = Math.max(0.35, this.currentPixelRatio - 0.15);
+            if (nextRatio !== this.currentPixelRatio) {
+              this.setPixelRatio(nextRatio);
+              console.log(`[Adaptive Quality] FPS dropped to ${fps}. Reducing pixel ratio to ${this.currentPixelRatio.toFixed(2)}`);
+            }
+          } else if (fps > 55) {
+            const targetMax = isVR ? 0.55 : this.maxPixelRatio;
+            const nextRatio = Math.min(targetMax, this.currentPixelRatio + 0.05);
+            if (nextRatio !== this.currentPixelRatio) {
+              this.setPixelRatio(nextRatio);
+              console.log(`[Adaptive Quality] FPS is healthy (${fps}). Increasing pixel ratio to ${this.currentPixelRatio.toFixed(2)}`);
+            }
+          }
+        }
+        // ------------------------------
+
         if (this.onFpsUpdate) {
           const isIdle = !isDownloading && !isAutoAnimating && !this.renderState.needsRender && !isVR;
           this.onFpsUpdate(fps, isIdle);
