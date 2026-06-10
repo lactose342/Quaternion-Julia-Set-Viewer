@@ -1,18 +1,23 @@
-import { CONFIG } from "@/config/config.js";
+import { PARAMETER_DEFINITIONS } from "@/core/domain/ParameterDefinitions.js";
 
 export class PresetManager {
-  constructor() {}
+  constructor(config) {
+    this.config = config;
+  }
 
   getPresetData(presetName) {
-    const preset = CONFIG.PRESETS[presetName];
+    const preset = this.config.PRESETS[presetName];
     if (!preset) return null;
 
     const newFractal = {};
     const newMaterial = {};
 
-    Object.keys(preset).forEach(id => {
-      if (CONFIG.SCHEMAS.fractal.includes(id)) newFractal[id] = preset[id];
-      if (CONFIG.SCHEMAS.material.includes(id)) newMaterial[id] = preset[id];
+    this.config.SCHEMAS.fractal.forEach(key => {
+      newFractal[key] = preset[key] !== undefined ? preset[key] : (PARAMETER_DEFINITIONS[key]?.default !== undefined ? PARAMETER_DEFINITIONS[key].default : 0);
+    });
+
+    this.config.SCHEMAS.material.forEach(key => {
+      newMaterial[key] = preset[key] !== undefined ? preset[key] : (PARAMETER_DEFINITIONS[key]?.default !== undefined ? PARAMETER_DEFINITIONS[key].default : 1.0);
     });
 
     const camera = preset.camera || { position: { x: 0, y: 0, z: 2 }, target: { x: 0, y: 0, z: 0 } };

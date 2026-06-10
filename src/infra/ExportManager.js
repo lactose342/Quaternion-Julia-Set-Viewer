@@ -1,11 +1,10 @@
-import { CONFIG } from "@/config/config.js";
-
 export class ExportManager extends EventTarget {
-  constructor(renderer, domainStore, uiStore) {
+  constructor(renderer, domainStore, uiStore, config) {
     super();
     this.renderer = renderer;
     this.domainStore = domainStore;
     this.uiStore = uiStore;
+    this.config = config;
   }
 
   #sleep(ms) {
@@ -84,14 +83,14 @@ export class ExportManager extends EventTarget {
     let targetWidth = Math.floor(window.innerWidth * dpr * scale);
     let targetHeight = Math.floor(window.innerHeight * dpr * scale);
 
-    const MAX_CANVAS_SIZE = CONFIG.RENDER_SETTINGS.MAX_CANVAS_SIZE;
+    const MAX_CANVAS_SIZE = this.config.RENDER_SETTINGS.MAX_CANVAS_SIZE;
     if (Math.max(targetWidth, targetHeight) > MAX_CANVAS_SIZE) {
       const safeScale = MAX_CANVAS_SIZE / Math.max(targetWidth, targetHeight);
       targetWidth = Math.floor(targetWidth * safeScale);
       targetHeight = Math.floor(targetHeight * safeScale);
     }
 
-    const TILE_MAX = CONFIG.RENDER_SETTINGS.TILE_MAX;
+    const TILE_MAX = this.config.RENDER_SETTINGS.TILE_MAX;
     const tilesX = Math.ceil(targetWidth / TILE_MAX);
     const tilesY = Math.ceil(targetHeight / TILE_MAX);
     const tileW = Math.ceil(targetWidth / tilesX);

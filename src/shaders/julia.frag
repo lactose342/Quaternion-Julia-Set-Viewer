@@ -18,6 +18,8 @@ uniform vec3 u_bgColor;
 uniform float u_bgAlpha;
 uniform mat4 u_rotMatrix_3D;
 uniform mat4 u_rotMatrix_4D;
+uniform float u_vrScale;
+uniform vec3 u_vrOffset;
 
 #ifndef MAX_STEPS
 #define MAX_STEPS 800
@@ -109,15 +111,21 @@ vec4 render(vec2 offset) {
     vec3 rayDir = (u_cameraWorldMatrix * vec4(normalize(target.xyz / target.w), 0.0)).xyz;
     vec3 rayPos = u_cameraPos;
 
-    vec2 sph = iSphere(rayPos, rayDir, 2.5);
-    if(sph.y < 0.0) return vec4(u_bgColor, u_bgAlpha);
+    // 世界座標からローカル座標（フラクタルの基準空間）へ変換
+    vec3 localRayPos = (rayPos - u_vrOffset) / u_vrScale;
+    vec3 localRayDir = rayDir; // 方向は回転のみに依存し、スケール・平行移動の影響を受けない
+
+    // ローカル空間での球判定（原点中心、半径2.5）
+    vec2 sph = iSphere(localRayPos, localRayDir, 2.5);
+    if(sph.y < 0.0) return vec4(u_bgColor * u_bgAlpha, u_bgAlpha);
 
     float d = 0.0;
     float iter = 0.0;
     float total_d = max(0.0, sph.x);
-    rayPos += rayDir * total_d;
-    vec4 rPos4D = u_rotMatrix_4D * vec4((u_rotMatrix_3D * vec4(rayPos, 1.0)).xyz, 0.0);
-    vec4 rDir4D = u_rotMatrix_4D * vec4((u_rotMatrix_3D * vec4(rayDir, 0.0)).xyz, 0.0);
+    localRayPos += localRayDir * total_d;
+    
+    vec4 rPos4D = u_rotMatrix_4D * vec4((u_rotMatrix_3D * vec4(localRayPos, 1.0)).xyz, 0.0);
+    vec4 rDir4D = u_rotMatrix_4D * vec4((u_rotMatrix_3D * vec4(localRayDir, 0.0)).xyz, 0.0);
     bool hit = false;
     int steps_taken = 0;
 
@@ -137,14 +145,18 @@ vec4 render(vec2 offset) {
         #endif
 
         rPos4D += rDir4D * stepDist;
-        rayPos += rayDir * stepDist;
+        localRayPos += localRayDir * stepDist;
         total_d += stepDist;
     }
 
     if(hit) {
-        vec3 normal = calcNormal(rayPos, total_d);
-        vec3 lightDir = normalize(u_cameraPos - rayPos + vec3(-1.0, -2.0, 2.0)); 
-        vec3 viewDir = normalize(u_cameraPos - rayPos);
+        // 法線計算もローカル空間の座標で行う
+        vec3 normal = calcNormal(localRayPos, total_d);
+        
+        // ライトとビュー方向の計算（ワールド空間のカメラ位置をローカル空間に変換）
+        vec3 localCameraPos = (u_cameraPos - u_vrOffset) / u_vrScale;
+        vec3 lightDir = normalize(localCameraPos - localRayPos + vec3(-1.0, -2.0, 2.0)); 
+        vec3 viewDir = normalize(localCameraPos - localRayPos);
         vec3 halfDir = normalize(lightDir + viewDir);
         
         float diff = max(dot(lightDir, normal), 0.0);
@@ -162,7 +174,11 @@ vec4 render(vec2 offset) {
         float colorVariation = 0.85 + 0.15 * sin(iter * 0.5);
         
         vec3 baseColor = hsv2rgb(u_hsvColor) * colorVariation;
-        float depth_val = max(0.0, 1.0 - total_d / 20.0);
+        
+        // 深度フォグの計算：ワールド空間の距離に戻して計算する
+        float world_total_d = total_d * u_vrScale;
+        float depth_val = max(0.0, 1.0 - world_total_d / 20.0);
+        
         vec3 finalColor = baseColor * ao * depth_val * shdw_mt;
         if (u_bgAlpha > 0.5) {
             finalColor += u_bgColor * (1.0 - ao) * 0.15;
@@ -173,7 +189,7 @@ vec4 render(vec2 offset) {
         finalColor = ACESFilm(finalColor);
         return vec4(clamp(finalColor, 0.0, 1.0), 1.0);
     }
-    return vec4(u_bgColor, u_bgAlpha);
+    return vec4(u_bgColor * u_bgAlpha, u_bgAlpha);
 }
 
 void main() {

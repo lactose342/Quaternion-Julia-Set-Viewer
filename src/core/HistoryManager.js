@@ -1,10 +1,9 @@
-import { CONFIG } from "@/config/config.js";
-
 export class HistoryManager extends EventTarget {
-  constructor() {
+  constructor(maxHistory = 30) {
     super();
     this.history = [];
     this.currentIndex = -1;
+    this.maxHistory = maxHistory;
   }
 
   pushHistory(snapshot) {
@@ -14,7 +13,7 @@ export class HistoryManager extends EventTarget {
 
     this.history.push(snapshot);
 
-    if (this.history.length > CONFIG.SYSTEM.MAX_HISTORY) {
+    if (this.history.length > this.maxHistory) {
       this.history.shift();
       this.currentIndex = this.history.length - 1;
     } else {

@@ -1,7 +1,122 @@
-import { CONFIG } from "@/config/config.js";
-import { ANIM_UI_MAPPING, UI_IDS } from "@/ui/uiConstants.js";
+import { UI_IDS } from "@/ui/uiConstants.js";
+import { PARAMETER_DEFINITIONS } from "@/core/domain/ParameterDefinitions.js";
 import { formatParamForUI } from "@/ui/utils/uiParamFormatter.js";
 import { ColorUtils } from "@/infra/ColorUtils.js";
+
+function createParameterElement(key, def) {
+  const sliderGroup = document.createElement("div");
+  sliderGroup.className = "slider-group";
+
+  const label = document.createElement("label");
+  label.setAttribute("for", def.domId);
+  if (def.tooltip) {
+    label.setAttribute("title", def.tooltip);
+  }
+
+  const labelText = document.createTextNode(def.label + " ");
+  label.appendChild(labelText);
+
+  if (def.type !== "color") {
+    const span = document.createElement("span");
+    span.id = `val-${def.domId}`;
+    span.className = "val-label";
+    label.appendChild(span);
+  }
+
+  sliderGroup.appendChild(label);
+
+  const input = document.createElement("input");
+  input.id = def.domId;
+  input.type = def.type === "color" ? "color" : "range";
+  input.value = def.default;
+
+  if (def.type !== "color") {
+    input.setAttribute("min", def.min);
+    input.setAttribute("max", def.max);
+    input.setAttribute("step", def.step);
+  }
+
+  sliderGroup.appendChild(input);
+  return sliderGroup;
+}
+
+function createColorPickerElement(key, def) {
+  const container = document.createElement("div");
+  container.className = "color-picker-group";
+  container.id = `group-${def.domId}`;
+
+  const label = document.createElement("label");
+  if (def.tooltip) {
+    label.setAttribute("title", def.tooltip);
+  }
+  
+  // Left label text
+  const labelText = document.createElement("span");
+  labelText.textContent = def.label;
+  label.appendChild(labelText);
+
+  // Right side container (hex code and colored swatch)
+  const rightContainer = document.createElement("div");
+  rightContainer.style.display = "flex";
+  rightContainer.style.alignItems = "center";
+  rightContainer.style.gap = "8px";
+
+  const valText = document.createElement("span");
+  valText.className = "val-label";
+  valText.textContent = def.default.toUpperCase();
+  rightContainer.appendChild(valText);
+
+  const preview = document.createElement("div");
+  preview.className = "color-preview-swatch";
+  preview.style.backgroundColor = def.default;
+  rightContainer.appendChild(preview);
+
+  label.style.display = "flex";
+  label.style.justifyContent = "space-between";
+  label.style.alignItems = "center";
+  label.style.width = "100%";
+  label.appendChild(rightContainer);
+
+  container.appendChild(label);
+
+  const svContainer = document.createElement("div");
+  svContainer.className = "sv-container";
+
+  const canvas = document.createElement("canvas");
+  canvas.id = `canvas-${def.domId}`;
+  canvas.className = "sv-canvas";
+  canvas.height = 120;
+  svContainer.appendChild(canvas);
+
+  const cursor = document.createElement("div");
+  cursor.id = `cursor-${def.domId}`;
+  cursor.className = "sv-cursor";
+  svContainer.appendChild(cursor);
+
+  container.appendChild(svContainer);
+
+  const hueContainer = document.createElement("div");
+  hueContainer.className = "hue-container";
+
+  const hueSlider = document.createElement("input");
+  hueSlider.type = "range";
+  hueSlider.id = `hue-${def.domId}`;
+  hueSlider.className = "hue-slider";
+  hueSlider.min = "0";
+  hueSlider.max = "360";
+  hueSlider.value = "0";
+  hueContainer.appendChild(hueSlider);
+
+  container.appendChild(hueContainer);
+
+  const hiddenInput = document.createElement("input");
+  hiddenInput.type = "hidden";
+  hiddenInput.id = def.domId;
+  hiddenInput.value = def.default;
+  container.appendChild(hiddenInput);
+
+  return container;
+}
 
 export class UIController {
   constructor(
@@ -17,6 +132,7 @@ export class UIController {
     exportView,
     mainMenuView,
     sharedUiElements,
+    colorPickerView,
   ) {
     this.domainStore = domainStore;
     this.uiStore = uiStore;
@@ -30,14 +146,121 @@ export class UIController {
     this.exportView = exportView;
     this.mainMenuView = mainMenuView;
     this.uiElements = sharedUiElements;
+    this.colorPickerView = colorPickerView;
     this.abortController = new AbortController();
   }
 
+  #generateUI() {
+    const container = document.getElementById("parameter-sections-container");
+    if (!container) return;
+
+    const SECTION_CONFIGS = [
+      {
+        id: "section-shape",
+        title: "基本形状の調整 (Cパラメータ)",
+        open: true,
+        groups: ["shape"]
+      },
+      {
+        id: "section-camera",
+        title: "空間の回転とカメラ設定",
+        open: false,
+        groups: ["camera"]
+      },
+      {
+        id: "section-style",
+        title: "色と質感",
+        open: false,
+        groups: ["style"]
+      },
+      {
+        id: "section-animation",
+        title: "アニメーション設定",
+        open: false,
+        groups: ["animation"]
+      }
+    ];
+
+    SECTION_CONFIGS.forEach(section => {
+      const details = document.createElement("details");
+      details.id = section.id;
+      if (section.open) details.setAttribute("open", "");
+
+      const summary = document.createElement("summary");
+      summary.textContent = section.title;
+      details.appendChild(summary);
+
+      const allParams = Object.entries(PARAMETER_DEFINITIONS)
+        .filter(([_, def]) => section.groups.includes(def.group) && !def.hideSlider);
+
+      const sliderParams = allParams.filter(([_, def]) => def.type !== "color");
+      const colorParams = allParams.filter(([_, def]) => def.type === "color");
+
+      if (sliderParams.length > 0) {
+        const sliderGrid = document.createElement("div");
+        sliderGrid.className = "grid-container";
+        sliderParams.forEach(([key, def]) => {
+          sliderGrid.appendChild(createParameterElement(key, def));
+        });
+        details.appendChild(sliderGrid);
+      }
+
+      if (colorParams.length > 0) {
+        const colorGrid = document.createElement("div");
+        colorGrid.className = "color-picker-grid";
+        colorParams.forEach(([key, def]) => {
+          colorGrid.appendChild(createColorPickerElement(key, def));
+        });
+        details.appendChild(colorGrid);
+      }
+
+      if (section.id === "section-animation") {
+        const nestedDetails = document.createElement("details");
+        nestedDetails.id = "section-animation-details";
+        nestedDetails.style.marginTop = "10px";
+        nestedDetails.style.background = "rgba(255, 255, 255, 0.02)";
+
+        const nestedSummary = document.createElement("summary");
+        nestedSummary.textContent = "各パラメータの個別動作設定";
+        nestedDetails.appendChild(nestedSummary);
+
+        const nestedContainer = document.createElement("div");
+        nestedContainer.style.display = "flex";
+        nestedContainer.style.flexDirection = "column";
+        nestedContainer.style.gap = "16px";
+        nestedContainer.style.marginTop = "10px";
+
+        const axes = ["x", "y", "z", "w"];
+        axes.forEach(axis => {
+          const axisGrid = document.createElement("div");
+          axisGrid.className = "grid-3cols";
+
+          const axisKeys = [`s${axis}`, `a${axis}`, `p${axis}`];
+          axisKeys.forEach(key => {
+            const def = PARAMETER_DEFINITIONS[key];
+            if (def) {
+              axisGrid.appendChild(createParameterElement(key, def));
+            }
+          });
+          nestedContainer.appendChild(axisGrid);
+        });
+
+        nestedDetails.appendChild(nestedContainer);
+        details.appendChild(nestedDetails);
+      }
+
+      container.appendChild(details);
+    });
+  }
+
   init() {
+    this.#generateUI();
+
+    // 定義スキーマから全スライダー用の DOM ID を動的に生成
+    const parameterDomIds = Object.values(PARAMETER_DEFINITIONS).map(def => def.domId);
+
     const domIds = [
-      ...CONFIG.SCHEMAS.fractal,
-      ...CONFIG.SCHEMAS.material,
-      ...ANIM_UI_MAPPING.map((m) => m.id),
+      ...parameterDomIds,
       UI_IDS.EXPORT.CUSTOM_UI,
       UI_IDS.EXPORT.MODAL,
       UI_IDS.EXPORT.PROGRESS_BAR,
@@ -48,8 +271,7 @@ export class UIController {
       "preset-select",
       "anim-preset-select",
       "fps-counter",
-      "baseColorPicker",
-      "zoom"
+      "baseColorPicker"
     ];
 
     domIds.forEach((domId) => {
@@ -134,6 +356,9 @@ export class UIController {
     }
 
     this.parameterView.update(displayParams, isAutoAnimating, activeElementId);
+    if (this.colorPickerView) {
+      this.colorPickerView.syncAll();
+    }
   }
 
   synchronizeUIState(changedKeys) {

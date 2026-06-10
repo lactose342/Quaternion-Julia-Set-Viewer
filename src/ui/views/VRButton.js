@@ -3,29 +3,34 @@ export const VRButton = {
     const button = document.createElement("button");
     button.id = "VRButton";
 
-    function showEnterVR() {
+    function showEnterXR(mode) {
       let currentSession = null;
+      const isAR = mode === "immersive-ar";
+      const startTitle = isAR ? "ARモードを開始する" : "VRモードを開始する";
+      const endTitle = isAR ? "ARモードを終了する" : "VRモードを終了する";
 
       async function onSessionStarted(session) {
         session.addEventListener("end", onSessionEnded);
 
         await renderer.xr.setSession(session);
 
-        button.title = "VRモードを終了する";
+        button.title = endTitle;
+        button.classList.add("xr-active");
         currentSession = session;
       }
 
       function onSessionEnded() {
         currentSession.removeEventListener("end", onSessionEnded);
-        button.title = "VRモードを開始する";
+        button.title = startTitle;
+        button.classList.remove("xr-active");
         currentSession = null;
       }
 
-      button.title = "VRモードを開始する";
+      button.title = startTitle;
       button.onclick = function () {
         if (currentSession === null) {
           const sessionInit = { optionalFeatures: ["local-floor", "hand-tracking"] };
-          navigator.xr.requestSession("immersive-vr", sessionInit).then(onSessionStarted);
+          navigator.xr.requestSession(mode, sessionInit).then(onSessionStarted);
         } else {
           currentSession.end();
         }
@@ -38,19 +43,27 @@ export const VRButton = {
     }
 
     if ("xr" in navigator) {
-      button.title = "VR対応を確認中...";
-      navigator.xr.isSessionSupported("immersive-vr").then((supported) => {
-        if (supported) {
-          showEnterVR();
+      button.title = "XR対応を確認中...";
+      // 1. まずはパススルーAR (immersive-ar) が利用可能かチェック
+      navigator.xr.isSessionSupported("immersive-ar").then((arSupported) => {
+        if (arSupported) {
+          showEnterXR("immersive-ar");
         } else {
-          disableButton("このデバイスでVRモードはサポートされていません");
+          // 2. 利用不可なら没入型VR (immersive-vr) が利用可能かチェック
+          navigator.xr.isSessionSupported("immersive-vr").then((vrSupported) => {
+            if (vrSupported) {
+              showEnterXR("immersive-vr");
+            } else {
+              disableButton("このデバイスでAR/VRモードはサポートされていません");
+            }
+          });
         }
       });
     } else {
       disableButton(
         window.isSecureContext === false
           ? "HTTPS環境が必要です"
-          : "このブラウザはVRモードをサポートしていません"
+          : "このブラウザはXRモードをサポートしていません"
       );
     }
 

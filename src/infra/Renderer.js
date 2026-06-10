@@ -1,11 +1,16 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { CONFIG } from "@/config/config.js";
 import { VRButton } from "@/ui/views/VRButton.js";
-import { JuliaMaterialFactory } from "@/core/factories/JuliaMaterialFactory.js";
+import { JuliaMaterialFactory } from "@/infra/factories/JuliaMaterialFactory.js";
+import { XRManager } from "@/infra/XRManager.js";
 
 export class Renderer {
-  constructor() {
+  constructor(domainStore, uiStore, config) {
+    this.domainStore = domainStore;
+    this.uiStore = uiStore;
+    this.config = config;
+    this.xrManager = new XRManager(this, domainStore, uiStore, config);
+
     this.renderState = {
       needsRender: true,
       renderTimer: null,
@@ -50,16 +55,9 @@ export class Renderer {
 
     document.body.appendChild(VRButton.createButton(this.renderer));
 
-    this.renderer.xr.addEventListener("sessionstart", () => {
-      this.setQuality("LOW");
-      this.renderer.setPixelRatio(0.7);
-      this.renderState.needsRender = true;
-    });
-
-    this.renderer.xr.addEventListener("sessionend", () => {
-      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
-      this.setQuality("HIGH");
-    });
+    if (this.xrManager) {
+      this.xrManager.init();
+    }
 
     document.body.appendChild(this.renderer.domElement);
 
@@ -133,7 +131,7 @@ export class Renderer {
 
   getOrCreateMaterial(qualityLevel) {
     if (this.materialPool[qualityLevel]) return this.materialPool[qualityLevel];
-    const material = JuliaMaterialFactory.create(qualityLevel);
+    const material = JuliaMaterialFactory.create(qualityLevel, this.config);
     this.materialPool[qualityLevel] = material;
     return material;
   }
@@ -162,8 +160,8 @@ export class Renderer {
 
     let w = window.innerWidth;
     let h = window.innerHeight;
-    if (Math.max(w, h) > CONFIG.MAX_RENDER_SIZE) {
-      const scale = CONFIG.MAX_RENDER_SIZE / Math.max(w, h);
+    if (Math.max(w, h) > this.config.MAX_RENDER_SIZE) {
+      const scale = this.config.MAX_RENDER_SIZE / Math.max(w, h);
       w = Math.floor(w * scale);
       h = Math.floor(h * scale);
     }
@@ -213,6 +211,10 @@ export class Renderer {
     u.u_cameraPos.value.copy(this.camera.position);
     u.u_cameraWorldMatrix.value.copy(this.camera.matrixWorld);
     u.u_cameraProjectionMatrixInverse.value.copy(this.camera.projectionMatrixInverse);
+
+    if (this.xrManager) {
+      this.xrManager.updateUniforms(u);
+    }
   }
 
   requestRender() {
@@ -223,6 +225,10 @@ export class Renderer {
     this.renderer.setAnimationLoop(() => {
       this.timer.update();
       const delta = this.timer.getDelta();
+
+      if (this.xrManager) {
+        this.xrManager.update(delta);
+      }
 
       if (this.onTick) this.onTick(delta);
 

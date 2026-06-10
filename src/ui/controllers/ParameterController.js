@@ -1,5 +1,4 @@
-import { CONFIG } from "@/config/config.js";
-import { ANIM_UI_MAPPING } from "@/ui/uiConstants.js";
+import { PARAMETER_DEFINITIONS } from "@/core/domain/ParameterDefinitions.js";
 import { ColorUtils } from "@/infra/ColorUtils.js";
 import { parseParamFromUI } from "@/ui/utils/uiParamFormatter.js";
 
@@ -14,10 +13,9 @@ export class ParameterController {
 
   #buildCategoryMap() {
     const map = new Map();
-    CONFIG.SCHEMAS.fractal.forEach(k => map.set(k, "fractal"));
-    CONFIG.SCHEMAS.material.forEach(k => map.set(k, "material"));
-    CONFIG.SCHEMAS.animation.forEach(k => map.set(k, "animation"));
-    map.set("zoom", "material");
+    Object.entries(PARAMETER_DEFINITIONS).forEach(([key, def]) => {
+      map.set(key, def.category);
+    });
     return map;
   }
 
@@ -28,12 +26,8 @@ export class ParameterController {
   bindEvents() {
     const stopPropagation = (e) => e.stopPropagation();
     
-    const domIdsToBind = [
-      ...CONFIG.SCHEMAS.fractal,
-      ...CONFIG.SCHEMAS.material,
-      ...ANIM_UI_MAPPING.map((m) => m.id),
-      "zoom" 
-    ];
+    // スキーマ定義からDOM IDを動的取得
+    const domIdsToBind = Object.values(PARAMETER_DEFINITIONS).map((def) => def.domId);
 
     domIdsToBind.forEach((domId) => {
       const el = this.uiElements[domId];
@@ -93,12 +87,7 @@ export class ParameterController {
         if (this.rafIds.has(domId)) return;
 
         const id = requestAnimationFrame(() => {
-          this.rafIds.delete(domId);
-          const payload = this.pendingPayloads.get(domId);
-          if (payload) {
-             this.#dispatch("UPDATE_PARAM_INPUT", payload);
-             this.pendingPayloads.delete(domId);
-          }
+          this.rendererUpdateTick(domId);
         });
         this.rafIds.set(domId, id);
       }, { signal: this.signal });
@@ -121,8 +110,17 @@ export class ParameterController {
     }
   }
 
+  rendererUpdateTick(domId) {
+    this.rafIds.delete(domId);
+    const payload = this.pendingPayloads.get(domId);
+    if (payload) {
+       this.#dispatch("UPDATE_PARAM_INPUT", payload);
+       this.pendingPayloads.delete(domId);
+    }
+  }
+
   _getStateKey(domId) {
-    const mapping = ANIM_UI_MAPPING.find((m) => m.id === domId);
-    return mapping ? mapping.key : domId;
+    const entry = Object.entries(PARAMETER_DEFINITIONS).find(([_, def]) => def.domId === domId);
+    return entry ? entry[0] : domId;
   }
 }

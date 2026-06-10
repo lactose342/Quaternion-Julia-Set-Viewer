@@ -15,6 +15,7 @@ import { ParameterView } from "@/ui/views/ParameterView.js";
 import { ExportView } from "@/ui/views/ExportView.js";
 import { MainMenuView } from "@/ui/views/MainMenuView.js";
 import { StatusView } from "@/ui/views/StatusView.js";
+import { ColorPickerView } from "@/ui/views/ColorPickerView.js";
 
 import { CommandDispatcher } from "@/core/CommandDispatcher.js";
 import { ApplyPresetCommand } from "@/core/commands/ApplyPresetCommand.js";
@@ -39,16 +40,18 @@ export class App {
     this.abortController = new AbortController();
     this.sharedUiElements = {};
 
-    this.domainStore = new DomainStore(this.config.SCHEMAS);
+    this.domainStore = new DomainStore(this.config);
     this.uiStore = new UIStore(this.config.SYSTEM.DEFAULT_QUALITY);
-    this.historyManager = new HistoryManager();
+    this.historyManager = new HistoryManager(this.config.SYSTEM.MAX_HISTORY);
 
-    this.renderer = new Renderer();
+    this.renderer = new Renderer(this.domainStore, this.uiStore, this.config);
     this.animationController = new AnimationController(this.domainStore, this.uiStore);
 
-    this.urlManager = new URLManager(this.domainStore, this.uiStore, this.renderer);
-    this.presetManager = new PresetManager(this.domainStore, this.uiStore);
-    this.exportManager = new ExportManager(this.renderer, this.domainStore, this.uiStore);
+    this.urlManager = new URLManager(this.config);
+    this.presetManager = new PresetManager(this.config);
+    this.exportManager = new ExportManager(this.renderer, this.domainStore, this.uiStore, this.config);
+
+    this.colorPickerView = new ColorPickerView();
 
     this.toastView = new ToastView();
     this.parameterView = new ParameterView(this.sharedUiElements);
@@ -76,6 +79,7 @@ export class App {
       this.exportView,
       this.mainMenuView,
       this.sharedUiElements,
+      this.colorPickerView,
     );
 
     this.dispatcher = new CommandDispatcher();
@@ -86,12 +90,12 @@ export class App {
   #setupCommands() {
     this.dispatcher.register("INITIALIZE_APP", new InitializeAppCommand(this.domainStore, this.uiStore, this.urlManager, this.historyManager, this.uiController, this.renderer, this.config));
     this.dispatcher.register("APPLY_PRESET", new ApplyPresetCommand(this.domainStore, this.uiStore, this.presetManager, this.historyManager, this.renderer));
-    this.dispatcher.register("APPLY_ANIM_PRESET", new ApplyAnimPresetCommand(this.domainStore, this.uiStore, this.config.ANIM_PRESETS));
+    this.dispatcher.register("APPLY_ANIM_PRESET", new ApplyAnimPresetCommand(this.domainStore, this.uiStore, this.config));
     this.dispatcher.register("DOWNLOAD_HIGH_RES", new DownloadHighResCommand(this.exportManager, this.toastView));
     this.dispatcher.register("TOGGLE_MENU_UI", new ToggleMenuCommand(this.mainMenuView));
     this.dispatcher.register("TOGGLE_FULLSCREEN", new ToggleFullscreenCommand(this.mainMenuView, this.toastView));
     this.dispatcher.register("TOGGLE_AUTO_ANIMATE", new ToggleAutoAnimateCommand(this.uiStore, this.renderer, this.domainStore, this.historyManager));
-    this.dispatcher.register("RESET_STATE", new ResetStateCommand(this.domainStore, this.uiStore, this.renderer, this.historyManager));
+    this.dispatcher.register("RESET_STATE", new ResetStateCommand(this.domainStore, this.uiStore, this.renderer, this.historyManager, this.config));
     this.dispatcher.register("RANDOMIZE", new RandomizeCommand(this.domainStore, this.uiStore, this.presetManager, this.historyManager));
     this.dispatcher.register("SHARE_URL", new ShareUrlCommand(this.domainStore, this.uiStore, this.urlManager, this.toastView));
     this.dispatcher.register("UPDATE_PARAM_INPUT", new UpdateParamInputCommand(this.domainStore, this.uiStore));
@@ -135,6 +139,7 @@ export class App {
 
       this.renderer.init();
       this.uiController.init();
+      this.colorPickerView.init();
       this.paramController.bindEvents();
       this.actionController.bindEvents();
 

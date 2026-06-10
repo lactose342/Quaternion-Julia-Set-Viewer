@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import vertexShader from "@/shaders/julia.vert?raw";
 import fragmentShader from "@/shaders/julia.frag?raw";
-import { CONFIG } from "@/config/config.js";
 
 /**
  * 4次元ジュリア集合用のWebGLシェーダーマテリアルを生成するファクトリクラス
@@ -11,16 +10,17 @@ export class JuliaMaterialFactory {
   /**
    * 指定された品質レベルに応じたShaderMaterialを生成して返す
    * @param {string} qualityLevel - "HIGH", "LOW", "EXPORT" などの品質識別子
+   * @param {Object} config - アプリ設定オブジェクト
    * @returns {THREE.ShaderMaterial}
    */
-  static create(qualityLevel) {
-    const config = CONFIG.QUALITY[qualityLevel];
+  static create(qualityLevel, config) {
+    const qualityConfig = config.QUALITY[qualityLevel];
     const isExport = qualityLevel === "EXPORT";
     const isLow = qualityLevel === "LOW";
 
     return new THREE.ShaderMaterial({
       vertexShader,
-      fragmentShader: `#define MAX_STEPS ${config.steps}\n#define MAX_ITER ${config.iter}\n` + fragmentShader,
+      fragmentShader: `#define MAX_STEPS ${qualityConfig.steps}\n#define MAX_ITER ${qualityConfig.iter}\n` + fragmentShader,
       defines: isExport ? { IS_EXPORTING: "1" } : isLow ? { IS_LOW_QUALITY: "1" } : {},
       glslVersion: THREE.GLSL3,
       uniforms: {
@@ -37,6 +37,9 @@ export class JuliaMaterialFactory {
         u_bgAlpha: { value: 0.0 },
         u_rotMatrix_3D: { value: new THREE.Matrix4() },
         u_rotMatrix_4D: { value: new THREE.Matrix4() },
+        // WebXR/AR用のスケールと位置オフセット
+        u_vrScale: { value: 1.0 },
+        u_vrOffset: { value: new THREE.Vector3(0.0, 0.0, 0.0) },
       },
     });
   }

@@ -22,6 +22,8 @@ export class ApplyPresetCommand extends Command {
     // ★追加: プリセット専用のカメラ位置に物理移動させる
     if (presetData.camera && this.renderer) {
        this.renderer.restoreCameraFromSnapshot(presetData.camera);
+       this.domainStore.updateCamera("position", presetData.camera.position);
+       this.domainStore.updateCamera("target", presetData.camera.target);
     }
 
     this.uiStore.update({ 

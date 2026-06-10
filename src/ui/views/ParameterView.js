@@ -1,4 +1,4 @@
-import { ANIM_UI_MAPPING } from "@/ui/uiConstants.js";
+import { PARAMETER_DEFINITIONS } from "@/core/domain/ParameterDefinitions.js";
 
 export class ParameterView {
   constructor(uiElements) {
@@ -12,12 +12,8 @@ export class ParameterView {
       if (!displayParams[category]) return;
       
       Object.entries(displayParams[category]).forEach(([key, paramData]) => {
-        let domId = key;
-        
-        if (category === "animation") {
-          const found = ANIM_UI_MAPPING.find((m) => m.key === key);
-          if (found) domId = found.id;
-        }
+        const def = PARAMETER_DEFINITIONS[key];
+        const domId = def ? def.domId : key;
 
         const inputEl = this.uiElements[domId];
         if (!inputEl) return;

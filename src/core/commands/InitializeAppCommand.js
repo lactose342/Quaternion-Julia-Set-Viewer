@@ -1,3 +1,5 @@
+import { PARAMETER_DEFINITIONS } from "@/core/domain/ParameterDefinitions.js";
+
 export class InitializeAppCommand {
   constructor(domainStore, uiStore, urlManager, historyManager, uiController, renderer, config) {
     this.domainStore = domainStore;
@@ -20,6 +22,8 @@ export class InitializeAppCommand {
       }
       if (parsedState.camera && parsedState.camera.position.x !== undefined) {
         this.renderer.restoreCameraFromSnapshot(parsedState.camera);
+        this.domainStore.updateCamera("position", parsedState.camera.position);
+        this.domainStore.updateCamera("target", parsedState.camera.target);
       }
       this.uiStore.update(parsedState.ui);
     } else {
@@ -32,13 +36,13 @@ export class InitializeAppCommand {
       const srcAnimPreset = this.config.ANIM_PRESETS.preset1;
       
       this.config.SCHEMAS.fractal.forEach(key => {
-        defaultParams.fractal[key] = (srcPreset && srcPreset[key] !== undefined) ? srcPreset[key] : 0;
+        defaultParams.fractal[key] = (srcPreset && srcPreset[key] !== undefined) ? srcPreset[key] : (PARAMETER_DEFINITIONS[key]?.default !== undefined ? PARAMETER_DEFINITIONS[key].default : 0);
       });
       this.config.SCHEMAS.material.forEach(key => {
-        defaultParams.material[key] = (srcPreset && srcPreset[key] !== undefined) ? srcPreset[key] : (key === 'bgColor' ? '#000000' : 1.0);
+        defaultParams.material[key] = (srcPreset && srcPreset[key] !== undefined) ? srcPreset[key] : (PARAMETER_DEFINITIONS[key]?.default !== undefined ? PARAMETER_DEFINITIONS[key].default : (key === 'bgColor' ? '#000000' : 1.0));
       });
       this.config.SCHEMAS.animation.forEach(key => {
-        defaultParams.animation[key] = (srcAnimPreset && srcAnimPreset[key] !== undefined) ? srcAnimPreset[key] : 0;
+        defaultParams.animation[key] = (srcAnimPreset && srcAnimPreset[key] !== undefined) ? srcAnimPreset[key] : (PARAMETER_DEFINITIONS[key]?.default !== undefined ? PARAMETER_DEFINITIONS[key].default : 0);
       });
 
       this.domainStore.init(defaultParams);

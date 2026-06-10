@@ -1,7 +1,7 @@
-import { CONFIG } from "@/config/config.js";
-
 export class URLManager {
-  constructor() {}
+  constructor(config) {
+    this.config = config;
+  }
 
   /**
    * 現在のURL文字列を解析し、Storeにそのまま流し込めるプレーンな状態オブジェクトを返す
@@ -43,16 +43,16 @@ export class URLManager {
     };
 
     // 各スキーマの解析
-    CONFIG.SCHEMAS.fractal.forEach(id => safeParse(id, parsedData.params.fractal));
+    this.config.SCHEMAS.fractal.forEach(id => safeParse(id, parsedData.params.fractal));
     
-    CONFIG.SCHEMAS.material.forEach(id => {
+    this.config.SCHEMAS.material.forEach(id => {
       if (params.has(id)) {
         const val = params.get(id);
         parsedData.params.material[id] = id === 'bgColor' ? `#${val}` : parseFloat(val);
       }
     });
     
-    CONFIG.SCHEMAS.animation.forEach(id => safeParse(id, parsedData.params.animation));
+    this.config.SCHEMAS.animation.forEach(id => safeParse(id, parsedData.params.animation));
 
     // アニメーション位相の復元
     if (params.has('ph_x')) {
@@ -99,9 +99,9 @@ export class URLManager {
     params.set('ph_z', phases.z.toFixed(3));
     params.set('ph_w', phases.w.toFixed(3));
         
-    const allIds = [...CONFIG.SCHEMAS.fractal, ...CONFIG.SCHEMAS.material, ...CONFIG.SCHEMAS.animation];
+    const allIds = [...this.config.SCHEMAS.fractal, ...this.config.SCHEMAS.material, ...this.config.SCHEMAS.animation];
     allIds.forEach(id => {
-      const category = CONFIG.SCHEMAS.fractal.includes(id) ? 'fractal' : CONFIG.SCHEMAS.material.includes(id) ? 'material' : 'animation';
+      const category = this.config.SCHEMAS.fractal.includes(id) ? 'fractal' : this.config.SCHEMAS.material.includes(id) ? 'material' : 'animation';
       const val = domainSnapshot.params[category][id];
       if (val !== undefined) {
         params.set(id, id === 'bgColor' ? val.replace('#', '') : val);

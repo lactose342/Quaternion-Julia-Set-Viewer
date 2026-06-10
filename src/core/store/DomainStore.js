@@ -7,9 +7,10 @@ export class DomainStore extends EventTarget {
   #schemas;
   #animatedCCache;
 
-  constructor(schemas) {
+  constructor(config) {
     super();
-    this.#schemas = schemas;
+    this.config = config;
+    this.#schemas = config.SCHEMAS;
     this.#camera = { position: { x: 0, y: 0, z: 2 }, target: { x: 0, y: 0, z: 0 } };
     this.#animPhases = { x: 0, y: 0, z: 0, w: 0 };
     this.#params = { fractal: {}, material: {}, animation: {} };
@@ -30,7 +31,8 @@ export class DomainStore extends EventTarget {
           animation: this.#params.animation
         },
         this.#animPhases,
-        this.#animatedCCache
+        this.#animatedCCache,
+        this.config.SYSTEM.AMP_LIMIT
       );
     }
     // 呼び出し側での誤変換や意図せぬ書き換えを防ぐためシャローコピーを返す

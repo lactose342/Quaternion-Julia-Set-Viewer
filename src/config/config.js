@@ -1,8 +1,24 @@
+import { PARAMETER_DEFINITIONS } from "@/core/domain/ParameterDefinitions.js";
+
+// isPseudoなものを除外した純粋な状態キーを抽出してカテゴリ別にグルーピング
+const fractalKeys = Object.entries(PARAMETER_DEFINITIONS)
+    .filter(([_, d]) => d.category === "fractal" && !d.isPseudo)
+    .map(([k]) => k);
+
+const materialKeys = Object.entries(PARAMETER_DEFINITIONS)
+    .filter(([_, d]) => d.category === "material" && !d.isPseudo)
+    .map(([k]) => k);
+
+const animationKeys = Object.entries(PARAMETER_DEFINITIONS)
+    .filter(([_, d]) => d.category === "animation" && !d.isPseudo)
+    .map(([k]) => k);
+
 export const CONFIG = {
     QUALITY: { 
         LOW: { steps: 150, iter: 15 }, 
         HIGH: { steps: 800, iter: 80 },
-        EXPORT: { steps: 4000, iter: 120 }
+        EXPORT: { steps: 4000, iter: 120 },
+        XR: { steps: 80, iter: 12 }
     },
     RENDER_SETTINGS: {
         STEP_DIST_NORMAL: 0.95,
@@ -20,9 +36,9 @@ export const CONFIG = {
     },
     SCHEMAS: {
         camera: ['position', 'target'],
-        fractal: ['cx', 'cy', 'cz', 'cw', 'rotX', 'rotY', 'rotZ', 'rotXW', 'rotYW', 'rotZW', 'fov'],
-        material: ['hue', 'saturation', 'brightness', 'aoPower', 'specular', 'bgColor', 'bgAlpha', 'zoom'],
-        animation: ['speed', 'amp', 'sx', 'ax', 'px', 'sy', 'ay', 'py', 'sz', 'az', 'pz', 'sw', 'aw', 'pw']
+        fractal: fractalKeys,
+        material: materialKeys,
+        animation: animationKeys
     },
     PRESETS: {
         preset1: { cx: -0.517, cy: -0.341, cz: -0.407, cw: -0.071, rotX: 0, rotY: 0, rotZ: 2.02, rotXW: 0, rotYW: 0, rotZW: 0, hue: 0.586, saturation: 1, brightness: 2.3, aoPower: 1, specular: 10, bgColor: '#0a0c1a', bgAlpha: 1.0, fov: 45, zoom: 1.0, camera: { position: { x: 0, y: 0, z: 2 }, target: { x: 0, y: 0, z: 0 } } },

@@ -78,77 +78,7 @@
             </div>
         </div>
 
-        <details open>
-            <summary>基本形状の調整 (Cパラメータ)</summary>
-            <div class="grid-container">
-                <div class="slider-group"><label for="cx" title="形状の基本的な骨格を変化させます。（4D複素定数 実数X）">C.x <span id="val-cx" class="val-label"></span></label><input type="range" id="cx" min="-1.0" max="1.0" step="0.001" value="-0.517"></div>
-                <div class="slider-group"><label for="cy" title="形状の肉付きや、左右の対称性に影響を与えます。（4D複素定数 虚数Y）">C.y <span id="val-cy" class="val-label"></span></label><input type="range" id="cy" min="-1.0" max="1.0" step="0.001" value="-0.341"></div>
-                <div class="slider-group"><label for="cz" title="空間をねじ曲げ、複雑な凹凸や穴を作り出します。（4D複素定数 虚数Z）">C.z <span id="val-cz" class="val-label"></span></label><input type="range" id="cz" min="-1.0" max="1.0" step="0.001" value="-0.407"></div>
-                <div class="slider-group"><label for="cw" title="形状を内側から裏返すように、異次元的な変形をさせます。（4D複素定数 虚数W）">C.w <span id="val-cw" class="val-label"></span></label><input type="range" id="cw" min="-1.0" max="1.0" step="0.001" value="-0.071"></div>
-            </div>
-        </details>
-
-        <details>
-            <summary>空間の回転とカメラ設定</summary>
-            <div class="grid-3cols">
-                <div class="slider-group"><label for="rotX" title="通常の3次元空間におけるX軸周りの回転です。（仰俯角）">X軸回転 (Pitch) <span id="val-rotX" class="val-label"></span></label><input type="range" id="rotX" min="0" max="360" step="0.01" value="0"></div>
-                <div class="slider-group"><label for="rotY" title="通常の3次元空間におけるY軸周りの回転です。（左右方位角）">Y軸回転 (Yaw) <span id="val-rotY" class="val-label"></span></label><input type="range" id="rotY" min="0" max="360" step="0.01" value="0"></div>
-                <div class="slider-group"><label for="rotZ" title="通常の3次元空間におけるZ軸周りの回転です。（傾き）">Z軸回転 (Roll) <span id="val-rotZ" class="val-label"></span></label><input type="range" id="rotZ" min="0" max="360" step="0.01" value="0"></div>
-            </div>
-            <div class="grid-3cols" style="margin-top: 10px;">
-                <div class="slider-group"><label for="rotXW" title="第4の軸を使った回転。物体が内側から裏返るように見えます。">XW平面回転 (4D) <span id="val-rotXW" class="val-label"></span></label><input type="range" id="rotXW" min="0" max="360" step="0.01" value="0"></div>
-                <div class="slider-group"><label for="rotYW" title="第4の軸を使った回転。空間が歪むような変化をします。">YW平面回転 (4D) <span id="val-rotYW" class="val-label"></span></label><input type="range" id="rotYW" min="0" max="360" step="0.01" value="0"></div>
-                <div class="slider-group"><label for="rotZW" title="第4の軸を使った回転。内部と外部が反転します。">ZW平面回転 (4D) <span id="val-rotZW" class="val-label"></span></label><input type="range" id="rotZW" min="0" max="360" step="0.01" value="0"></div>
-            </div>
-            <div class="slider-group" style="margin-top: 10px;"><label for="fov" title="カメラのレンズの広さ。値を大きくすると遠近感が強くなり、小さくすると望遠レンズのようになります。">視野角 (FoV) <span id="val-fov" class="val-label"></span></label><input type="range" id="fov" min="15" max="120" step="1" value="45"></div>
-        </details>
-
-        <details>
-            <summary>色と質感</summary>
-            <div class="grid-2cols">
-                <div class="slider-group"><label for="bgColor" title="空間全体の背景色を設定します。">背景色</label><input type="color" id="bgColor" value="#000000"></div>
-                <div class="slider-group"><label for="baseColorPicker" title="物体の基準となる色を設定します。">ベースカラー</label><input type="color" id="baseColorPicker" value="#0055ff"></div>
-            </div>
-            <div class="grid-3cols">
-                <div class="slider-group"><label for="brightness" title="全体的な光の強さを調整します">明るさ <span id="val-brightness" class="val-label"></span></label><input type="range" id="brightness" min="0.5" max="3.0" step="0.1" value="1.4"></div>
-                <div class="slider-group"><label for="aoPower" title="立体感を強調するため、くぼみ部分の影の濃さを調整します。">影の濃さ <span id="val-aoPower" class="val-label"></span></label><input type="range" id="aoPower" min="0.1" max="3.0" step="0.1" value="1.0"></div>
-                <div class="slider-group"><label for="specular" title="表面のツヤを調整します。値を上げると金属のような鋭い光沢になります。">光沢感 <span id="val-specular" class="val-label"></span></label><input type="range" id="specular" min="2.0" max="64.0" step="1.0" value="10.0"></div>
-            </div>
-        </details>
-
-        <details>
-            <summary>アニメーション設定</summary>
-            <div class="grid-2cols">
-                <div class="slider-group"><label for="anim-speed" title="自動アニメーション全体の動く速さを調整します。">全体の速度 <span id="val-anim-speed" class="val-label"></span></label><input type="range" id="anim-speed" min="0.1" max="2.0" step="0.1" value="0.8"></div>
-                <div class="slider-group"><label for="anim-amp" title="自動アニメーションで変形する大きさ（振れ幅）を調整します。">変形の大きさ (振幅)<span id="val-anim-amp" class="val-label"></span></label><input type="range" id="anim-amp" min="0.0" max="0.5" step="0.05" value="0.4"></div>
-            </div>
-            
-            <details style="margin-top: 10px; background: rgba(255,255,255,0.02);">
-                <summary>各パラメータの個別動作設定</summary>
-                <div style="display: flex; flex-direction: column; gap: 16px; margin-top: 10px;">
-                    <div class="grid-3cols">
-                        <div class="slider-group"><label for="speed-x" title="C.xが変化する速さの比率。">C.x 速度比 <span id="val-speed-x" class="val-label"></span></label><input type="range" id="speed-x" min="0" max="2.0" step="0.05" value="1.0"></div>
-                        <div class="slider-group"><label for="amp-x" title="C.xが変化する大きさの比率。">C.x 振幅比 <span id="val-amp-x" class="val-label"></span></label><input type="range" id="amp-x" min="0" max="1.0" step="0.05" value="1.0"></div>
-                        <div class="slider-group"><label for="phase-x" title="C.xの動きが始まるタイミングのズレ。">C.x 初期位相 <span id="val-phase-x" class="val-label"></span></label><input type="range" id="phase-x" min="0" max="360" step="0.1" value="0"></div>
-                    </div>
-                    <div class="grid-3cols">
-                        <div class="slider-group"><label for="speed-y" title="C.yが変化する速さの比率。">C.y 速度比 <span id="val-speed-y" class="val-label"></span></label><input type="range" id="speed-y" min="0" max="2.0" step="0.05" value="0.75"></div>
-                        <div class="slider-group"><label for="amp-y" title="C.yが変化する大きさの比率。">C.y 振幅比 <span id="val-amp-y" class="val-label"></span></label><input type="range" id="amp-y" min="0" max="1.0" step="0.05" value="1.0"></div>
-                        <div class="slider-group"><label for="phase-y" title="C.yの動きが始まるタイミングのズレ。">C.y 初期位相 <span id="val-phase-y" class="val-label"></span></label><input type="range" id="phase-y" min="0" max="360" step="0.1" value="0"></div>
-                    </div>
-                    <div class="grid-3cols">
-                        <div class="slider-group"><label for="speed-z" title="C.zが変化する速さの比率。">C.z 速度比 <span id="val-speed-z" class="val-label"></span></label><input type="range" id="speed-z" min="0" max="2.0" step="0.05" value="0.5"></div>
-                        <div class="slider-group"><label for="amp-z" title="C.zが変化する大きさの比率。">C.z 振幅比 <span id="val-amp-z" class="val-label"></span></label><input type="range" id="amp-z" min="0" max="1.0" step="0.05" value="1.0"></div>
-                        <div class="slider-group"><label for="phase-z" title="C.zの動きが始まるタイミングのズレ。">C.z 初期位相 <span id="val-phase-z" class="val-label"></span></label><input type="range" id="phase-z" min="0" max="360" step="0.1" value="0"></div>
-                    </div>
-                    <div class="grid-3cols">
-                        <div class="slider-group"><label for="speed-w" title="C.wが変化する速さの比率。">C.w 速度比 <span id="val-speed-w" class="val-label"></span></label><input type="range" id="speed-w" min="0" max="2.0" step="0.05" value="0.25"></div>
-                        <div class="slider-group"><label for="amp-w" title="C.wが変化する大きさの比率。">C.w 振幅比 <span id="val-amp-w" class="val-label"></span></label><input type="range" id="amp-w" min="0" max="1.0" step="0.05" value="1.0"></div>
-                        <div class="slider-group"><label for="phase-w" title="C.wの動きが始まるタイミングのズレ。">C.w 初期位相 <span id="val-phase-w" class="val-label"></span></label><input type="range" id="phase-w" min="0" max="360" step="0.1" value="0"></div>
-                    </div>
-                </div>
-            </details>
-        </details>
+        <div id="parameter-sections-container"></div>
     </div>
     
     <script type="module" src="/src/main.js"></script>
