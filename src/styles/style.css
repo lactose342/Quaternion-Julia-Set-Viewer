@@ -45,24 +45,194 @@ body>canvas {
    UI Container & Details
    ========================================== */
 #custom-ui {
-    transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    max-height: 80dvh;
+    transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease-in-out;
+    position: fixed;
     overflow-y: auto;
-    background-color: rgba(20, 20, 20, 0.9);
-    border-top: 1px solid #444;
-    padding: 15px 15px 70px 15px;
+    background-color: rgba(15, 15, 20, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     box-sizing: border-box;
     z-index: 100;
     overscroll-behavior: contain;
 }
 
-#custom-ui.hidden {
-    transform: translateY(100%);
+/* ------------------------------------------
+   PC レイアウト (> 768px)
+   ------------------------------------------ */
+@media (min-width: 769px) {
+    #custom-ui {
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: auto;
+        width: 440px;
+        height: 100vh;
+        max-height: 100vh;
+        border-left: 1px solid rgba(255, 255, 255, 0.1);
+        border-top: none;
+        padding: 20px 20px 40px 20px;
+        transform: translateX(100%);
+    }
+
+    #custom-ui.hidden {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    #custom-ui:not(.hidden) {
+        transform: translateX(0);
+        opacity: 1;
+    }
+
+    /* 設定が開いている時、設定ボタン・全画面ボタン・VRボタンを左側にスライド追従させる */
+    #custom-ui:not(.hidden)~#toggle-ui-btn {
+        right: 460px;
+    }
+
+    #custom-ui:not(.hidden)~#fullscreen-btn {
+        right: calc(440px + 10px);
+    }
+
+    #custom-ui:not(.hidden)~#VRButton {
+        right: calc(440px + 60px) !important;
+    }
+
+    .mobile-tabs,
+    .bottom-sheet-handle {
+        display: none !important;
+    }
 }
+
+/* ------------------------------------------
+   モバイル レイアウト (<= 768px)
+   ------------------------------------------ */
+@media (max-width: 768px) {
+    #custom-ui {
+        bottom: 0;
+        left: 0;
+        right: 0;
+        top: auto;
+        width: 100%;
+        height: 55dvh;
+        max-height: 70dvh;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px 20px 0 0;
+        padding: 0px 15px 40px 15px;
+        transform: translateY(100%);
+    }
+
+    #custom-ui.hidden {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+
+    #custom-ui:not(.hidden) {
+        transform: translateY(0);
+        opacity: 1;
+    }
+
+    /* モバイル設定オープン時の設定ボタンの配置 */
+    #custom-ui:not(.hidden)~#toggle-ui-btn {
+        display: none;
+    }
+
+    /* ドラッグハンドル */
+    .bottom-sheet-handle {
+        display: block !important;
+        width: 40px;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.25);
+        border-radius: 2px;
+        margin: 10px auto 10px auto;
+        cursor: grab;
+        touch-action: none !important;
+        /* デフォルトのスクロール挙動を無効化しJSドラッグを優先 */
+    }
+
+    .bottom-sheet-handle:active {
+        cursor: grabbing;
+    }
+
+    /* モバイルタブのレイアウト */
+    .mobile-tabs {
+        display: flex !important;
+        overflow-x: auto;
+        position: sticky;
+        top: 0;
+        margin: 0 -15px 15px -15px;
+        padding: 10px 15px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        z-index: 10;
+        gap: 8px;
+        scrollbar-width: none;
+        touch-action: pan-x !important;
+        /* 左右スワイプスクロールは維持し、上下のドラッグのみスクロール競合をブロック */
+        scrollbar-width: none;
+        /* Firefox */
+    }
+
+    .mobile-tabs::-webkit-scrollbar {
+        display: none;
+        /* Safari, Chrome */
+    }
+
+    .tab-btn {
+        flex: 0 0 auto;
+        background: rgba(255, 255, 255, 0.05);
+        color: #aaa;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        transition: background 0.2s, color 0.2s;
+    }
+
+    .tab-btn .material-symbols-outlined {
+        font-size: 16px;
+    }
+
+    .tab-btn:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .tab-btn.active {
+        background: #0055ff;
+        color: #fff;
+        border-color: #0044cc;
+        font-weight: bold;
+    }
+
+    /* モバイル表示時は details の折りたたみヘッダーを非表示にし、コンテンツを常にフラット表示する（直下のsummaryのみ） */
+    #parameter-sections-container>details>summary {
+        display: none !important;
+    }
+
+    #parameter-sections-container>details {
+        border: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    /* モバイル時のカラーピッカー幅とはみ出し調整 */
+    .color-picker-group {
+        max-width: 100% !important;
+        width: 280px !important;
+        margin: 0 auto 15px auto !important;
+    }
+
+    /* 非アクティブなタブコンテンツを非表示 */
+    .tab-content-wrapper:not(.active-tab-content),
+    #parameter-sections-container>details:not(.active-tab-content) {
+        display: none !important;
+    }
+}
+
 
 
 
@@ -177,6 +347,7 @@ summary {
     cursor: pointer;
     font-size: 14px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+    transition: right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), bottom 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.2s;
 }
 
 #toggle-ui-btn.is-close::before {
@@ -287,6 +458,7 @@ summary {
 
 #fullscreen-btn {
     right: 10px;
+    transition: right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.2s;
 }
 
 #fullscreen-btn:hover {
@@ -337,7 +509,7 @@ summary {
     padding: 8px 12px !important;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5) !important;
     cursor: pointer !important;
-    transition: background-color 0.2s !important;
+    transition: right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.2s !important;
     width: 42px;
     height: 42px;
 }
@@ -540,6 +712,7 @@ summary {
     flex-wrap: wrap;
     gap: 24px;
     margin-top: 15px;
+    justify-content: center;
 }
 
 .color-picker-group {

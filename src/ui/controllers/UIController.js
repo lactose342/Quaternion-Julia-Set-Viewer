@@ -163,8 +163,14 @@ export class UIController {
         groups: ["shape"]
       },
       {
+        id: "section-rotation",
+        title: "空間の回転 (3D/4D)",
+        open: false,
+        groups: ["rotation"]
+      },
+      {
         id: "section-camera",
-        title: "空間の回転とカメラ設定",
+        title: "カメラと視野角",
         open: false,
         groups: ["camera"]
       },
@@ -254,8 +260,160 @@ export class UIController {
     });
   }
 
+  #setupTabs() {
+    const tabsContainer = document.getElementById("mobile-tabs-container");
+    if (!tabsContainer) return;
+
+    const customUi = document.getElementById("custom-ui");
+    const handle = customUi.querySelector(".bottom-sheet-handle");
+
+    const tabButtons = tabsContainer.querySelectorAll(".tab-btn");
+    const tabContents = [
+      document.getElementById("tab-common"),
+      ...Array.from(document.querySelectorAll("#parameter-sections-container > details"))
+    ];
+
+    tabButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const targetTabId = btn.getAttribute("data-tab");
+
+        // 全タブボタンのアクティブクラスをリセット
+        tabButtons.forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+
+        // 全コンテンツの表示クラスを切り替え
+        tabContents.forEach(content => {
+          if (!content) return;
+          if (content.id === targetTabId) {
+            content.classList.add("active-tab-content");
+            if (content.tagName === "DETAILS") {
+              content.setAttribute("open", "");
+            }
+          } else {
+            content.classList.remove("active-tab-content");
+          }
+        });
+
+        // タブ切り替え後にカラーピッカーを強制再描画（表示後の寸法に合わせて解像度を再設定）
+        if (this.colorPickerView) {
+          this.colorPickerView.syncAll(true);
+        }
+      });
+    });
+
+    // --- モバイルボトムシートのドラッグクローズ処理 ---
+    let startY = 0;
+    let currentY = 0;
+    let isDragging = false;
+    let hasCaptured = false;
+
+    const onPointerDown = (e) => {
+      if (window.innerWidth > 768) return;
+      
+      startY = e.clientY;
+      currentY = e.clientY;
+      isDragging = true;
+      hasCaptured = false;
+      
+      // ドラッグ中の追従を良くするためトランジションを一時的にオフ
+      customUi.style.transition = "none";
+    };
+
+    const onPointerMove = (e) => {
+      if (!isDragging || window.innerWidth > 768) return;
+
+      currentY = e.clientY;
+      const diffY = currentY - startY;
+
+      // 下方向へのドラッグのみ追従（上には引き上げられないように制限）
+      if (diffY > 0) {
+        // わずかに動いた（5px以上）時点でキャプチャを開始する（クリックとドラッグの判別）
+        if (diffY > 5 && !hasCaptured) {
+          hasCaptured = true;
+          try {
+            e.currentTarget.setPointerCapture(e.pointerId);
+          } catch (err) {}
+        }
+
+        customUi.style.transform = `translateY(${diffY}px)`;
+        
+        // 設定ボタンの位置もボトムシートに追従させる
+        const toggleBtn = document.getElementById("toggle-ui-btn");
+        if (toggleBtn) {
+          toggleBtn.style.transition = "none";
+          toggleBtn.style.bottom = `calc(55dvh + 15px - ${diffY}px)`;
+        }
+      }
+    };
+
+    const onPointerUp = (e) => {
+      if (!isDragging) return;
+      isDragging = false;
+
+      if (hasCaptured) {
+        try {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        } catch (err) {}
+      }
+
+      // トランジション設定を戻す
+      customUi.style.transition = "";
+      const toggleBtn = document.getElementById("toggle-ui-btn");
+      if (toggleBtn) {
+        toggleBtn.style.transition = "";
+        toggleBtn.style.bottom = ""; // CSS側の指定に戻す
+      }
+
+      const diffY = currentY - startY;
+      
+      // 100px以上下にドラッグした場合は閉じる
+      if (diffY > 100) {
+        // 設定を閉じるためにメニューUIトグルのコマンドを発行
+        window.dispatchEvent(new CustomEvent("app-command", {
+          detail: { type: "TOGGLE_MENU_UI" }
+        }));
+        
+        // アニメーションが終わる頃にtransformスタイルをリセット
+        setTimeout(() => {
+          customUi.style.transform = "";
+        }, 300);
+      } else {
+        // 元の位置に戻す
+        customUi.style.transform = "";
+      }
+      
+      startY = 0;
+      currentY = 0;
+    };
+
+    // ハンドルとタブバー部分にポインターイベントを登録 (マウス・タッチの両対応)
+    if (handle) {
+      handle.addEventListener("pointerdown", onPointerDown);
+      handle.addEventListener("pointermove", onPointerMove);
+      handle.addEventListener("pointerup", onPointerUp);
+      handle.addEventListener("pointercancel", onPointerUp);
+    }
+    tabsContainer.addEventListener("pointerdown", onPointerDown);
+    tabsContainer.addEventListener("pointermove", onPointerMove);
+    tabsContainer.addEventListener("pointerup", onPointerUp);
+    tabsContainer.addEventListener("pointercancel", onPointerUp);
+
+    // モバイル幅の時はdetailsを最初からopenにして、コンテンツが非表示にならないようにする
+    const ensureMobileDetailsOpen = () => {
+      if (window.innerWidth <= 768) {
+        document.querySelectorAll("#parameter-sections-container > details").forEach(details => {
+          details.setAttribute("open", "");
+        });
+      }
+    };
+
+    ensureMobileDetailsOpen();
+    window.addEventListener("resize", ensureMobileDetailsOpen);
+  }
+
   init() {
     this.#generateUI();
+    this.#setupTabs();
 
     // 定義スキーマから全スライダー用の DOM ID を動的に生成
     const parameterDomIds = Object.values(PARAMETER_DEFINITIONS).map(def => def.domId);

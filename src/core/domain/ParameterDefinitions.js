@@ -7,12 +7,12 @@ export const PARAMETER_DEFINITIONS = {
   cy: { category: "fractal", domId: "cy", type: "number", min: -1.0, max: 1.0, step: 0.001, default: -0.341, precision: 3, label: "C.y", tooltip: "形状の肉付きや、左右の対称性に影響を与えます。（4D複素定数 虚数Y）", group: "shape" },
   cz: { category: "fractal", domId: "cz", type: "number", min: -1.0, max: 1.0, step: 0.001, default: -0.407, precision: 3, label: "C.z", tooltip: "空間をねじ曲げ、複雑な凹凸や穴を作り出します。（4D複素定数 虚数Z）", group: "shape" },
   cw: { category: "fractal", domId: "cw", type: "number", min: -1.0, max: 1.0, step: 0.001, default: -0.071, precision: 3, label: "C.w", tooltip: "形状を内側から裏返すように、異次元的な変形をさせます。（4D複素定数 虚数W）", group: "shape" },
-  rotX: { category: "fractal", domId: "rotX", type: "radian", min: 0, max: 360, step: 0.01, default: 0.0, precision: 1, label: "X軸回転 (Pitch)", tooltip: "通常の3次元空間におけるX軸周りの回転です。（仰俯角）", group: "camera" },
-  rotY: { category: "fractal", domId: "rotY", type: "radian", min: 0, max: 360, step: 0.01, default: 0.0, precision: 1, label: "Y軸回転 (Yaw)", tooltip: "通常の3次元空間におけるY軸周りの回転です。（左右方位角）", group: "camera" },
-  rotZ: { category: "fractal", domId: "rotZ", type: "radian", min: 0, max: 360, step: 0.01, default: 0.0, precision: 1, label: "Z軸回転 (Roll)", tooltip: "通常の3次元空間におけるZ軸周りの回転です。（傾き）", group: "camera" },
-  rotXW: { category: "fractal", domId: "rotXW", type: "radian", min: 0, max: 360, step: 0.01, default: 0.0, precision: 1, label: "XW平面回転 (4D)", tooltip: "第4の軸を使った回転。物体が内側から裏返るように見えます。", group: "camera" },
-  rotYW: { category: "fractal", domId: "rotYW", type: "radian", min: 0, max: 360, step: 0.01, default: 0.0, precision: 1, label: "YW平面回転 (4D)", tooltip: "第4の軸を使った回転。空間が歪むような変化をします。", group: "camera" },
-  rotZW: { category: "fractal", domId: "rotZW", type: "radian", min: 0, max: 360, step: 0.01, default: 0.0, precision: 1, label: "ZW平面回転 (4D)", tooltip: "第4の軸を使った回転。内部と外部が反転します。", group: "camera" },
+  rotX: { category: "fractal", domId: "rotX", type: "radian", min: 0, max: 360, step: 0.01, default: 0.0, precision: 1, label: "X軸回転 (Pitch)", tooltip: "通常の3次元空間におけるX軸周りの回転です。（仰俯角）", group: "rotation" },
+  rotY: { category: "fractal", domId: "rotY", type: "radian", min: 0, max: 360, step: 0.01, default: 0.0, precision: 1, label: "Y軸回転 (Yaw)", tooltip: "通常の3次元空間におけるY軸周りの回転です。（左右方位角）", group: "rotation" },
+  rotZ: { category: "fractal", domId: "rotZ", type: "radian", min: 0, max: 360, step: 0.01, default: 0.0, precision: 1, label: "Z軸回転 (Roll)", tooltip: "通常の3次元空間におけるZ軸周りの回転です。（傾き）", group: "rotation" },
+  rotXW: { category: "fractal", domId: "rotXW", type: "radian", min: 0, max: 360, step: 0.01, default: 0.0, precision: 1, label: "XW平面回転 (4D)", tooltip: "第4の軸を使った回転。物体が内側から裏返るように見えます。", group: "rotation" },
+  rotYW: { category: "fractal", domId: "rotYW", type: "radian", min: 0, max: 360, step: 0.01, default: 0.0, precision: 1, label: "YW平面回転 (4D)", tooltip: "第4の軸を使った回転。空間が歪むような変化をします。", group: "rotation" },
+  rotZW: { category: "fractal", domId: "rotZW", type: "radian", min: 0, max: 360, step: 0.01, default: 0.0, precision: 1, label: "ZW平面回転 (4D)", tooltip: "第4の軸を使った回転。内部と外部が反転します。", group: "rotation" },
   fov: { category: "fractal", domId: "fov", type: "degree", min: 15, max: 120, step: 1, default: 45.0, precision: 1, label: "視野角 (FoV)", tooltip: "カメラのレンズの広さ。値を大きくすると遠近感が強くなり、小さくすると望遠レンズのようになります。", group: "camera" },
 
   // --- Material Parameters ---
