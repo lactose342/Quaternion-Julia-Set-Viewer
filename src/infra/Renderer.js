@@ -290,7 +290,6 @@ export class Renderer {
     const isVR = this.renderer.xr.isPresenting;
     const { isDownloading, isAutoAnimating } = this.getAppState ? this.getAppState() : { isDownloading: false, isAutoAnimating: false };
 
-    this.renderState.fpsFrames++;
     const now = performance.now();
     if (now >= this.renderState.fpsLastTime + 500) {
       const fps = Math.round((this.renderState.fpsFrames * 1000) / (now - this.renderState.fpsLastTime));
@@ -340,6 +339,7 @@ export class Renderer {
         this.onBeforeUpdateUniforms(this);
       }
       this.renderer.render(this.scene, this.camera);
+      this.renderState.fpsFrames++;
       this.renderState.needsRender = false;
     }
 
