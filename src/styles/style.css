@@ -631,10 +631,11 @@ summary {
    ========================================== */
 #toast-container {
     position: fixed;
-    bottom: 70px;
-    right: 20px;
+    top: 10px;
+    right: 50%;
+    transform: translateX(50%);
     display: flex;
-    flex-direction: column-reverse;
+    flex-direction: column;
     gap: 10px;
     z-index: 10000;
     pointer-events: none;
@@ -655,7 +656,7 @@ summary {
     color: #fff;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(-20px);
     transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
 }
 
@@ -684,24 +685,6 @@ summary {
     font-family: 'Material Symbols Outlined';
     content: '\e000';
     font-size: 16px;
-}
-
-/* ==========================================
-   Media Queries
-   ========================================== */
-@media (max-width: 600px) {
-    #toast-container {
-        top: 10px;
-        right: 50%;
-        transform: translateX(50%);
-        bottom: auto;
-        flex-direction: column;
-        align-items: center;
-    }
-
-    .toast {
-        transform: translateY(-20px);
-    }
 }
 
 /* ==========================================
