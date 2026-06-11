@@ -219,6 +219,15 @@ export class Renderer {
 
     this.renderState.needsRender = true;
     this.updateResolution();
+
+    // ループが走っていない静止時は、品質切り替え後に1回だけ同期的に再描画する
+    if (!this.isLoopRunning && this.renderer && !this.renderer.xr.isPresenting) {
+      if (this.onBeforeUpdateUniforms) {
+        this.onBeforeUpdateUniforms(this);
+      }
+      this.renderer.render(this.scene, this.camera);
+      this.renderState.needsRender = false;
+    }
   }
 
   onResize() {

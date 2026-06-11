@@ -24,7 +24,7 @@ export class JuliaMaterialFactory {
       defines: {
         ...(isExport ? { IS_EXPORTING: "1" } : {}),
         ...(isLow ? { IS_LOW_QUALITY: "1" } : {}),
-        ...((isLow || qualityLevel === "XR") ? { LIMIT_NORMAL_ITER: "1" } : {})
+        ...(qualityLevel === "XR" ? { LIMIT_NORMAL_ITER: "1" } : {})
       },
       glslVersion: THREE.GLSL3,
       uniforms: {
