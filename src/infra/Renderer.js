@@ -35,7 +35,7 @@ export class Renderer {
     this.onFpsUpdate = null;
     this.isDownloading = false;
 
-    this.maxPixelRatio = Math.min(window.devicePixelRatio, 2.0);
+    this.maxPixelRatio = Math.min(window.devicePixelRatio, 1.5);
     this.currentPixelRatio = this.maxPixelRatio;
     this.qualityManager = new AdaptiveQualityManager(this.config);
 
@@ -119,6 +119,10 @@ export class Renderer {
     });
 
     this.controls.addEventListener("start", () => {
+      if (this._dollyTimeout) {
+        clearTimeout(this._dollyTimeout);
+        this._dollyTimeout = null;
+      }
       this.uiStore.update({ isInteracting: true });
       this.startLoop();
     });
@@ -132,6 +136,28 @@ export class Renderer {
       }
       this.uiStore.update({ isInteracting: false });
     });
+
+    this._boundOnWheel = () => {
+      if (this.uiStore.getState().isInteracting) {
+        if (this._dollyTimeout) {
+          clearTimeout(this._dollyTimeout);
+          this._dollyTimeout = null;
+        }
+        return;
+      }
+      this.uiStore.update({ isInteracting: true });
+      this.startLoop();
+
+      if (this._dollyTimeout) {
+        clearTimeout(this._dollyTimeout);
+      }
+      this._dollyTimeout = setTimeout(() => {
+        this.uiStore.update({ isInteracting: false });
+        this._dollyTimeout = null;
+      }, 500);
+    };
+
+    this.renderer.domElement.addEventListener("wheel", this._boundOnWheel, { passive: true });
 
     this._boundOnResize = this.onResize.bind(this);
     window.addEventListener("resize", this._boundOnResize);
@@ -394,6 +420,12 @@ export class Renderer {
   dispose() {
     this.renderer.setAnimationLoop(null);
     window.removeEventListener("resize", this._boundOnResize);
+    if (this._boundOnWheel && this.renderer && this.renderer.domElement) {
+      this.renderer.domElement.removeEventListener("wheel", this._boundOnWheel);
+    }
+    if (this._dollyTimeout) {
+      clearTimeout(this._dollyTimeout);
+    }
     this.controls.dispose();
     if (this.mesh && this.mesh.geometry) this.mesh.geometry.dispose();
     Object.keys(this.materialPool).forEach((key) => {
