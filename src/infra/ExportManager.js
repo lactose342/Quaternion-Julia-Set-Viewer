@@ -43,7 +43,8 @@ export class ExportManager extends EventTarget {
       const renderParams = {
         animatedC: this.domainStore.getAnimatedC(),
         fractalParams: this.domainStore.getParams("fractal"),
-        materialParams: this.domainStore.getParams("material")
+        materialParams: this.domainStore.getParams("material"),
+        cameraParams: this.domainStore.getParams("camera")
       };
 
       await this.#renderTiles(ctx, dims, isTransparent, renderParams);
@@ -134,7 +135,8 @@ export class ExportManager extends EventTarget {
           alpha: isTransparent ? 0.0 : 1.0,
           animatedC: renderParams.animatedC,
           fractalParams: renderParams.fractalParams,
-          materialParams: renderParams.materialParams
+          materialParams: renderParams.materialParams,
+          cameraParams: renderParams.cameraParams
         });
 
         await this.#nextFrame();

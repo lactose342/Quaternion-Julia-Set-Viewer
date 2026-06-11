@@ -138,9 +138,9 @@ export class Renderer {
     window.addEventListener("resize", this._boundOnResize);
   }
 
-  renderTile({ totalWidth, totalHeight, offsetX, offsetY, tileWidth, tileHeight, alpha, animatedC, fractalParams, materialParams }) {
+  renderTile({ totalWidth, totalHeight, offsetX, offsetY, tileWidth, tileHeight, alpha, animatedC, fractalParams, materialParams, cameraParams }) {
     this.camera.setViewOffset(totalWidth, totalHeight, offsetX, offsetY, tileWidth, tileHeight);
-    this.updateUniforms(animatedC, fractalParams, materialParams);
+    this.updateUniforms(animatedC, fractalParams, materialParams, cameraParams);
     if (this.material) {
       this.material.uniforms.u_bgAlpha.value = alpha;
     }
@@ -220,7 +220,7 @@ export class Renderer {
     this.renderState.needsRender = true;
   }
 
-  updateUniforms(animatedC, fractalParams, materialParams) {
+  updateUniforms(animatedC, fractalParams, materialParams, cameraParams) {
     const u = this.mesh.material.uniforms;
 
     u.u_c.value.set(animatedC.cx, animatedC.cy, animatedC.cz, animatedC.cw);
@@ -232,14 +232,16 @@ export class Renderer {
     const val = materialParams.value !== undefined ? materialParams.value : 1.0;
     u.u_hsvColor.value.set(materialParams.hue, materialParams.saturation, val);
 
-    // fovをfractalParamsから正しく取得し、物理カメラに反映
-    if (fractalParams.fov !== undefined && this.camera.fov !== fractalParams.fov) {
-      this.camera.fov = fractalParams.fov;
-      this.camera.updateProjectionMatrix();
-    }
-    if (materialParams.zoom !== undefined && this.camera.zoom !== materialParams.zoom) {
-      this.camera.zoom = materialParams.zoom;
-      this.camera.updateProjectionMatrix();
+    // fovとzoomをcameraParamsから正しく取得し、物理カメラに反映
+    if (cameraParams) {
+      if (cameraParams.fov !== undefined && this.camera.fov !== cameraParams.fov) {
+        this.camera.fov = cameraParams.fov;
+        this.camera.updateProjectionMatrix();
+      }
+      if (cameraParams.zoom !== undefined && this.camera.zoom !== cameraParams.zoom) {
+        this.camera.zoom = cameraParams.zoom;
+        this.camera.updateProjectionMatrix();
+      }
     }
 
     this.tempEuler.set(fractalParams.rotX, fractalParams.rotY, fractalParams.rotZ, "XYZ");

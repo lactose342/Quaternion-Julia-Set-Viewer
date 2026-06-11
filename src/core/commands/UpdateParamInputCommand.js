@@ -27,7 +27,7 @@ export class UpdateParamInputCommand extends Command {
     this.domainStore.updateParams(category, { [key]: value });
 
     const uiPayload = { isInteracting: true };
-    if (category === "fractal" || category === "material") {
+    if (category === "fractal" || category === "material" || category === "camera") {
       uiPayload.activePreset = "custom";
     } else if (category === "animation") {
       uiPayload.activeAnimPreset = "custom";

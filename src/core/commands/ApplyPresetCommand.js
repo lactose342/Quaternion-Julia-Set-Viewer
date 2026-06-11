@@ -16,12 +16,13 @@ export class ApplyPresetCommand extends Command {
 
     this.domainStore.updateParams('fractal', presetData.fractal);
     this.domainStore.updateParams('material', presetData.material);
+    this.domainStore.updateParams('camera', presetData.camera);
     this.domainStore.setAnimPhases({ x: 0, y: 0, z: 0, w: 0 });
 
-    if (presetData.camera && this.renderer) {
-      this.renderer.restoreCameraFromSnapshot(presetData.camera);
-      this.domainStore.updateCamera("position", presetData.camera.position);
-      this.domainStore.updateCamera("target", presetData.camera.target);
+    if (presetData.cameraPose && this.renderer) {
+      this.renderer.restoreCameraFromSnapshot(presetData.cameraPose);
+      this.domainStore.updateCamera("position", presetData.cameraPose.position);
+      this.domainStore.updateCamera("target", presetData.cameraPose.target);
     }
 
     this.uiStore.update({

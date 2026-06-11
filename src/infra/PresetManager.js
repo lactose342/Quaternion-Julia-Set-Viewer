@@ -12,10 +12,11 @@ export class PresetManager {
 
     const newFractal = this.domainStore.fillDefaults("fractal", preset);
     const newMaterial = this.domainStore.fillDefaults("material", preset);
+    const newCamera = this.domainStore.fillDefaults("camera", preset);
 
-    const camera = preset.camera || { position: { x: 0, y: 0, z: 2 }, target: { x: 0, y: 0, z: 0 } };
+    const cameraPose = preset.camera || { position: { x: 0, y: 0, z: 2 }, target: { x: 0, y: 0, z: 0 } };
 
-    return { fractal: newFractal, material: newMaterial, camera };
+    return { fractal: newFractal, material: newMaterial, camera: newCamera, cameraPose };
   }
 
   generateRandomParams() {
@@ -42,6 +43,10 @@ export class PresetManager {
         aoPower: parseFloat(randRange(0.5, 2.2).toFixed(1)),
         specular: parseFloat(Math.pow(2, Math.floor(randRange(2, 6))).toFixed(1)),
         bgColor: hsvToHex(Math.random(), randRange(0.0, 0.4), Math.random())
+      },
+      camera: {
+        fov: 45.0,
+        zoom: 1.0
       }
     };
   }

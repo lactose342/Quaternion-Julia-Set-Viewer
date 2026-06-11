@@ -15,13 +15,18 @@ document.addEventListener("DOMContentLoaded", () => {
     .filter(([_, d]) => d.category === "animation" && !d.isPseudo)
     .map(([k]) => k);
 
+  const cameraKeys = Object.entries(PARAMETER_DEFINITIONS)
+    .filter(([_, d]) => d.category === "camera" && !d.isPseudo)
+    .map(([k]) => k);
+
   const mergedConfig = {
     ...CONFIG,
     SCHEMAS: {
       ...CONFIG.SCHEMAS,
       fractal: fractalKeys,
       material: materialKeys,
-      animation: animationKeys
+      animation: animationKeys,
+      camera: cameraKeys
     },
     definitions: PARAMETER_DEFINITIONS
   };

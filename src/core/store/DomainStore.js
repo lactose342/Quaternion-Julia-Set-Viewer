@@ -13,7 +13,7 @@ export class DomainStore extends EventTarget {
     this.#schemas = config.SCHEMAS;
     this.#camera = { position: { x: 0, y: 0, z: 2 }, target: { x: 0, y: 0, z: 0 } };
     this.#animPhases = { x: 0, y: 0, z: 0, w: 0 };
-    this.#params = { fractal: {}, material: {}, animation: {} };
+    this.#params = { fractal: {}, material: {}, animation: {}, camera: {} };
     this.#animatedCCache = { cx: 0, cy: 0, cz: 0, cw: 0 };
 
     this.animPhasesEvent = new CustomEvent("domain-updated", { detail: { type: "ANIM_PHASES" } });
@@ -52,7 +52,8 @@ export class DomainStore extends EventTarget {
     this.#params = {
       fractal: this.fillDefaults("fractal", src.fractal),
       material: this.fillDefaults("material", src.material),
-      animation: this.fillDefaults("animation", src.animation)
+      animation: this.fillDefaults("animation", src.animation),
+      camera: this.fillDefaults("camera", src.camera ? { ...src, ...src.camera } : src)
     };
     this.dispatchEvent(new CustomEvent("domain-updated", { detail: { type: "ALL" } }));
   }

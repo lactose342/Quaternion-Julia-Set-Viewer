@@ -133,7 +133,8 @@ export class App {
       r.updateUniforms(
         this.domainStore.getAnimatedC(),
         this.domainStore.getParams("fractal"),
-        this.domainStore.getParams("material")
+        this.domainStore.getParams("material"),
+        this.domainStore.getParams("camera")
       );
     };
     this.renderer.onCameraChange = (cameraData) => {

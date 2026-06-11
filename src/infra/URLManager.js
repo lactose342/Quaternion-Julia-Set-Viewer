@@ -31,7 +31,7 @@ export class URLManager {
         activePreset: params.get('preset') || (hasCustomParams ? "custom" : "preset1"),
         activeAnimPreset: params.get('anim_preset') || (hasCustomParams ? "custom" : "preset1"),
       },
-      params: { fractal: {}, material: {}, animation: {} },
+      params: { fractal: {}, material: {}, animation: {}, camera: {} },
       camera: { position: {}, target: {} },
       animPhases: { x: 0, y: 0, z: 0, w: 0 }
     };
@@ -68,6 +68,7 @@ export class URLManager {
     });
     
     this.config.SCHEMAS.animation.forEach(id => safeParse(id, parsedData.params.animation));
+    this.config.SCHEMAS.camera.forEach(id => safeParse(id, parsedData.params.camera));
 
     // アニメーション位相の復元
     if (params.has('ph_x')) {
@@ -114,9 +115,11 @@ export class URLManager {
     params.set('ph_z', phases.z.toFixed(3));
     params.set('ph_w', phases.w.toFixed(3));
         
-    const allIds = [...this.config.SCHEMAS.fractal, ...this.config.SCHEMAS.material, ...this.config.SCHEMAS.animation];
+    const allIds = [...this.config.SCHEMAS.fractal, ...this.config.SCHEMAS.material, ...this.config.SCHEMAS.animation, ...this.config.SCHEMAS.camera];
     allIds.forEach(id => {
-      const category = this.config.SCHEMAS.fractal.includes(id) ? 'fractal' : this.config.SCHEMAS.material.includes(id) ? 'material' : 'animation';
+      const category = this.config.SCHEMAS.fractal.includes(id) ? 'fractal' : 
+                       this.config.SCHEMAS.material.includes(id) ? 'material' : 
+                       this.config.SCHEMAS.animation.includes(id) ? 'animation' : 'camera';
       const val = domainSnapshot.params[category][id];
       if (val !== undefined) {
         params.set(id, id === 'bgColor' ? val.replace('#', '') : val);

@@ -205,7 +205,7 @@ export class UIController {
     const displayParams = {};
     const animatedCVec = this.domainStore.getAnimatedC();
 
-    let categoriesToSync = ["fractal", "material", "animation"];
+    let categoriesToSync = ["fractal", "material", "animation", "camera"];
     let keysToSync = null;
 
     if (category !== "ALL" && category) {

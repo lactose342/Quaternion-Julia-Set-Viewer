@@ -13,7 +13,7 @@ export const PARAMETER_DEFINITIONS = {
   rotXW: { category: "fractal", domId: "rotXW", type: "radian", min: 0, max: 360, step: 0.01, default: 0.0, precision: 1, label: "XW平面回転 (4D)", tooltip: "第4の軸を使った回転。物体が内側から裏返るように見えます。", group: "rotation" },
   rotYW: { category: "fractal", domId: "rotYW", type: "radian", min: 0, max: 360, step: 0.01, default: 0.0, precision: 1, label: "YW平面回転 (4D)", tooltip: "第4の軸を使った回転。空間が歪むような変化をします。", group: "rotation" },
   rotZW: { category: "fractal", domId: "rotZW", type: "radian", min: 0, max: 360, step: 0.01, default: 0.0, precision: 1, label: "ZW平面回転 (4D)", tooltip: "第4の軸を使った回転。内部と外部が反転します。", group: "rotation" },
-  fov: { category: "fractal", domId: "fov", type: "degree", min: 15, max: 120, step: 1, default: 45.0, precision: 1, label: "視野角 (FoV)", tooltip: "カメラのレンズの広さ。値を大きくすると遠近感が強くなり、小さくすると望遠レンズのようになります。", group: "camera" },
+  fov: { category: "camera", domId: "fov", type: "degree", min: 15, max: 120, step: 1, default: 45.0, precision: 1, label: "視野角 (FoV)", tooltip: "カメラのレンズの広さ。値を大きくすると遠近感が強くなり、小さくすると望遠レンズのようになります。", group: "camera" },
 
   // --- Material Parameters ---
   hue: { category: "material", domId: "hue", type: "number", min: 0.0, max: 1.0, step: 0.001, default: 0.586, precision: 3, label: "色相 (Hue)", tooltip: "物体の色合いを調整します。", group: "style", hideSlider: true },
@@ -24,7 +24,7 @@ export const PARAMETER_DEFINITIONS = {
   specular: { category: "material", domId: "specular", type: "number", min: 2.0, max: 64.0, step: 1.0, default: 10.0, precision: 2, label: "光沢感", tooltip: "表面のツヤを調整します。値を上げると金属のような鋭い光沢になります。", group: "style" },
   bgColor: { category: "material", domId: "bgColor", type: "color", default: "#0a0c1a", label: "背景色", tooltip: "空間全体の背景色を設定します。", group: "style" },
   bgAlpha: { category: "material", domId: "bgAlpha", type: "number", min: 0.0, max: 1.0, step: 0.05, default: 1.0, precision: 2, label: "背景不透明度", tooltip: "背景の不透明度を設定します（透過モードで機能します）。", group: "style", hideSlider: true },
-  zoom: { category: "material", domId: "zoom", type: "number", min: 0.1, max: 10.0, step: 0.05, default: 1.0, precision: 2, label: "ズーム", tooltip: "カメラのズーム倍率を設定します。", group: "camera" },
+  zoom: { category: "camera", domId: "zoom", type: "number", min: 0.1, max: 10.0, step: 0.05, default: 1.0, precision: 2, label: "ズーム", tooltip: "カメラのズーム倍率を設定します。", group: "camera" },
 
   // --- Pseudo Material Parameters (For UI Rendering only, not mapped to direct state key) ---
   baseColorPicker: { category: "material", domId: "baseColorPicker", type: "color", default: "#0055ff", label: "ベースカラー", tooltip: "物体の基準となる色をカラーピッカーで指定します（色相・彩度へ自動反映）。", group: "style", isPseudo: true },
