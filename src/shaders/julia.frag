@@ -49,12 +49,13 @@ vec2 iSphere(vec3 ro, vec3 rd, float r) {
     return vec2(-b-h, -b+h);
 }
 
-vec2 map4D(vec4 z) {
+vec2 map4D_iter(vec4 z, int max_iter) {
     float m2 = dot(z, z);
     float dz2 = 1.0;
     float iter = 0.0;
 
     for(int i = 0; i < MAX_ITER; i++) {
+        if (i >= max_iter) break;
         // 微分を先に更新してからzを更新する（チェーンルール順序が重要）
         dz2 *= 4.0 * max(1e-8, m2);
         if (dz2 > 1e10) dz2 = 1e10;
@@ -72,9 +73,22 @@ vec2 map4D(vec4 z) {
     return vec2(d, iter);
 }
 
+vec2 map4D(vec4 z) {
+    return map4D_iter(z, MAX_ITER);
+}
+
 vec2 map3D(vec3 p) {
     vec4 p4 = u_rotMatrix_Combined * vec4(p, 0.0);
     return map4D(p4);
+}
+
+vec2 map3D_Normal(vec3 p) {
+    vec4 p4 = u_rotMatrix_Combined * vec4(p, 0.0);
+    #if defined(LIMIT_NORMAL_ITER)
+        return map4D_iter(p4, 8);
+    #else
+        return map4D(p4);
+    #endif
 }
 
 vec3 calcNormal(vec3 p, float d_from_cam) {
@@ -82,18 +96,18 @@ vec3 calcNormal(vec3 p, float d_from_cam) {
 
     #if defined(IS_LOW_QUALITY)
         vec3 n;
-        float d = map3D(p).x;
-        n.x = map3D(p + vec3(e_val, 0.0, 0.0)).x - d;
-        n.y = map3D(p + vec3(0.0, e_val, 0.0)).x - d;
-        n.z = map3D(p + vec3(0.0, 0.0, e_val)).x - d;
+        float d = map3D_Normal(p).x;
+        n.x = map3D_Normal(p + vec3(e_val, 0.0, 0.0)).x - d;
+        n.y = map3D_Normal(p + vec3(0.0, e_val, 0.0)).x - d;
+        n.z = map3D_Normal(p + vec3(0.0, 0.0, e_val)).x - d;
         return normalize(n + 1e-7);
     #else
         vec2 e = vec2(1.0, -1.0) * e_val;
         vec3 n = vec3(
-            e.xyy * map3D(p + e.xyy).x +
-            e.yyx * map3D(p + e.yyx).x +
-            e.yxy * map3D(p + e.yxy).x +
-            e.xxx * map3D(p + e.xxx).x
+            e.xyy * map3D_Normal(p + e.xyy).x +
+            e.yyx * map3D_Normal(p + e.yyx).x +
+            e.yxy * map3D_Normal(p + e.yxy).x +
+            e.xxx * map3D_Normal(p + e.xxx).x
         );
         return normalize(n + 1e-7);
     #endif

@@ -21,7 +21,11 @@ export class JuliaMaterialFactory {
     return new THREE.ShaderMaterial({
       vertexShader,
       fragmentShader: `#define MAX_STEPS ${qualityConfig.steps}\n#define MAX_ITER ${qualityConfig.iter}\n` + fragmentShader,
-      defines: isExport ? { IS_EXPORTING: "1" } : isLow ? { IS_LOW_QUALITY: "1" } : {},
+      defines: {
+        ...(isExport ? { IS_EXPORTING: "1" } : {}),
+        ...(isLow ? { IS_LOW_QUALITY: "1" } : {}),
+        ...((isLow || qualityLevel === "XR") ? { LIMIT_NORMAL_ITER: "1" } : {})
+      },
       glslVersion: THREE.GLSL3,
       uniforms: {
         u_resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
