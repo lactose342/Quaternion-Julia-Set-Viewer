@@ -93,13 +93,12 @@ export class ExportManager extends EventTarget {
       targetHeight = Math.floor(targetHeight * safeScale);
     }
 
-    // デバイス環境に応じてタイル最大サイズを動的に決定 (モバイル=512, デスクトップ=1024)
-    const isMobile = /Mobi|Android|iPhone|iPad|Macintosh/i.test(navigator.userAgent) && 
-                     ('ontouchstart' in window || navigator.maxTouchPoints > 0);
-    const tileMaxLimit = isMobile ? 512 : 1024;
+    // 安全性と細かな進捗UXを両立するため、タイルサイズは512に固定します。
+    // タイルサイズの引き上げはGPUの総演算量を変えず、Canvas転送のオーバーヘッドもごく僅かなため高速化に寄与しません。
+    const TILE_MAX = this.config.RENDER_SETTINGS.TILE_MAX || 512;
 
-    const tilesX = Math.ceil(targetWidth / tileMaxLimit);
-    const tilesY = Math.ceil(targetHeight / tileMaxLimit);
+    const tilesX = Math.ceil(targetWidth / TILE_MAX);
+    const tilesY = Math.ceil(targetHeight / TILE_MAX);
     const tileW = Math.ceil(targetWidth / tilesX);
     const tileH = Math.ceil(targetHeight / tilesY);
 
@@ -123,6 +122,7 @@ export class ExportManager extends EventTarget {
 
   async #renderTiles(ctx, dims, isTransparent, renderParams) {
     const { targetWidth, targetHeight, tilesX, tilesY, tileW, tileH } = dims;
+    const totalTiles = tilesX * tilesY;
 
     for (let ty = 0; ty < tilesY; ty++) {
       for (let tx = 0; tx < tilesX; tx++) {
@@ -143,17 +143,23 @@ export class ExportManager extends EventTarget {
           cameraParams: renderParams.cameraParams
         });
 
-        await this.#nextFrame();
+        // 同期的にCanvasに転送（次の描画フレームを待つ必要はありません）
         ctx.drawImage(this.renderer.renderer.domElement, sx, sy, tileW, tileH);
 
-        const progress = Math.round(((ty * tilesX + tx + 1) / (tilesX * tilesY)) * 100);
+        const currentTileIndex = ty * tilesX + tx + 1;
+        const progress = Math.round((currentTileIndex / totalTiles) * 100);
 
         this.uiStore.update({
           downloadProgress: progress,
           downloadMessage: `${progress}%`
         });
 
-        await this.#sleep(10);
+        // 毎タイルごとに待機(sleep)するのではなく、3タイル描画するごとに1回だけ
+        // メインスレッドを開放してUI表示を更新します。これにより無駄なフレーム待ち時間を排除し高速化します。
+        if (currentTileIndex % 3 === 0 || currentTileIndex === totalTiles) {
+          await this.#flushDOM();
+          await this.#sleep(10);
+        }
       }
     }
   }
