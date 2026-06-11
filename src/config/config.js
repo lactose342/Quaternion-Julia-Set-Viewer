@@ -13,7 +13,7 @@ export const CONFIG = {
         AO_BASE_NORMAL: 10.0,
         AO_BASE_EXPORT: 24.0,
         MAX_CANVAS_SIZE: 4096,
-        TILE_MAX: 512
+        TILE_MAX: 256
     },
     MAX_RENDER_SIZE: 1200,
     SYSTEM: {
