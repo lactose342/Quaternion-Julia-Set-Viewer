@@ -35,7 +35,7 @@ export class Renderer {
     this.onFpsUpdate = null;
     this.isDownloading = false;
 
-    this.maxPixelRatio = Math.min(window.devicePixelRatio, 1.0);
+    this.maxPixelRatio = Math.min(window.devicePixelRatio, 2.0);
     this.currentPixelRatio = this.maxPixelRatio;
     this.qualityManager = new AdaptiveQualityManager(this.config);
 
@@ -328,6 +328,14 @@ export class Renderer {
     }
 
     if (this.onTick) this.onTick(delta);
+
+    // 静止時（操作もアニメーションもしていない、かつ非VR）は、最高画質(maxPixelRatio)に復帰させて描画する
+    if (!isActive && !isVR && !isDownloading) {
+      if (this.currentPixelRatio !== this.maxPixelRatio) {
+        this.setPixelRatio(this.maxPixelRatio);
+        this.renderState.needsRender = true;
+      }
+    }
 
     // Adaptive Quality & FPS update delegated to AdaptiveQualityManager
     if (this.qualityManager) {
