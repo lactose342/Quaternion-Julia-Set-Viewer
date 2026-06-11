@@ -93,9 +93,7 @@ export class ExportManager extends EventTarget {
       targetHeight = Math.floor(targetHeight * safeScale);
     }
 
-    // 安全性と細かな進捗UXを両立するため、タイルサイズは512に固定します。
-    // タイルサイズの引き上げはGPUの総演算量を変えず、Canvas転送のオーバーヘッドもごく僅かなため高速化に寄与しません。
-    const TILE_MAX = this.config.RENDER_SETTINGS.TILE_MAX || 512;
+    const TILE_MAX = this.config.RENDER_SETTINGS.TILE_MAX || 256;
 
     const tilesX = Math.ceil(targetWidth / TILE_MAX);
     const tilesY = Math.ceil(targetHeight / TILE_MAX);

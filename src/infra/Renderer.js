@@ -36,7 +36,7 @@ export class Renderer {
     this.onFpsUpdate = null;
     this.isDownloading = false;
 
-    this.maxPixelRatio = Math.min(window.devicePixelRatio, 1.5);
+    this.maxPixelRatio = 2.0;
     this.currentPixelRatio = this.maxPixelRatio;
     this.qualityManager = new AdaptiveQualityManager(this.config);
 
