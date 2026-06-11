@@ -19,7 +19,7 @@ export class ParameterView {
   }
 
   update(displayParams, isAutoAnimating, activeElementId = null) {
-    const categories = ["fractal", "material", "animation"];
+    const categories = ["fractal", "material", "animation", "camera"];
 
     categories.forEach((category) => {
       if (!displayParams[category]) return;
