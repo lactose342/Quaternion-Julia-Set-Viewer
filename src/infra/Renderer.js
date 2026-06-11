@@ -220,8 +220,8 @@ export class Renderer {
     this.renderState.needsRender = true;
     this.updateResolution();
 
-    // ループが走っていない静止時は、品質切り替え後に1回だけ同期的に再描画する
-    if (!this.isLoopRunning && this.renderer && !this.renderer.xr.isPresenting) {
+    // ループが走っていない静止時、かつメッシュ初期化後は品質切り替え後に1回だけ同期的に再描画する
+    if (this.mesh && !this.isLoopRunning && this.renderer && !this.renderer.xr.isPresenting) {
       if (this.onBeforeUpdateUniforms) {
         this.onBeforeUpdateUniforms(this);
       }
