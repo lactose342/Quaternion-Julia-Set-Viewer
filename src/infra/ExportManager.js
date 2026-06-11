@@ -93,9 +93,13 @@ export class ExportManager extends EventTarget {
       targetHeight = Math.floor(targetHeight * safeScale);
     }
 
-    const TILE_MAX = this.config.RENDER_SETTINGS.TILE_MAX;
-    const tilesX = Math.ceil(targetWidth / TILE_MAX);
-    const tilesY = Math.ceil(targetHeight / TILE_MAX);
+    // デバイス環境に応じてタイル最大サイズを動的に決定 (モバイル=512, デスクトップ=1024)
+    const isMobile = /Mobi|Android|iPhone|iPad|Macintosh/i.test(navigator.userAgent) && 
+                     ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    const tileMaxLimit = isMobile ? 512 : 1024;
+
+    const tilesX = Math.ceil(targetWidth / tileMaxLimit);
+    const tilesY = Math.ceil(targetHeight / tileMaxLimit);
     const tileW = Math.ceil(targetWidth / tilesX);
     const tileH = Math.ceil(targetHeight / tilesY);
 
@@ -160,7 +164,7 @@ export class ExportManager extends EventTarget {
       downloadMessage: "画像エンコード中...\n\nしばらくお待ちください"
     });
     await this.#flushDOM();
-    await this.#sleep(50);
+    await this.#sleep(150);
 
     const isPng = format === "png" || format === "transparent_png";
     const isWebp = format === "webp";

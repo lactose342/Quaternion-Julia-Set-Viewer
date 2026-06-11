@@ -4,7 +4,7 @@ export const CONFIG = {
     QUALITY: {
         LOW: { steps: 250, iter: 15 },
         HIGH: { steps: 800, iter: 80 },
-        EXPORT: { steps: 4000, iter: 120 },
+        EXPORT: { steps: 2000, iter: 120 },
         XR: { steps: 200, iter: 12 }
     },
     RENDER_SETTINGS: {
