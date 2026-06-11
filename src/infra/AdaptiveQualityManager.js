@@ -76,7 +76,7 @@ export class AdaptiveQualityManager {
       }
     }
 
-    // B. 上げる判断：3.0秒以上の安定（約10回連続）と、前回の画質変更から3.0秒のクールダウン経過を要求
+    // B. 上げる判断：1.2秒以上の安定（約4回連続）と、前回の画質変更から1.5秒のクールダウン経過を要求
     if (fps >= 58) {
       this.healthyCount++;
     } else {
