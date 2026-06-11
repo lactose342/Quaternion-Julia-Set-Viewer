@@ -1,44 +1,41 @@
 export class MainMenuView {
-  constructor(uiElements) {
-    this.uiElements = uiElements;
+  constructor() {
+    this.customUi = document.getElementById("custom-ui");
+    this.toggleBtn = document.getElementById("toggle-ui-btn");
+    this.fullscreenBtn = document.getElementById("fullscreen-btn");
+    this.presetSelect = document.getElementById("preset-select");
+    this.animPresetSelect = document.getElementById("anim-preset-select");
   }
 
   toggleMenu() {
-    const customUi = this.uiElements["custom-ui"];
-    const toggleBtn = this.uiElements["toggle-ui-btn"];
-    
-    if (!customUi || !toggleBtn) return;
+    if (!this.customUi || !this.toggleBtn) return;
 
-    customUi.classList.toggle("hidden");
-    const isOpen = !customUi.classList.contains("hidden");
+    this.customUi.classList.toggle("hidden");
+    const isOpen = !this.customUi.classList.contains("hidden");
     
     if (isOpen) {
-      toggleBtn.classList.remove("is-close");
-      toggleBtn.classList.add("is-open");
-      toggleBtn.textContent = "閉じる";
+      this.toggleBtn.classList.remove("is-close");
+      this.toggleBtn.classList.add("is-open");
+      this.toggleBtn.textContent = "閉じる";
     } else {
-      toggleBtn.classList.remove("is-open");
-      toggleBtn.classList.add("is-close");
-      toggleBtn.textContent = "設定";
+      this.toggleBtn.classList.remove("is-open");
+      this.toggleBtn.classList.add("is-close");
+      this.toggleBtn.textContent = "設定";
     }
   }
 
   updateFullscreen(isFullscreen) {
-    const fullscreenBtn = this.uiElements["fullscreen-btn"];
-    if (fullscreenBtn) {
-      fullscreenBtn.classList.toggle("is-fullscreen", isFullscreen);
+    if (this.fullscreenBtn) {
+      this.fullscreenBtn.classList.toggle("is-fullscreen", isFullscreen);
     }
   }
 
   updatePresets(activePreset, activeAnimPreset) {
-    const presetSelect = this.uiElements["preset-select"];
-    const animPresetSelect = this.uiElements["anim-preset-select"];
-
-    if (presetSelect && activePreset && presetSelect.value !== activePreset) {
-      presetSelect.value = activePreset;
+    if (this.presetSelect && activePreset && this.presetSelect.value !== activePreset) {
+      this.presetSelect.value = activePreset;
     }
-    if (animPresetSelect && activeAnimPreset && animPresetSelect.value !== activeAnimPreset) {
-      animPresetSelect.value = activeAnimPreset;
+    if (this.animPresetSelect && activeAnimPreset && this.animPresetSelect.value !== activeAnimPreset) {
+      this.animPresetSelect.value = activeAnimPreset;
     }
   }
 }

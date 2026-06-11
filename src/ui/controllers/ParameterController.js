@@ -3,8 +3,8 @@ import { hexToHsv } from "@/infra/ColorUtils.js";
 import { parseParamFromUI } from "@/ui/utils/uiParamFormatter.js";
 
 export class ParameterController {
-  constructor(uiElements, signal) {
-    this.uiElements = uiElements;
+  constructor(dispatcher, signal) {
+    this.dispatcher = dispatcher;
     this.signal = signal;
     this.rafIds = new Map();
     this.pendingPayloads = new Map();
@@ -20,17 +20,19 @@ export class ParameterController {
   }
 
   #dispatch(type, payload = {}) {
-    window.dispatchEvent(new CustomEvent("app-command", { detail: { type, ...payload } }));
+    if (this.dispatcher) {
+      this.dispatcher.dispatch(type, payload);
+    }
   }
 
-  bindEvents() {
+  init(container) {
     const stopPropagation = (e) => e.stopPropagation();
     
     // スキーマ定義からDOM IDを動的取得
     const domIdsToBind = Object.values(PARAMETER_DEFINITIONS).map((def) => def.domId);
 
     domIdsToBind.forEach((domId) => {
-      const el = this.uiElements[domId];
+      const el = container.querySelector(`#${domId}`);
       if (!el) return;
 
       const stateKey = this._getStateKey(domId);
@@ -97,7 +99,7 @@ export class ParameterController {
       }, { signal: this.signal });
     });
 
-    const baseColorPicker = this.uiElements["baseColorPicker"];
+    const baseColorPicker = container.querySelector("#baseColorPicker");
     if (baseColorPicker) {
       let colorRafId = null;
       let pendingColor = null;

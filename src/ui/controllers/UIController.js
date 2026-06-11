@@ -2,121 +2,9 @@ import { UI_IDS } from "@/ui/uiConstants.js";
 import { PARAMETER_DEFINITIONS } from "@/core/domain/ParameterDefinitions.js";
 import { formatParamForUI } from "@/ui/utils/uiParamFormatter.js";
 import { hsvToHex } from "@/infra/ColorUtils.js";
-
-function createParameterElement(key, def) {
-  const sliderGroup = document.createElement("div");
-  sliderGroup.className = "slider-group";
-
-  const label = document.createElement("label");
-  label.setAttribute("for", def.domId);
-  if (def.tooltip) {
-    label.setAttribute("title", def.tooltip);
-  }
-
-  const labelText = document.createTextNode(def.label + " ");
-  label.appendChild(labelText);
-
-  if (def.type !== "color") {
-    const span = document.createElement("span");
-    span.id = `val-${def.domId}`;
-    span.className = "val-label";
-    label.appendChild(span);
-  }
-
-  sliderGroup.appendChild(label);
-
-  const input = document.createElement("input");
-  input.id = def.domId;
-  input.type = def.type === "color" ? "color" : "range";
-  input.value = def.default;
-
-  if (def.type !== "color") {
-    input.setAttribute("min", def.min);
-    input.setAttribute("max", def.max);
-    input.setAttribute("step", def.step);
-  }
-
-  sliderGroup.appendChild(input);
-  return sliderGroup;
-}
-
-function createColorPickerElement(key, def) {
-  const container = document.createElement("div");
-  container.className = "color-picker-group";
-  container.id = `group-${def.domId}`;
-
-  const label = document.createElement("label");
-  if (def.tooltip) {
-    label.setAttribute("title", def.tooltip);
-  }
-
-  // Left label text
-  const labelText = document.createElement("span");
-  labelText.textContent = def.label;
-  label.appendChild(labelText);
-
-  // Right side container (hex code and colored swatch)
-  const rightContainer = document.createElement("div");
-  rightContainer.style.display = "flex";
-  rightContainer.style.alignItems = "center";
-  rightContainer.style.gap = "8px";
-
-  const valText = document.createElement("span");
-  valText.className = "val-label";
-  valText.textContent = def.default.toUpperCase();
-  rightContainer.appendChild(valText);
-
-  const preview = document.createElement("div");
-  preview.className = "color-preview-swatch";
-  preview.style.backgroundColor = def.default;
-  rightContainer.appendChild(preview);
-
-  label.style.display = "flex";
-  label.style.justifyContent = "space-between";
-  label.style.alignItems = "center";
-  label.style.width = "100%";
-  label.appendChild(rightContainer);
-
-  container.appendChild(label);
-
-  const svContainer = document.createElement("div");
-  svContainer.className = "sv-container";
-
-  const canvas = document.createElement("canvas");
-  canvas.id = `canvas-${def.domId}`;
-  canvas.className = "sv-canvas";
-  canvas.height = 120;
-  svContainer.appendChild(canvas);
-
-  const cursor = document.createElement("div");
-  cursor.id = `cursor-${def.domId}`;
-  cursor.className = "sv-cursor";
-  svContainer.appendChild(cursor);
-
-  container.appendChild(svContainer);
-
-  const hueContainer = document.createElement("div");
-  hueContainer.className = "hue-container";
-
-  const hueSlider = document.createElement("input");
-  hueSlider.type = "range";
-  hueSlider.id = `hue-${def.domId}`;
-  hueSlider.className = "hue-slider";
-  hueSlider.min = "0";
-  hueSlider.max = "360";
-  hueSlider.value = "0";
-  hueContainer.appendChild(hueSlider);
-
-  container.appendChild(hueContainer);
-
-  const hiddenInput = document.createElement("input");
-  hiddenInput.type = "hidden";
-  hiddenInput.id = def.domId;
-  hiddenInput.value = def.default;
-  container.appendChild(hiddenInput);
-
-  return container;
-}
+import { createParameterElement, createColorPickerElement } from "@/ui/utils/DOMFactory.js";
+import { TabView } from "@/ui/views/TabView.js";
+import { BottomSheetView } from "@/ui/views/BottomSheetView.js";
 
 export class UIController {
   constructor(
@@ -131,7 +19,6 @@ export class UIController {
     parameterView,
     exportView,
     mainMenuView,
-    sharedUiElements,
     colorPickerView,
   ) {
     this.domainStore = domainStore;
@@ -145,7 +32,6 @@ export class UIController {
     this.parameterView = parameterView;
     this.exportView = exportView;
     this.mainMenuView = mainMenuView;
-    this.uiElements = sharedUiElements;
     this.colorPickerView = colorPickerView;
     this.abortController = new AbortController();
     this.qualityTimeoutId = null;
@@ -260,190 +146,23 @@ export class UIController {
     });
   }
 
-  #setupTabs() {
-    const tabsContainer = document.getElementById("mobile-tabs-container");
-    if (!tabsContainer) return;
-
-    const customUi = document.getElementById("custom-ui");
-    const handle = customUi.querySelector(".bottom-sheet-handle");
-
-    const tabButtons = tabsContainer.querySelectorAll(".tab-btn");
-    const tabContents = [
-      document.getElementById("tab-common"),
-      ...Array.from(document.querySelectorAll("#parameter-sections-container > details"))
-    ];
-
-    tabButtons.forEach(btn => {
-      btn.addEventListener("click", () => {
-        const targetTabId = btn.getAttribute("data-tab");
-
-        // 全タブボタンのアクティブクラスをリセット
-        tabButtons.forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-
-        // 全コンテンツの表示クラスを切り替え
-        tabContents.forEach(content => {
-          if (!content) return;
-          if (content.id === targetTabId) {
-            content.classList.add("active-tab-content");
-            if (content.tagName === "DETAILS") {
-              content.setAttribute("open", "");
-            }
-          } else {
-            content.classList.remove("active-tab-content");
-          }
-        });
-
-        // タブ切り替え後にカラーピッカーを強制再描画（表示後の寸法に合わせて解像度を再設定）
-        if (this.colorPickerView) {
-          this.colorPickerView.syncAll(true);
-        }
-      });
-    });
-
-    // --- モバイルボトムシートのドラッグクローズ処理 ---
-    let startY = 0;
-    let currentY = 0;
-    let isDragging = false;
-    let hasCaptured = false;
-
-    const onPointerDown = (e) => {
-      if (window.innerWidth > 768) return;
-      
-      startY = e.clientY;
-      currentY = e.clientY;
-      isDragging = true;
-      hasCaptured = false;
-      
-      // ドラッグ中の追従を良くするためトランジションを一時的にオフ
-      customUi.style.transition = "none";
-    };
-
-    const onPointerMove = (e) => {
-      if (!isDragging || window.innerWidth > 768) return;
-
-      currentY = e.clientY;
-      const diffY = currentY - startY;
-
-      // 下方向へのドラッグのみ追従（上には引き上げられないように制限）
-      if (diffY > 0) {
-        // わずかに動いた（5px以上）時点でキャプチャを開始する（クリックとドラッグの判別）
-        if (diffY > 5 && !hasCaptured) {
-          hasCaptured = true;
-          try {
-            e.currentTarget.setPointerCapture(e.pointerId);
-          } catch (err) {}
-        }
-
-        customUi.style.transform = `translateY(${diffY}px)`;
-        
-        // 設定ボタンの位置もボトムシートに追従させる
-        const toggleBtn = document.getElementById("toggle-ui-btn");
-        if (toggleBtn) {
-          toggleBtn.style.transition = "none";
-          toggleBtn.style.bottom = `calc(55dvh + 15px - ${diffY}px)`;
-        }
-      }
-    };
-
-    const onPointerUp = (e) => {
-      if (!isDragging) return;
-      isDragging = false;
-
-      if (hasCaptured) {
-        try {
-          e.currentTarget.releasePointerCapture(e.pointerId);
-        } catch (err) {}
-      }
-
-      // トランジション設定を戻す
-      customUi.style.transition = "";
-      const toggleBtn = document.getElementById("toggle-ui-btn");
-      if (toggleBtn) {
-        toggleBtn.style.transition = "";
-        toggleBtn.style.bottom = ""; // CSS側の指定に戻す
-      }
-
-      const diffY = currentY - startY;
-      
-      // 100px以上下にドラッグした場合は閉じる
-      if (diffY > 100) {
-        // 設定を閉じるためにメニューUIトグルのコマンドを発行
-        window.dispatchEvent(new CustomEvent("app-command", {
-          detail: { type: "TOGGLE_MENU_UI" }
-        }));
-        
-        // アニメーションが終わる頃にtransformスタイルをリセット
-        setTimeout(() => {
-          customUi.style.transform = "";
-        }, 300);
-      } else {
-        // 元の位置に戻す
-        customUi.style.transform = "";
-      }
-      
-      startY = 0;
-      currentY = 0;
-    };
-
-    // ハンドルとタブバー部分にポインターイベントを登録 (マウス・タッチの両対応)
-    if (handle) {
-      handle.addEventListener("pointerdown", onPointerDown);
-      handle.addEventListener("pointermove", onPointerMove);
-      handle.addEventListener("pointerup", onPointerUp);
-      handle.addEventListener("pointercancel", onPointerUp);
-    }
-    tabsContainer.addEventListener("pointerdown", onPointerDown);
-    tabsContainer.addEventListener("pointermove", onPointerMove);
-    tabsContainer.addEventListener("pointerup", onPointerUp);
-    tabsContainer.addEventListener("pointercancel", onPointerUp);
-
-    // モバイル幅の時はdetailsを最初からopenにして、コンテンツが非表示にならないようにする
-    const ensureMobileDetailsOpen = () => {
-      if (window.innerWidth <= 768) {
-        document.querySelectorAll("#parameter-sections-container > details").forEach(details => {
-          details.setAttribute("open", "");
-        });
-      }
-    };
-
-    ensureMobileDetailsOpen();
-    window.addEventListener("resize", ensureMobileDetailsOpen);
-  }
-
   init() {
     this.#generateUI();
-    this.#setupTabs();
 
-    // 定義スキーマから全スライダー用の DOM ID を動的に生成
-    const parameterDomIds = Object.values(PARAMETER_DEFINITIONS).map(def => def.domId);
+    const container = document.getElementById("parameter-sections-container");
+    if (container) {
+      this.parameterView.init(container);
+      this.paramController.init(container);
+      if (this.colorPickerView) {
+        this.colorPickerView.init(container);
+      }
+    }
 
-    const domIds = [
-      ...parameterDomIds,
-      UI_IDS.EXPORT.CUSTOM_UI,
-      UI_IDS.EXPORT.MODAL,
-      UI_IDS.EXPORT.PROGRESS_BAR,
-      UI_IDS.EXPORT.PROGRESS_TEXT,
-      "custom-ui",
-      "toggle-ui-btn",
-      "fullscreen-btn",
-      "preset-select",
-      "anim-preset-select",
-      "fps-counter",
-      "baseColorPicker"
-    ];
+    this.tabView = new TabView(this.colorPickerView);
+    this.tabView.init();
 
-    domIds.forEach((domId) => {
-      const el = document.getElementById(domId);
-      if (el) this.uiElements[domId] = el;
-
-      const valLabel = document.getElementById(`val-${domId}`);
-      if (valLabel) this.uiElements[`val-${domId}`] = valLabel;
-    });
-
-    Object.assign(this.exportView.uiElements, this.uiElements);
-    Object.assign(this.mainMenuView.uiElements, this.uiElements);
-    Object.assign(this.parameterView.uiElements, this.uiElements);
+    this.bottomSheetView = new BottomSheetView();
+    this.bottomSheetView.init();
 
     this.updateHistoryButtons();
   }
@@ -549,7 +268,7 @@ export class UIController {
     this.exportView.update(uiState);
     this.mainMenuView.updatePresets(uiState.activePreset, uiState.activeAnimPreset);
 
-    const customUi = this.uiElements["custom-ui"];
+    const customUi = document.getElementById("custom-ui");
     if (customUi) {
       customUi.classList.toggle("is-interacting", !!uiState.isInteracting);
     }
@@ -576,7 +295,7 @@ export class UIController {
 
     const undoBtn = document.getElementById("undo-btn");
     const redoBtn = document.getElementById("redo-btn");
-    const presetSelect = this.uiElements["preset-select"];
+    const presetSelect = document.getElementById("preset-select");
     const playBtn = document.getElementById("auto-animate-btn");
 
     if (undoBtn) undoBtn.disabled = !status.canUndo || isAutoAnimating;
@@ -588,7 +307,7 @@ export class UIController {
     }
 
     ["cx", "cy", "cz", "cw"].forEach((id) => {
-      const el = this.uiElements[id];
+      const el = document.getElementById(id);
       if (el) el.disabled = isAutoAnimating;
     });
   }

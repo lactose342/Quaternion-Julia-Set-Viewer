@@ -1,6 +1,6 @@
 export class StatusView {
-  constructor(uiElements) {
-    this.uiElements = uiElements;
+  constructor() {
+    this.fpsCounterEl = document.getElementById("fps-counter");
   }
 
   /**
@@ -9,10 +9,9 @@ export class StatusView {
    * @param {boolean} isIdle 
    */
   updateFps(fps, isIdle) {
-    const fpsCounterEl = this.uiElements["fps-counter"];
-    if (!fpsCounterEl) return;
+    if (!this.fpsCounterEl) return;
 
     // 文字列の組み立て
-    fpsCounterEl.textContent = isIdle ? `-- FPS (Idle)` : `${fps} FPS`;
+    this.fpsCounterEl.textContent = isIdle ? `-- FPS (Idle)` : `${fps} FPS`;
   }
 }

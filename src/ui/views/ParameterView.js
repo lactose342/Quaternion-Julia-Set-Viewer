@@ -1,8 +1,22 @@
 import { PARAMETER_DEFINITIONS } from "@/core/domain/ParameterDefinitions.js";
 
 export class ParameterView {
-  constructor(uiElements) {
-    this.uiElements = uiElements;
+  constructor() {
+    this.inputs = new Map();
+    this.labels = new Map();
+  }
+
+  init(container) {
+    Object.values(PARAMETER_DEFINITIONS).forEach((def) => {
+      const inputEl = container.querySelector(`#${def.domId}`);
+      if (inputEl) {
+        this.inputs.set(def.domId, inputEl);
+      }
+      const labelEl = container.querySelector(`#val-${def.domId}`);
+      if (labelEl) {
+        this.labels.set(def.domId, labelEl);
+      }
+    });
   }
 
   update(displayParams, isAutoAnimating, activeElementId = null) {
@@ -15,7 +29,7 @@ export class ParameterView {
         const def = PARAMETER_DEFINITIONS[key];
         const domId = def ? def.domId : key;
 
-        const inputEl = this.uiElements[domId];
+        const inputEl = this.inputs.get(domId);
         if (!inputEl) return;
 
         const isFocused = domId === activeElementId;
@@ -32,7 +46,7 @@ export class ParameterView {
         }
 
         // 2. ラベル要素の同期
-        const labelEl = this.uiElements[`val-${domId}`];
+        const labelEl = this.labels.get(domId);
         if (labelEl) {
           labelEl.textContent = paramData.displayText;
         }

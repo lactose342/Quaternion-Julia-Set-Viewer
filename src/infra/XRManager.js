@@ -6,10 +6,12 @@ import { XRHandModelFactory } from "three/examples/jsm/webxr/XRHandModelFactory.
  * WebXR / AR セッションおよびインタラクションを統合管理するヘルパーサービス
  */
 export class XRManager {
-  constructor(renderer, domainStore, uiStore) {
-    this.renderer = renderer;
+  constructor(threeRenderer, scene, domainStore, uiStore, config) {
+    this.threeRenderer = threeRenderer;
+    this.scene = scene;
     this.domainStore = domainStore;
     this.uiStore = uiStore;
+    this.config = config;
 
     // VR/AR用の初期設定 (高さをさらに引き上げ: y を -0.05 から 0.05 へ変更)
     this.vrScale = 0.3;
@@ -25,11 +27,16 @@ export class XRManager {
     this.grabRelativeMatrix = [null, null]; // コントローラーとフラクタルの相対トランスフォーム行列
     this.startVrScale = 1.0;
     this.initialTwoHandDist = null;
+
+    // コールバック
+    this.onSessionStart = null;
+    this.onSessionEnd = null;
+    this.onInteraction = null;
   }
 
   init() {
-    this.renderer.renderer.xr.addEventListener("sessionstart", () => {
-      this.activeSession = this.renderer.renderer.xr.getSession();
+    this.threeRenderer.xr.addEventListener("sessionstart", () => {
+      this.activeSession = this.threeRenderer.xr.getSession();
 
       // ARパススルーセッションかどうかを判定
       this.isAR = this.activeSession.environmentBlendMode && this.activeSession.environmentBlendMode !== "opaque";
@@ -41,15 +48,17 @@ export class XRManager {
         this.domainStore.updateParams("material", { bgAlpha: 0.0 });
       }
 
-      // VR/AR専用の超軽量画質「XR」を適用し、解像度比を下げてパフォーマンスを最大化 (目標60FPS超)
-      this.renderer.setQuality("XR");
-      this.renderer.setPixelRatio(0.55);
-      this.renderer.renderer.xr.setFoveation(1.0);
+      // コールバック
+      if (this.onSessionStart) {
+        this.onSessionStart();
+      }
 
-      this.renderer.renderState.needsRender = true;
+      if (this.onInteraction) {
+        this.onInteraction();
+      }
     });
 
-    this.renderer.renderer.xr.addEventListener("sessionend", () => {
+    this.threeRenderer.xr.addEventListener("sessionend", () => {
       this.activeSession = null;
       if (this.isAR) {
         // 背景透過度を元の状態に復元
@@ -57,9 +66,10 @@ export class XRManager {
       }
       this.isAR = false;
 
-      // 画質とピクセル解像度の復元
-      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
-      this.renderer.setQuality("HIGH");
+      // コールバック
+      if (this.onSessionEnd) {
+        this.onSessionEnd();
+      }
 
       // VRセッション終了時にデスクトップUIを最新状態に一括同期する
       this.domainStore.dispatchEvent(new CustomEvent("domain-updated", { detail: { type: "ALL" } }));
@@ -67,11 +77,11 @@ export class XRManager {
 
     // コントローラーや手を表示するための光源を追加 (これらがないとモデルが真っ黒で不可視になります)
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
-    this.renderer.scene.add(ambientLight);
+    this.scene.add(ambientLight);
 
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
     dirLight.position.set(2, 4, 3);
-    this.renderer.scene.add(dirLight);
+    this.scene.add(dirLight);
 
     // 1. コントローラーおよびハンドトラッキングモデルの追加
     const controllerModelFactory = new XRControllerModelFactory();
@@ -79,20 +89,20 @@ export class XRManager {
 
     // 左右のコントローラーと手のバインディング設定
     for (let id = 0; id < 2; id++) {
-      const controller = this.renderer.renderer.xr.getController(id);
+      const controller = this.threeRenderer.xr.getController(id);
       controller.addEventListener("selectstart", () => this.onSelectStart(id, controller));
       controller.addEventListener("selectend", () => this.onSelectEnd(id));
-      this.renderer.scene.add(controller);
+      this.scene.add(controller);
 
       // コントローラーモデル（Grip）の追加
-      const grip = this.renderer.renderer.xr.getControllerGrip(id);
+      const grip = this.threeRenderer.xr.getControllerGrip(id);
       grip.add(controllerModelFactory.createControllerModel(grip));
-      this.renderer.scene.add(grip);
+      this.scene.add(grip);
 
       // ハンドモデル（素手トラッキング用のメッシュ）の追加
-      const hand = this.renderer.renderer.xr.getHand(id);
+      const hand = this.threeRenderer.xr.getHand(id);
       hand.add(handModelFactory.createHandModel(hand, "mesh"));
-      this.renderer.scene.add(hand);
+      this.scene.add(hand);
     }
   }
 
@@ -120,8 +130,8 @@ export class XRManager {
 
     // 両手でピンチ（トリガー引き）している場合、初期手間距離を記録 (拡大縮小用)
     if (this.dragging[0] && this.dragging[1]) {
-      const c0 = this.renderer.renderer.xr.getController(0);
-      const c1 = this.renderer.renderer.xr.getController(1);
+      const c0 = this.threeRenderer.xr.getController(0);
+      const c1 = this.threeRenderer.xr.getController(1);
       this.initialTwoHandDist = c0.position.distanceTo(c1.position);
     }
   }
@@ -137,7 +147,7 @@ export class XRManager {
    * @param {number} delta 経過時間 (秒)
    */
   update(delta) {
-    const session = this.renderer.renderer.xr.getSession();
+    const session = this.threeRenderer.xr.getSession();
     if (!session) return;
 
     // 1. 直接掴み（グラブ＆ドラッグ）および両手拡大縮小の更新処理
@@ -150,8 +160,8 @@ export class XRManager {
   updateDragInteraction() {
     // 【両手でのピンチ / 拡大縮小 ＆ 位置調整】
     if (this.dragging[0] && this.dragging[1]) {
-      const c0 = this.renderer.renderer.xr.getController(0);
-      const c1 = this.renderer.renderer.xr.getController(1);
+      const c0 = this.threeRenderer.xr.getController(0);
+      const c1 = this.threeRenderer.xr.getController(1);
       const currentDist = c0.position.distanceTo(c1.position);
 
       if (this.initialTwoHandDist && this.initialTwoHandDist > 0.01) {
@@ -165,7 +175,7 @@ export class XRManager {
       this.vrOffset.y = midpoint.y;
       this.vrOffset.z = midpoint.z;
 
-      this.renderer.renderState.needsRender = true;
+      if (this.onInteraction) this.onInteraction();
       return;
     }
 
@@ -173,7 +183,7 @@ export class XRManager {
     for (let id = 0; id < 2; id++) {
       if (!this.dragging[id]) continue;
 
-      const c = this.renderer.renderer.xr.getController(id);
+      const c = this.threeRenderer.xr.getController(id);
       const relativeMatrix = this.grabRelativeMatrix[id];
       if (!relativeMatrix) continue;
 
@@ -199,7 +209,7 @@ export class XRManager {
         rotZ: euler.z
       });
 
-      this.renderer.renderState.needsRender = true;
+      if (this.onInteraction) this.onInteraction();
     }
   }
 
@@ -265,7 +275,7 @@ export class XRManager {
 
         if (yVal !== 0.0) {
           this.vrScale = Math.max(0.05, Math.min(2.0, this.vrScale - yVal * scaleSpeed));
-          this.renderer.renderState.needsRender = true;
+          if (this.onInteraction) this.onInteraction();
         }
       }
     }
@@ -276,7 +286,7 @@ export class XRManager {
    * @param {Object} uniforms THREE.ShaderMaterial の uniforms オブジェクト
    */
   updateUniforms(uniforms) {
-    const isPresenting = this.renderer.renderer && this.renderer.renderer.xr.isPresenting;
+    const isPresenting = this.threeRenderer && this.threeRenderer.xr.isPresenting;
     if (uniforms.u_vrScale) {
       uniforms.u_vrScale.value = isPresenting ? this.vrScale : 1.0;
     }

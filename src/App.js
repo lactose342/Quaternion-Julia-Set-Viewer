@@ -18,27 +18,28 @@ import { StatusView } from "@/ui/views/StatusView.js";
 import { ColorPickerView } from "@/ui/views/ColorPickerView.js";
 
 import { CommandDispatcher } from "@/core/CommandDispatcher.js";
-import { ApplyPresetCommand } from "@/core/commands/ApplyPresetCommand.js";
-import { DownloadHighResCommand } from "@/core/commands/DownloadHighResCommand.js";
-import { ToggleMenuCommand } from "@/core/commands/ToggleMenuCommand.js";
-import { ToggleFullscreenCommand } from "@/core/commands/ToggleFullscreenCommand.js";
-import { ToggleAutoAnimateCommand } from "@/core/commands/ToggleAutoAnimateCommand.js";
-import { ResetStateCommand } from "@/core/commands/ResetStateCommand.js";
-import { RandomizeCommand } from "@/core/commands/RandomizeCommand.js";
-import { ApplyAnimPresetCommand } from "@/core/commands/ApplyAnimPresetCommand.js";
-import { ShareUrlCommand } from "@/core/commands/ShareUrlCommand.js";
-import { UpdateParamInputCommand } from "@/core/commands/UpdateParamInputCommand.js";
-import { UpdateColorInputCommand } from "@/core/commands/UpdateColorInputCommand.js";
-import { UndoCommand } from "@/core/commands/UndoCommand.js";
-import { RedoCommand } from "@/core/commands/RedoCommand.js";
-import { CommitHistoryCommand } from "@/core/commands/CommitHistoryCommand.js";
-import { InitializeAppCommand } from "@/core/commands/InitializeAppCommand.js";
+import {
+  ApplyPresetCommand,
+  DownloadHighResCommand,
+  ToggleMenuCommand,
+  ToggleFullscreenCommand,
+  ToggleAutoAnimateCommand,
+  ResetStateCommand,
+  RandomizeCommand,
+  ApplyAnimPresetCommand,
+  ShareUrlCommand,
+  UpdateParamInputCommand,
+  UpdateColorInputCommand,
+  UndoCommand,
+  RedoCommand,
+  CommitHistoryCommand,
+  InitializeAppCommand
+} from "@/core/commands/index.js";
 
 export class App {
   constructor(config) {
     this.config = config;
     this.abortController = new AbortController();
-    this.sharedUiElements = {};
 
     this.domainStore = new DomainStore(this.config);
     this.uiStore = new UIStore(this.config.SYSTEM.DEFAULT_QUALITY);
@@ -54,17 +55,22 @@ export class App {
     this.colorPickerView = new ColorPickerView();
 
     this.toastView = new ToastView();
-    this.parameterView = new ParameterView(this.sharedUiElements);
-    this.exportView = new ExportView(this.sharedUiElements);
-    this.mainMenuView = new MainMenuView(this.sharedUiElements);
-    this.statusView = new StatusView(this.sharedUiElements);
+    this.parameterView = new ParameterView();
+    this.exportView = new ExportView();
+    this.mainMenuView = new MainMenuView();
+    this.statusView = new StatusView();
+
+    this.dispatcher = new CommandDispatcher();
 
     this.paramController = new ParameterController(
-      this.sharedUiElements,
+      this.dispatcher,
       this.abortController.signal,
     );
 
-    this.actionController = new ActionController(this.abortController.signal, window);
+    this.actionController = new ActionController(
+      this.dispatcher,
+      this.abortController.signal,
+    );
 
     this.uiController = new UIController(
       this.domainStore,
@@ -78,11 +84,9 @@ export class App {
       this.parameterView,
       this.exportView,
       this.mainMenuView,
-      this.sharedUiElements,
       this.colorPickerView,
     );
 
-    this.dispatcher = new CommandDispatcher();
     this.#setupCommands();
     this.#setupDataFlowListeners();
   }
@@ -139,15 +143,11 @@ export class App {
 
       this.renderer.init();
       this.uiController.init();
-      this.colorPickerView.init();
-      this.paramController.bindEvents();
       this.actionController.bindEvents();
 
       this.renderer.onTick = (delta) => this.animationController.update(delta);
 
-      window.dispatchEvent(new CustomEvent("app-command", {
-        detail: { type: "INITIALIZE_APP", currentUrl: window.location.href }
-      }));
+      this.dispatcher.dispatch("INITIALIZE_APP", { currentUrl: window.location.href });
 
       this.renderer.animate(() => ({
         isDownloading: this.uiStore.isDownloading,

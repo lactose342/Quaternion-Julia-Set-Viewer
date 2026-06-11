@@ -9,7 +9,7 @@ export class Renderer {
     this.domainStore = domainStore;
     this.uiStore = uiStore;
     this.config = config;
-    this.xrManager = new XRManager(this, domainStore, uiStore, config);
+    this.xrManager = null;
 
     this.renderState = {
       needsRender: true,
@@ -68,9 +68,21 @@ export class Renderer {
 
     document.body.appendChild(VRButton.createButton(this.renderer));
 
-    if (this.xrManager) {
-      this.xrManager.init();
-    }
+    this.xrManager = new XRManager(this.renderer, this.scene, this.domainStore, this.uiStore, this.config);
+    this.xrManager.onSessionStart = () => {
+      this.setQuality("XR");
+      this.setPixelRatio(0.55);
+      this.renderer.xr.setFoveation(1.0);
+    };
+    this.xrManager.onSessionEnd = () => {
+      this.setPixelRatio(this.maxPixelRatio);
+      this.setQuality("HIGH");
+    };
+    this.xrManager.onInteraction = () => {
+      this.renderState.needsRender = true;
+      this.startLoop();
+    };
+    this.xrManager.init();
 
     document.body.appendChild(this.renderer.domElement);
 

@@ -1,13 +1,13 @@
 export class ActionController {
-  constructor(signal, eventBus = window) {
+  constructor(dispatcher, signal) {
+    this.dispatcher = dispatcher;
     this.signal = signal;
-    this.eventBus = eventBus;
   }
 
   #dispatch(type, payload = {}) {
-    this.eventBus.dispatchEvent(
-      new CustomEvent("app-command", { detail: { type, ...payload } })
-    );
+    if (this.dispatcher) {
+      this.dispatcher.dispatch(type, payload);
+    }
   }
 
   bindEvents() {

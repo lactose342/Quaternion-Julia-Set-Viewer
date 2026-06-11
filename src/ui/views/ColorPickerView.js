@@ -5,8 +5,8 @@ export class ColorPickerView {
     this.pickers = [];
   }
 
-  init() {
-    const pickerGroups = document.querySelectorAll(".color-picker-group");
+  init(container) {
+    const pickerGroups = container.querySelectorAll(".color-picker-group");
     pickerGroups.forEach(group => {
       const hiddenInput = group.querySelector("input[type='hidden']");
       const canvas = group.querySelector(".sv-canvas");

@@ -1,24 +1,22 @@
 import { UI_IDS } from "@/ui/uiConstants.js";
 
 export class ExportView {
-  constructor(uiElements) {
-    this.uiElements = uiElements;
+  constructor() {
+    this.customUi = document.getElementById(UI_IDS.EXPORT.CUSTOM_UI);
+    this.modal = document.getElementById(UI_IDS.EXPORT.MODAL);
+    this.progressBar = document.getElementById(UI_IDS.EXPORT.PROGRESS_BAR);
+    this.progressText = document.getElementById(UI_IDS.EXPORT.PROGRESS_TEXT);
   }
 
   update(uiState) {
-    const customUi = this.uiElements[UI_IDS.EXPORT.CUSTOM_UI];
-    const modal = this.uiElements[UI_IDS.EXPORT.MODAL];
-    const progressBar = this.uiElements[UI_IDS.EXPORT.PROGRESS_BAR];
-    const progressText = this.uiElements[UI_IDS.EXPORT.PROGRESS_TEXT];
-
     if (uiState.isDownloading) {
-      if (customUi) customUi.classList.add("is-visible");
-      if (modal) modal.classList.remove("hidden");
-      if (progressBar) progressBar.style.width = `${uiState.downloadProgress}%`;
-      if (progressText) progressText.textContent = uiState.downloadMessage;
+      if (this.customUi) this.customUi.classList.add("is-visible");
+      if (this.modal) this.modal.classList.remove("hidden");
+      if (this.progressBar) this.progressBar.style.width = `${uiState.downloadProgress}%`;
+      if (this.progressText) this.progressText.textContent = uiState.downloadMessage;
     } else {
-      if (customUi) customUi.classList.remove("is-visible");
-      if (modal) modal.classList.add("hidden");
+      if (this.customUi) this.customUi.classList.remove("is-visible");
+      if (this.modal) this.modal.classList.add("hidden");
     }
   }
 }
