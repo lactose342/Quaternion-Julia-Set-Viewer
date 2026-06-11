@@ -84,8 +84,8 @@
                     </select>
                 </div>
                 <div class="slider-group">
-                    <label for="download-btn" title="現在の状態を画像としてダウンロードするか、共有用のURLを発行します。">作品の保存・共有</label>
-                    <button id="download-btn" class="flex-icon-btn" style="margin-bottom: 4px;" title="設定した画質で端末に画像を保存します">画像を保存</button>
+                    <label for="download-btn" title="全画面プレビューで構図を確認しながら撮影するカメラモードに入ります。">作品の保存・共有</label>
+                    <button id="download-btn" class="flex-icon-btn" style="margin-bottom: 4px;" title="全画面の撮影モードに切り替えます">撮影モードへ</button>
                     <button id="share-btn" class="flex-icon-btn" title="現在の設定を復元できるURLをクリップボードにコピーします">共有URLをコピー</button>
                 </div>
             </div>
@@ -107,6 +107,29 @@
             </div>
             <div id="dl-progress-text" class="progress-text">0%</div>
         </div>
+    </div>
+
+    <!-- カメラ撮影モード用フローティングUI -->
+    <div id="camera-ui" class="hidden">
+        <button id="camera-back-btn" class="flex-icon-btn" title="設定画面に戻る">
+            <span class="material-symbols-outlined">arrow_back</span>戻る
+        </button>
+        <div class="camera-select-group">
+            <select id="camera-dl-format" title="保存する画像のファイル形式を指定します">
+                <option value="jpeg" selected>JPEG</option>
+                <option value="webp">WebP</option>
+                <option value="png">PNG</option>
+                <option value="transparent_png">PNG (背景透過)</option>
+            </select>
+            <select id="camera-dl-scale" title="書き出す画像の解像度倍率を指定します">
+                <option value="0.5">0.5x (軽量)</option>
+                <option value="1.0" selected>1.0x (標準)</option>
+                <option value="1.5">1.5x (高品質)</option>
+            </select>
+        </div>
+        <button id="camera-shutter-btn" class="camera-shutter-btn" title="現在の構図で高解像度画像を保存します">
+            <span class="material-symbols-outlined">photo_camera</span>
+        </button>
     </div>
     
     <script type="module" src="/src/main.js"></script>

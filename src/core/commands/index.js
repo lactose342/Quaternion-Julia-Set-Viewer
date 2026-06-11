@@ -13,3 +13,5 @@ export { UndoCommand } from "./UndoCommand.js";
 export { RedoCommand } from "./RedoCommand.js";
 export { CommitHistoryCommand } from "./CommitHistoryCommand.js";
 export { InitializeAppCommand } from "./InitializeAppCommand.js";
+export { EnterCameraModeCommand } from "./EnterCameraModeCommand.js";
+export { ExitCameraModeCommand } from "./ExitCameraModeCommand.js";

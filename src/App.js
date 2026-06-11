@@ -34,7 +34,9 @@ import {
   UndoCommand,
   RedoCommand,
   CommitHistoryCommand,
-  InitializeAppCommand
+  InitializeAppCommand,
+  EnterCameraModeCommand,
+  ExitCameraModeCommand
 } from "@/core/commands/index.js";
 
 export class App {
@@ -112,6 +114,8 @@ export class App {
     this.dispatcher.register("UNDO", new UndoCommand(this.domainStore, this.uiStore, this.historyManager, this.renderer));
     this.dispatcher.register("REDO", new RedoCommand(this.domainStore, this.uiStore, this.historyManager, this.renderer));
     this.dispatcher.register("COMMIT_HISTORY", new CommitHistoryCommand(this.domainStore, this.uiStore, this.historyManager));
+    this.dispatcher.register("ENTER_CAMERA_MODE", new EnterCameraModeCommand(this.uiStore));
+    this.dispatcher.register("EXIT_CAMERA_MODE", new ExitCameraModeCommand(this.uiStore));
   }
 
   #setupDataFlowListeners() {

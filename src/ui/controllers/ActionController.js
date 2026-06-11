@@ -36,13 +36,42 @@ export class ActionController {
       this.#dispatch("TOGGLE_FULLSCREEN", { isFullscreen });
     }, { signal: this.signal });
 
+    const formatEl = document.getElementById("dl-format");
+    const scaleEl = document.getElementById("dl-scale");
+    const cameraFormatEl = document.getElementById("camera-dl-format");
+    const cameraScaleEl = document.getElementById("camera-dl-scale");
+
+    // 通常UI -> カメラUI への同期
+    formatEl?.addEventListener("change", (e) => {
+      if (cameraFormatEl) cameraFormatEl.value = e.target.value;
+    }, { signal: this.signal });
+    scaleEl?.addEventListener("change", (e) => {
+      if (cameraScaleEl) cameraScaleEl.value = e.target.value;
+    }, { signal: this.signal });
+
+    // カメラUI -> 通常UI への同期
+    cameraFormatEl?.addEventListener("change", (e) => {
+      if (formatEl) formatEl.value = e.target.value;
+    }, { signal: this.signal });
+    cameraScaleEl?.addEventListener("change", (e) => {
+      if (scaleEl) scaleEl.value = e.target.value;
+    }, { signal: this.signal });
+
     bindClick("download-btn", () => {
-      const formatEl = document.getElementById("dl-format");
-      const scaleEl = document.getElementById("dl-scale");
-      this.#dispatch("DOWNLOAD_HIGH_RES", {
-        format: formatEl ? formatEl.value : "jpeg",
-        scale: scaleEl ? parseFloat(scaleEl.value) : 1.0
-      });
+      // カメラモードに入る際に最新の設定値をコピー
+      if (formatEl && cameraFormatEl) cameraFormatEl.value = formatEl.value;
+      if (scaleEl && cameraScaleEl) cameraScaleEl.value = scaleEl.value;
+      this.#dispatch("ENTER_CAMERA_MODE", {});
+    });
+
+    bindClick("camera-shutter-btn", () => {
+      const format = cameraFormatEl ? cameraFormatEl.value : (formatEl ? formatEl.value : "jpeg");
+      const scale = cameraScaleEl ? parseFloat(cameraScaleEl.value) : (scaleEl ? parseFloat(scaleEl.value) : 1.0);
+      this.#dispatch("DOWNLOAD_HIGH_RES", { format, scale });
+    });
+
+    bindClick("camera-back-btn", () => {
+      this.#dispatch("EXIT_CAMERA_MODE", {});
     });
     bindClick("share-btn", () => this.#dispatch("SHARE_URL"));
 

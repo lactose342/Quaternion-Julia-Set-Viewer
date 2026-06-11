@@ -12,6 +12,7 @@ export class UIStore extends EventTarget {
       renderQuality: defaultQuality,
       activePreset: "preset1",
       activeAnimPreset: "preset1",
+      isCameraMode: false,
     };
   }
 
@@ -21,6 +22,7 @@ export class UIStore extends EventTarget {
 
   get isAutoAnimating() { return this.#state.isAutoAnimating; }
   get isDownloading() { return this.#state.isDownloading; }
+  get isCameraMode() { return this.#state.isCameraMode; }
 
   update(payload = {}) {
     let hasChanged = false;

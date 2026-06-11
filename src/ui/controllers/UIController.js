@@ -166,6 +166,42 @@ export class UIController {
       customUi.classList.toggle("is-interacting", !!uiState.isInteracting);
     }
 
+    // カメラ撮影モードに伴うUI表示・非表示の同期制御
+    const cameraUi = document.getElementById("camera-ui");
+    const toggleBtn = document.getElementById("toggle-ui-btn");
+    const autoAnimateBtn = document.getElementById("auto-animate-btn");
+    const fpsCounter = document.getElementById("fps-counter");
+    const vrButton = document.getElementById("VRButton");
+
+    if (uiState.isCameraMode) {
+      // A. カメラモード時：調整パネルや不要なボタンを退避（フルスクリーンと自動アニメーションボタンは表示を維持）
+      if (customUi) customUi.classList.add("hidden");
+      if (cameraUi) cameraUi.classList.remove("hidden");
+      if (toggleBtn) toggleBtn.classList.add("hidden");
+      if (fpsCounter) fpsCounter.classList.add("hidden");
+      if (vrButton) {
+        vrButton.classList.add("hidden");
+        vrButton.style.setProperty("display", "none", "important");
+      }
+    } else {
+      // B. 通常モード時：カメラUIを隠し、元の調整パネル・ボタン類を復元
+      if (cameraUi) cameraUi.classList.add("hidden");
+      if (customUi) customUi.classList.remove("hidden");
+      
+      if (toggleBtn) {
+        toggleBtn.classList.remove("hidden");
+        // パネルが開いた状態（hidden解除）に合わせるため、設定ボタンも「閉じる（is-open）」状態に同期
+        toggleBtn.classList.remove("is-close");
+        toggleBtn.classList.add("is-open");
+        toggleBtn.textContent = "閉じる";
+      }
+      if (fpsCounter) fpsCounter.classList.remove("hidden");
+      if (vrButton) {
+        vrButton.classList.remove("hidden");
+        vrButton.style.removeProperty("display");
+      }
+    }
+
     if (changedKeys && (changedKeys.includes("isInteracting") || changedKeys.includes("isAutoAnimating"))) {
       this.updateRenderQuality();
     }
