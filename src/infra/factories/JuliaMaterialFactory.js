@@ -37,6 +37,7 @@ export class JuliaMaterialFactory {
         u_bgAlpha: { value: 0.0 },
         u_rotMatrix_3D: { value: new THREE.Matrix4() },
         u_rotMatrix_4D: { value: new THREE.Matrix4() },
+        u_rotMatrix_Combined: { value: new THREE.Matrix4() },
         // WebXR/AR用のスケールと位置オフセット
         u_vrScale: { value: 1.0 },
         u_vrOffset: { value: new THREE.Vector3(0.0, 0.0, 0.0) },

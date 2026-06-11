@@ -26,6 +26,7 @@ export class Renderer {
     this.matRot4D_XW = new THREE.Matrix4();
     this.matRot4D_YW = new THREE.Matrix4();
     this.matRot4D_ZW = new THREE.Matrix4();
+    this.matRotCombined = new THREE.Matrix4();
 
     this.cameraWorldPos = new THREE.Vector3();
     this.animatedC = { cx: 0, cy: 0, cz: 0, cw: 0 };
@@ -283,6 +284,8 @@ export class Renderer {
 
     u.u_rotMatrix_3D.value.copy(this.matRot3D);
     u.u_rotMatrix_4D.value.copy(this.matRot4D_ZW);
+    this.matRotCombined.multiplyMatrices(this.matRot4D_ZW, this.matRot3D);
+    u.u_rotMatrix_Combined.value.copy(this.matRotCombined);
 
     u.u_cameraPos.value.copy(this.camera.position);
     u.u_cameraWorldMatrix.value.copy(this.camera.matrixWorld);

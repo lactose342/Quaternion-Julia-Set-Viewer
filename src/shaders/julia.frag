@@ -18,6 +18,7 @@ uniform vec3 u_bgColor;
 uniform float u_bgAlpha;
 uniform mat4 u_rotMatrix_3D;
 uniform mat4 u_rotMatrix_4D;
+uniform mat4 u_rotMatrix_Combined;
 uniform float u_vrScale;
 uniform vec3 u_vrOffset;
 
@@ -72,7 +73,7 @@ vec2 map4D(vec4 z) {
 }
 
 vec2 map3D(vec3 p) {
-    vec4 p4 = u_rotMatrix_4D * vec4((u_rotMatrix_3D * vec4(p, 1.0)).xyz, 0.0);
+    vec4 p4 = u_rotMatrix_Combined * vec4(p, 0.0);
     return map4D(p4);
 }
 
@@ -124,8 +125,8 @@ vec4 render(vec2 offset) {
     float total_d = max(0.0, sph.x);
     localRayPos += localRayDir * total_d;
     
-    vec4 rPos4D = u_rotMatrix_4D * vec4((u_rotMatrix_3D * vec4(localRayPos, 1.0)).xyz, 0.0);
-    vec4 rDir4D = u_rotMatrix_4D * vec4((u_rotMatrix_3D * vec4(localRayDir, 0.0)).xyz, 0.0);
+    vec4 rPos4D = u_rotMatrix_Combined * vec4(localRayPos, 0.0);
+    vec4 rDir4D = u_rotMatrix_Combined * vec4(localRayDir, 0.0);
     bool hit = false;
     int steps_taken = 0;
 
