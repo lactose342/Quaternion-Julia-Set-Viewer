@@ -18,7 +18,7 @@ export class AdaptiveQualityManager {
     const now = performance.now();
     const elapsed = now - this.fpsLastTime;
 
-    if (elapsed < 500) {
+    if (elapsed < 300) {
       return null;
     }
 
@@ -38,15 +38,18 @@ export class AdaptiveQualityManager {
       return null;
     }
 
-    if (fps < 30) {
-      const nextRatio = Math.max(0.35, currentPixelRatio - 0.15);
+    if (fps < 48) {
+      // FPSが48未満の場合に画質を下げる
+      // 32FPS未満の大幅な低下、またはピクセル比が1.0より大きい場合は急激に下げる
+      const step = (fps < 32 || currentPixelRatio > 1.0) ? 0.25 : 0.12;
+      const nextRatio = Math.max(0.35, currentPixelRatio - step);
       if (nextRatio !== currentPixelRatio) {
         console.log(`[Adaptive Quality] FPS dropped to ${fps}. Reducing pixel ratio to ${nextRatio.toFixed(2)}`);
         return nextRatio;
       }
     } else if (fps > 55) {
       const targetMax = isVR ? 0.55 : maxPixelRatio;
-      const nextRatio = Math.min(targetMax, currentPixelRatio + 0.05);
+      const nextRatio = Math.min(targetMax, currentPixelRatio + 0.04);
       if (nextRatio !== currentPixelRatio) {
         console.log(`[Adaptive Quality] FPS is healthy (${fps}). Increasing pixel ratio to ${nextRatio.toFixed(2)}`);
         return nextRatio;

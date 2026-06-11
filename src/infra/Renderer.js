@@ -315,7 +315,7 @@ export class Renderer {
     // Cap normal screen rendering at 60 FPS (approx 16ms per frame) to prevent GPU queue clogging on high-refresh monitors
     if (!isVR && isActive && this.renderState.lastRenderTime) {
       const elapsed = now - this.renderState.lastRenderTime;
-      if (elapsed < 16.0) {
+      if (elapsed < 15.0) {
         return;
       }
     }
