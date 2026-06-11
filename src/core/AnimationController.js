@@ -1,5 +1,3 @@
-import { JuliaAnimationService } from "@/core/domain/JuliaAnimationService.js";
-
 export class AnimationController {
   constructor(domainStore, uiStore) {
     this.domainStore = domainStore;

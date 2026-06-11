@@ -19,8 +19,41 @@ export class DomainStore extends EventTarget {
     this.animPhasesEvent = new CustomEvent("domain-updated", { detail: { type: "ANIM_PHASES" } });
   }
 
+  fillDefaults(category, srcData = {}) {
+    const defaultData = {};
+    const schemaKeys = this.#schemas[category];
+    const definitions = this.config.definitions;
+
+    if (!schemaKeys) return defaultData;
+
+    schemaKeys.forEach((key) => {
+      if (srcData && srcData[key] !== undefined) {
+        defaultData[key] = srcData[key];
+      } else {
+        const def = definitions ? definitions[key] : null;
+        if (def && def.default !== undefined) {
+          defaultData[key] = def.default;
+        } else {
+          if (category === "material" && key === "bgColor") {
+            defaultData[key] = "#000000";
+          } else if (category === "material") {
+            defaultData[key] = 1.0;
+          } else {
+            defaultData[key] = 0;
+          }
+        }
+      }
+    });
+    return defaultData;
+  }
+
   init(initialParams) {
-    this.#params = structuredClone(initialParams);
+    const src = initialParams || {};
+    this.#params = {
+      fractal: this.fillDefaults("fractal", src.fractal),
+      material: this.fillDefaults("material", src.material),
+      animation: this.fillDefaults("animation", src.animation)
+    };
     this.dispatchEvent(new CustomEvent("domain-updated", { detail: { type: "ALL" } }));
   }
 

@@ -1,13 +1,12 @@
-import { PARAMETER_DEFINITIONS } from "@/core/domain/ParameterDefinitions.js";
-
 export class ParameterView {
-  constructor() {
+  constructor(definitions) {
+    this.definitions = definitions;
     this.inputs = new Map();
     this.labels = new Map();
   }
 
   init(container) {
-    Object.values(PARAMETER_DEFINITIONS).forEach((def) => {
+    Object.values(this.definitions).forEach((def) => {
       const inputEl = container.querySelector(`#${def.domId}`);
       if (inputEl) {
         this.inputs.set(def.domId, inputEl);
@@ -26,7 +25,7 @@ export class ParameterView {
       if (!displayParams[category]) return;
       
       Object.entries(displayParams[category]).forEach(([key, paramData]) => {
-        const def = PARAMETER_DEFINITIONS[key];
+        const def = this.definitions[key];
         const domId = def ? def.domId : key;
 
         const inputEl = this.inputs.get(domId);

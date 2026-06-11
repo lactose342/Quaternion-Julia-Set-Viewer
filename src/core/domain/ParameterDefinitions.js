@@ -18,6 +18,7 @@ export const PARAMETER_DEFINITIONS = {
   // --- Material Parameters ---
   hue: { category: "material", domId: "hue", type: "number", min: 0.0, max: 1.0, step: 0.001, default: 0.586, precision: 3, label: "色相 (Hue)", tooltip: "物体の色合いを調整します。", group: "style", hideSlider: true },
   saturation: { category: "material", domId: "saturation", type: "number", min: 0.0, max: 1.0, step: 0.001, default: 1.0, precision: 3, label: "彩度 (Saturation)", tooltip: "色の鮮やかさを調整します。", group: "style", hideSlider: true },
+  value: { category: "material", domId: "value", type: "number", min: 0.0, max: 1.0, step: 0.01, default: 1.0, precision: 2, label: "明度 (Value)", tooltip: "ベースカラーの明度を調整します。", group: "style", hideSlider: true },
   brightness: { category: "material", domId: "brightness", type: "number", min: 0.5, max: 3.0, step: 0.1, default: 2.3, precision: 2, label: "明るさ", tooltip: "全体的な光の強さを調整します", group: "style" },
   aoPower: { category: "material", domId: "aoPower", type: "number", min: 0.1, max: 3.0, step: 0.1, default: 1.0, precision: 2, label: "影の濃さ", tooltip: "立体感を強調するため、くぼみ部分の影の濃さを調整します。", group: "style" },
   specular: { category: "material", domId: "specular", type: "number", min: 2.0, max: 64.0, step: 1.0, default: 10.0, precision: 2, label: "光沢感", tooltip: "表面のツヤを調整します。値を上げると金属のような鋭い光沢になります。", group: "style" },

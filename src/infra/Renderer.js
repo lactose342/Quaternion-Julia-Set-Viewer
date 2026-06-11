@@ -229,7 +229,8 @@ export class Renderer {
     u.u_specular.value = materialParams.specular;
     u.u_bgColor.value.set(materialParams.bgColor);
     u.u_bgAlpha.value = materialParams.bgAlpha !== undefined ? materialParams.bgAlpha : 1.0;
-    u.u_hsvColor.value.set(materialParams.hue, materialParams.saturation, 1.0);
+    const val = materialParams.value !== undefined ? materialParams.value : 1.0;
+    u.u_hsvColor.value.set(materialParams.hue, materialParams.saturation, val);
 
     // fovをfractalParamsから正しく取得し、物理カメラに反映
     if (fractalParams.fov !== undefined && this.camera.fov !== fractalParams.fov) {

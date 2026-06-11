@@ -1,6 +1,3 @@
-import { PARAMETER_DEFINITIONS } from "@/core/domain/ParameterDefinitions.js";
-import { hsvToHex } from "@/infra/ColorUtils.js";
-
 export function createParameterElement(key, def) {
   const sliderGroup = document.createElement("div");
   sliderGroup.className = "slider-group";
@@ -103,7 +100,6 @@ export function createColorPickerElement(key, def) {
   hueSlider.min = "0";
   hueSlider.max = "360";
   hueSlider.value = "0";
-  hueContainer.appendChild(hueSlider);
   hueContainer.appendChild(hueSlider);
 
   container.appendChild(hueContainer);

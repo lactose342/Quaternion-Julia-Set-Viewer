@@ -181,7 +181,7 @@ vec4 render(vec2 offset) {
         
         vec3 finalColor = baseColor * ao * depth_val * shdw_mt;
         if (u_bgAlpha > 0.5) {
-            finalColor += u_bgColor * (1.0 - ao) * 0.15;
+            finalColor += baseColor * u_bgColor * (1.0 - ao) * 0.15;
         }
         
         finalColor = pow(finalColor, vec3(0.8));

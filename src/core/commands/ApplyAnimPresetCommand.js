@@ -1,4 +1,3 @@
-import { PARAMETER_DEFINITIONS } from "@/core/domain/ParameterDefinitions.js";
 import { Command } from "./Command.js";
 
 export class ApplyAnimPresetCommand extends Command {
@@ -13,10 +12,7 @@ export class ApplyAnimPresetCommand extends Command {
     const preset = this.config.ANIM_PRESETS[presetName];
     if (!preset) return;
 
-    const animParams = {};
-    this.config.SCHEMAS.animation.forEach(key => {
-      animParams[key] = preset[key] !== undefined ? preset[key] : (PARAMETER_DEFINITIONS[key]?.default !== undefined ? PARAMETER_DEFINITIONS[key].default : 0);
-    });
+    const animParams = this.domainStore.fillDefaults("animation", preset);
 
     // 1. 再生中でない場合、現在の位相のアニメーション計算値をベース値に固定する
     if (!this.uiStore.isAutoAnimating) {

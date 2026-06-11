@@ -1,4 +1,8 @@
-import { PARAMETER_DEFINITIONS } from "@/core/domain/ParameterDefinitions.js";
+let definitions = null;
+
+export function initFormatter(defs) {
+  definitions = defs;
+}
 
 /**
  * ストアの数値をUI表示用の文字列および数値オブジェクトに変換します。
@@ -7,7 +11,7 @@ import { PARAMETER_DEFINITIONS } from "@/core/domain/ParameterDefinitions.js";
  * @returns {Object} { numericValue, displayString }
  */
 export function formatParamForUI(key, value) {
-  const def = PARAMETER_DEFINITIONS[key];
+  const def = definitions ? definitions[key] : null;
   if (!def) {
     return { numericValue: value, displayString: String(value) };
   }
@@ -47,7 +51,7 @@ export function formatParamForUI(key, value) {
  * UIの入力値（度数など）を、ドメイン内部の計算用形式（ラジアンなど）に逆変換します。
  */
 export function parseParamFromUI(key, rawValue, inputType) {
-  const def = PARAMETER_DEFINITIONS[key];
+  const def = definitions ? definitions[key] : null;
   if (inputType === "color" || (def && def.type === "color")) return rawValue;
   let val = parseFloat(rawValue);
   if (Number.isNaN(val)) return 0;

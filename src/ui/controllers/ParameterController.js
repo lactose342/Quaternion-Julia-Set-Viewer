@@ -1,11 +1,11 @@
-import { PARAMETER_DEFINITIONS } from "@/core/domain/ParameterDefinitions.js";
 import { hexToHsv } from "@/infra/ColorUtils.js";
 import { parseParamFromUI } from "@/ui/utils/uiParamFormatter.js";
 
 export class ParameterController {
-  constructor(dispatcher, signal) {
+  constructor(dispatcher, signal, definitions) {
     this.dispatcher = dispatcher;
     this.signal = signal;
+    this.definitions = definitions;
     this.rafIds = new Map();
     this.pendingPayloads = new Map();
     this.categoryMap = this.#buildCategoryMap();
@@ -13,7 +13,7 @@ export class ParameterController {
 
   #buildCategoryMap() {
     const map = new Map();
-    Object.entries(PARAMETER_DEFINITIONS).forEach(([key, def]) => {
+    Object.entries(this.definitions).forEach(([key, def]) => {
       map.set(key, def.category);
     });
     return map;
@@ -29,7 +29,7 @@ export class ParameterController {
     const stopPropagation = (e) => e.stopPropagation();
     
     // スキーマ定義からDOM IDを動的取得
-    const domIdsToBind = Object.values(PARAMETER_DEFINITIONS).map((def) => def.domId);
+    const domIdsToBind = Object.values(this.definitions).map((def) => def.domId);
 
     domIdsToBind.forEach((domId) => {
       const el = container.querySelector(`#${domId}`);
@@ -117,7 +117,7 @@ export class ParameterController {
 
       baseColorPicker.addEventListener("input", (e) => {
         const hsvVals = hexToHsv(e.target.value);
-        pendingColor = { hue: hsvVals.h, saturation: hsvVals.s };
+        pendingColor = { hue: hsvVals.h, saturation: hsvVals.s, value: hsvVals.v };
 
         if (colorRafId !== null) return;
 
@@ -147,7 +147,7 @@ export class ParameterController {
   }
 
   _getStateKey(domId) {
-    const entry = Object.entries(PARAMETER_DEFINITIONS).find(([_, def]) => def.domId === domId);
+    const entry = Object.entries(this.definitions).find(([_, def]) => def.domId === domId);
     return entry ? entry[0] : domId;
   }
 

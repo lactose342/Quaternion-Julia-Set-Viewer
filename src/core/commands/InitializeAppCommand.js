@@ -1,4 +1,4 @@
-import { PARAMETER_DEFINITIONS } from "@/core/domain/ParameterDefinitions.js";
+
 
 export class InitializeAppCommand {
   constructor(domainStore, uiStore, urlManager, historyManager, uiController, renderer, config) {
@@ -27,23 +27,14 @@ export class InitializeAppCommand {
       }
       this.uiStore.update(parsedState.ui);
     } else {
-      const defaultParams = {
-        fractal: {},
-        material: {},
-        animation: {}
-      };
       const srcPreset = this.config.PRESETS.preset1;
       const srcAnimPreset = this.config.ANIM_PRESETS.preset1;
-      
-      this.config.SCHEMAS.fractal.forEach(key => {
-        defaultParams.fractal[key] = (srcPreset && srcPreset[key] !== undefined) ? srcPreset[key] : (PARAMETER_DEFINITIONS[key]?.default !== undefined ? PARAMETER_DEFINITIONS[key].default : 0);
-      });
-      this.config.SCHEMAS.material.forEach(key => {
-        defaultParams.material[key] = (srcPreset && srcPreset[key] !== undefined) ? srcPreset[key] : (PARAMETER_DEFINITIONS[key]?.default !== undefined ? PARAMETER_DEFINITIONS[key].default : (key === 'bgColor' ? '#000000' : 1.0));
-      });
-      this.config.SCHEMAS.animation.forEach(key => {
-        defaultParams.animation[key] = (srcAnimPreset && srcAnimPreset[key] !== undefined) ? srcAnimPreset[key] : (PARAMETER_DEFINITIONS[key]?.default !== undefined ? PARAMETER_DEFINITIONS[key].default : 0);
-      });
+
+      const defaultParams = {
+        fractal: this.domainStore.fillDefaults("fractal", srcPreset),
+        material: this.domainStore.fillDefaults("material", srcPreset),
+        animation: this.domainStore.fillDefaults("animation", srcAnimPreset)
+      };
 
       this.domainStore.init(defaultParams);
 

@@ -13,7 +13,13 @@ export class URLManager {
     const params = url.searchParams;
     
     // アプリ固有の主要パラメータが1つも含まれていない場合は、無関係なクエリとみなしてデフォルト初期化へ誘導する
-    const appKeys = ['preset', 'anim_preset', 'cx', 'hue', 'speed', 'cam_px'];
+    const appKeys = [
+      'preset',
+      'anim_preset',
+      ...Object.keys(this.config.definitions || {}),
+      'cam_px',
+      'ph_x'
+    ];
     const hasAppParams = appKeys.some(key => params.has(key));
     if (!hasAppParams) return null;
 

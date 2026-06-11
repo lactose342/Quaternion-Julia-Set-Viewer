@@ -15,7 +15,7 @@ export class XRManager {
 
     // VR/AR用の初期設定 (高さをさらに引き上げ: y を -0.05 から 0.05 へ変更)
     this.vrScale = 0.3;
-    this.vrOffset = { x: 0.0, y: 0.05, z: -1.2 };
+    this.vrOffset = { x: 0.0, y: 1.0, z: -1.2 };
 
     this.activeSession = null;
     this.isAR = false;

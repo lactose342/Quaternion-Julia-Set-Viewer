@@ -1,5 +1,3 @@
-import { UI_IDS } from "@/ui/uiConstants.js";
-import { PARAMETER_DEFINITIONS } from "@/core/domain/ParameterDefinitions.js";
 import { formatParamForUI } from "@/ui/utils/uiParamFormatter.js";
 import { hsvToHex } from "@/infra/ColorUtils.js";
 import { createParameterElement, createColorPickerElement } from "@/ui/utils/DOMFactory.js";
@@ -20,6 +18,7 @@ export class UIController {
     exportView,
     mainMenuView,
     colorPickerView,
+    definitions,
   ) {
     this.domainStore = domainStore;
     this.uiStore = uiStore;
@@ -33,6 +32,7 @@ export class UIController {
     this.exportView = exportView;
     this.mainMenuView = mainMenuView;
     this.colorPickerView = colorPickerView;
+    this.definitions = definitions;
     this.abortController = new AbortController();
     this.qualityTimeoutId = null;
   }
@@ -83,7 +83,7 @@ export class UIController {
       summary.textContent = section.title;
       details.appendChild(summary);
 
-      const allParams = Object.entries(PARAMETER_DEFINITIONS)
+      const allParams = Object.entries(this.definitions)
         .filter(([_, def]) => section.groups.includes(def.group) && !def.hideSlider);
 
       const sliderParams = allParams.filter(([_, def]) => def.type !== "color");
@@ -130,7 +130,7 @@ export class UIController {
 
           const axisKeys = [`s${axis}`, `a${axis}`, `p${axis}`];
           axisKeys.forEach(key => {
-            const def = PARAMETER_DEFINITIONS[key];
+            const def = this.definitions[key];
             if (def) {
               axisGrid.appendChild(createParameterElement(key, def));
             }
@@ -245,7 +245,8 @@ export class UIController {
     if (isAll || hasColorChange) {
       const matParams = this.domainStore.getParams("material");
       if (matParams && matParams.hue !== undefined && matParams.saturation !== undefined) {
-        const hexColor = hsvToHex(matParams.hue, matParams.saturation, 1.0);
+        const val = matParams.value !== undefined ? matParams.value : 1.0;
+        const hexColor = hsvToHex(matParams.hue, matParams.saturation, val);
         if (!displayParams.material) displayParams.material = {};
         displayParams.material["baseColorPicker"] = {
           value: hexColor,

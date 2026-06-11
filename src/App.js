@@ -16,6 +16,7 @@ import { ExportView } from "@/ui/views/ExportView.js";
 import { MainMenuView } from "@/ui/views/MainMenuView.js";
 import { StatusView } from "@/ui/views/StatusView.js";
 import { ColorPickerView } from "@/ui/views/ColorPickerView.js";
+import { initFormatter } from "@/ui/utils/uiParamFormatter.js";
 
 import { CommandDispatcher } from "@/core/CommandDispatcher.js";
 import {
@@ -39,6 +40,8 @@ import {
 export class App {
   constructor(config) {
     this.config = config;
+    initFormatter(this.config.definitions);
+
     this.abortController = new AbortController();
 
     this.domainStore = new DomainStore(this.config);
@@ -49,13 +52,13 @@ export class App {
     this.animationController = new AnimationController(this.domainStore, this.uiStore);
 
     this.urlManager = new URLManager(this.config);
-    this.presetManager = new PresetManager(this.config);
+    this.presetManager = new PresetManager(this.config, this.domainStore);
     this.exportManager = new ExportManager(this.renderer, this.domainStore, this.uiStore, this.config);
 
     this.colorPickerView = new ColorPickerView();
 
     this.toastView = new ToastView();
-    this.parameterView = new ParameterView();
+    this.parameterView = new ParameterView(this.config.definitions);
     this.exportView = new ExportView();
     this.mainMenuView = new MainMenuView();
     this.statusView = new StatusView();
@@ -65,6 +68,7 @@ export class App {
     this.paramController = new ParameterController(
       this.dispatcher,
       this.abortController.signal,
+      this.config.definitions,
     );
 
     this.actionController = new ActionController(
@@ -85,6 +89,7 @@ export class App {
       this.exportView,
       this.mainMenuView,
       this.colorPickerView,
+      this.config.definitions,
     );
 
     this.#setupCommands();
