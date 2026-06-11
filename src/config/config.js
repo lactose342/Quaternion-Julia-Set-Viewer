@@ -1,3 +1,5 @@
+import { PARAMETER_DEFINITIONS, PARAMETER_SCHEMAS } from "../core/domain/ParameterDefinitions.js";
+
 export const CONFIG = {
     QUALITY: {
         LOW: { steps: 250, iter: 15 },
@@ -11,7 +13,7 @@ export const CONFIG = {
         AO_BASE_NORMAL: 10.0,
         AO_BASE_EXPORT: 24.0,
         MAX_CANVAS_SIZE: 4096,
-        TILE_MAX: 250
+        TILE_MAX: 512
     },
     MAX_RENDER_SIZE: 1200,
     SYSTEM: {
@@ -20,11 +22,44 @@ export const CONFIG = {
         AMP_LIMIT: 1.2
     },
     SCHEMAS: {
-        camera: ['position', 'target'],
-        fractal: [],
-        material: [],
-        animation: []
+        camera: PARAMETER_SCHEMAS.camera,
+        fractal: PARAMETER_SCHEMAS.fractal,
+        material: PARAMETER_SCHEMAS.material,
+        animation: PARAMETER_SCHEMAS.animation
     },
+    definitions: PARAMETER_DEFINITIONS,
+    UI_SECTIONS: [
+        {
+            id: "section-shape",
+            title: "基本形状の調整 (Cパラメータ)",
+            open: true,
+            groups: ["shape"]
+        },
+        {
+            id: "section-rotation",
+            title: "空間の回転 (3D/4D)",
+            open: false,
+            groups: ["rotation"]
+        },
+        {
+            id: "section-camera",
+            title: "カメラと視野角",
+            open: false,
+            groups: ["camera"]
+        },
+        {
+            id: "section-style",
+            title: "色と質感",
+            open: false,
+            groups: ["style"]
+        },
+        {
+            id: "section-animation",
+            title: "アニメーション設定",
+            open: false,
+            groups: ["animation"]
+        }
+    ],
     PRESETS: {
         preset1: { cx: -0.517, cy: -0.341, cz: -0.407, cw: -0.071, rotX: 0, rotY: 0, rotZ: 2.02, rotXW: 0, rotYW: 0, rotZW: 0, hue: 0.586, saturation: 1, brightness: 2.3, aoPower: 1, specular: 10, bgColor: '#0a0c1a', bgAlpha: 1.0, fov: 45, zoom: 1.0, camera: { position: { x: 0, y: 0, z: 4.6 }, target: { x: 0, y: 0, z: 0 } } },
         preset2: { cx: 0.415, cy: 0.56, cz: 0.175, cw: 0.459, rotX: 0, rotY: 0.7, rotZ: 0, rotXW: 0, rotYW: 0, rotZW: 0, hue: 0.35, saturation: 1, brightness: 1.5, aoPower: 1.2, specular: 24, bgColor: '#05220d', bgAlpha: 1.0, fov: 45, zoom: 1.0, camera: { position: { x: 0, y: 0, z: 2 }, target: { x: 0, y: 0, z: 0 } } },

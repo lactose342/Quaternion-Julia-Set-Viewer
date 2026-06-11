@@ -1,6 +1,6 @@
 import { formatParamForUI } from "@/ui/utils/uiParamFormatter.js";
 import { hsvToHex } from "@/infra/ColorUtils.js";
-import { createParameterElement, createColorPickerElement } from "@/ui/utils/DOMFactory.js";
+
 import { TabView } from "@/ui/views/TabView.js";
 import { BottomSheetView } from "@/ui/views/BottomSheetView.js";
 
@@ -18,7 +18,7 @@ export class UIController {
     exportView,
     mainMenuView,
     colorPickerView,
-    definitions,
+    config,
   ) {
     this.domainStore = domainStore;
     this.uiStore = uiStore;
@@ -32,122 +32,14 @@ export class UIController {
     this.exportView = exportView;
     this.mainMenuView = mainMenuView;
     this.colorPickerView = colorPickerView;
-    this.definitions = definitions;
+    this.config = config;
+    this.definitions = config.definitions;
     this.abortController = new AbortController();
     this.qualityTimeoutId = null;
   }
 
-  #generateUI() {
-    const container = document.getElementById("parameter-sections-container");
-    if (!container) return;
-
-    const SECTION_CONFIGS = [
-      {
-        id: "section-shape",
-        title: "基本形状の調整 (Cパラメータ)",
-        open: true,
-        groups: ["shape"]
-      },
-      {
-        id: "section-rotation",
-        title: "空間の回転 (3D/4D)",
-        open: false,
-        groups: ["rotation"]
-      },
-      {
-        id: "section-camera",
-        title: "カメラと視野角",
-        open: false,
-        groups: ["camera"]
-      },
-      {
-        id: "section-style",
-        title: "色と質感",
-        open: false,
-        groups: ["style"]
-      },
-      {
-        id: "section-animation",
-        title: "アニメーション設定",
-        open: false,
-        groups: ["animation"]
-      }
-    ];
-
-    SECTION_CONFIGS.forEach(section => {
-      const details = document.createElement("details");
-      details.id = section.id;
-      if (section.open) details.setAttribute("open", "");
-
-      const summary = document.createElement("summary");
-      summary.textContent = section.title;
-      details.appendChild(summary);
-
-      const allParams = Object.entries(this.definitions)
-        .filter(([_, def]) => section.groups.includes(def.group) && !def.hideSlider);
-
-      const sliderParams = allParams.filter(([_, def]) => def.type !== "color");
-      const colorParams = allParams.filter(([_, def]) => def.type === "color");
-
-      if (sliderParams.length > 0) {
-        const sliderGrid = document.createElement("div");
-        sliderGrid.className = "grid-container";
-        sliderParams.forEach(([key, def]) => {
-          sliderGrid.appendChild(createParameterElement(key, def));
-        });
-        details.appendChild(sliderGrid);
-      }
-
-      if (colorParams.length > 0) {
-        const colorGrid = document.createElement("div");
-        colorGrid.className = "color-picker-grid";
-        colorParams.forEach(([key, def]) => {
-          colorGrid.appendChild(createColorPickerElement(key, def));
-        });
-        details.appendChild(colorGrid);
-      }
-
-      if (section.id === "section-animation") {
-        const nestedDetails = document.createElement("details");
-        nestedDetails.id = "section-animation-details";
-        nestedDetails.style.marginTop = "10px";
-        nestedDetails.style.background = "rgba(255, 255, 255, 0.02)";
-
-        const nestedSummary = document.createElement("summary");
-        nestedSummary.textContent = "各パラメータの個別動作設定";
-        nestedDetails.appendChild(nestedSummary);
-
-        const nestedContainer = document.createElement("div");
-        nestedContainer.style.display = "flex";
-        nestedContainer.style.flexDirection = "column";
-        nestedContainer.style.gap = "16px";
-        nestedContainer.style.marginTop = "10px";
-
-        const axes = ["x", "y", "z", "w"];
-        axes.forEach(axis => {
-          const axisGrid = document.createElement("div");
-          axisGrid.className = "grid-3cols";
-
-          const axisKeys = [`s${axis}`, `a${axis}`, `p${axis}`];
-          axisKeys.forEach(key => {
-            const def = this.definitions[key];
-            if (def) {
-              axisGrid.appendChild(createParameterElement(key, def));
-            }
-          });
-          nestedContainer.appendChild(axisGrid);
-        });
-
-        nestedDetails.appendChild(nestedContainer);
-        details.appendChild(nestedDetails);
-      }
-
-      container.appendChild(details);
-    });
-  }
-
   init() {
-    this.#generateUI();
+    this.mainMenuView.generateUI(this.config.definitions, this.config.UI_SECTIONS);
 
     const container = document.getElementById("parameter-sections-container");
     if (container) {

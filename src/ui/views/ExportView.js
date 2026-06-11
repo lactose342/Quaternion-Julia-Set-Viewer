@@ -1,11 +1,9 @@
-import { UI_IDS } from "@/ui/uiConstants.js";
-
 export class ExportView {
   constructor() {
-    this.customUi = document.getElementById(UI_IDS.EXPORT.CUSTOM_UI);
-    this.modal = document.getElementById(UI_IDS.EXPORT.MODAL);
-    this.progressBar = document.getElementById(UI_IDS.EXPORT.PROGRESS_BAR);
-    this.progressText = document.getElementById(UI_IDS.EXPORT.PROGRESS_TEXT);
+    this.customUi = document.getElementById("custom-ui");
+    this.modal = document.getElementById("dl-modal");
+    this.progressBar = document.getElementById("dl-progress-bar");
+    this.progressText = document.getElementById("dl-progress-text");
   }
 
   update(uiState) {

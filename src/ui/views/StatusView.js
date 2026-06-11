@@ -12,6 +12,6 @@ export class StatusView {
     if (!this.fpsCounterEl) return;
 
     // 文字列の組み立て
-    this.fpsCounterEl.textContent = isIdle ? `-- FPS (Idle)` : `${fps} FPS`;
+    this.fpsCounterEl.textContent = isIdle ? `-- FPS` : `${fps} FPS`;
   }
 }

@@ -47,3 +47,18 @@ export const PARAMETER_DEFINITIONS = {
   aw: { category: "animation", domId: "amp-w", type: "number", min: 0.0, max: 1.0, step: 0.05, default: 1.0, precision: 2, label: "C.w 振幅比", tooltip: "C.wが変化する大きさの比率。", group: "animation_details" },
   pw: { category: "animation", domId: "phase-w", type: "radian", min: 0, max: 360, step: 0.1, default: 0.0, precision: 1, label: "C.w 初期位相", tooltip: "C.wの動きが始まるタイミングのズレ。", group: "animation_details" }
 };
+
+export const PARAMETER_SCHEMAS = {
+  camera: Object.entries(PARAMETER_DEFINITIONS)
+    .filter(([_, d]) => d.category === "camera" && !d.isPseudo)
+    .map(([k]) => k),
+  fractal: Object.entries(PARAMETER_DEFINITIONS)
+    .filter(([_, d]) => d.category === "fractal" && !d.isPseudo)
+    .map(([k]) => k),
+  material: Object.entries(PARAMETER_DEFINITIONS)
+    .filter(([_, d]) => d.category === "material" && !d.isPseudo)
+    .map(([k]) => k),
+  animation: Object.entries(PARAMETER_DEFINITIONS)
+    .filter(([_, d]) => d.category === "animation" && !d.isPseudo)
+    .map(([k]) => k)
+};

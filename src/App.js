@@ -89,7 +89,7 @@ export class App {
       this.exportView,
       this.mainMenuView,
       this.colorPickerView,
-      this.config.definitions,
+      this.config,
     );
 
     this.#setupCommands();

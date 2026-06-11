@@ -1,63 +1,36 @@
+import { DragGestureHandler } from "@/ui/utils/DragGestureHandler.js";
+
 export class BottomSheetView {
   constructor() {
     this.customUi = document.getElementById("custom-ui");
     this.handle = this.customUi?.querySelector(".bottom-sheet-handle");
     this.tabsContainer = document.getElementById("mobile-tabs-container");
-
-    this.startY = 0;
-    this.currentY = 0;
-    this.isDragging = false;
-    this.hasCaptured = false;
+    this.handlers = [];
   }
 
   init() {
     if (!this.customUi) return;
 
-    const onPointerDown = (e) => {
+    const onDragStart = () => {
       if (window.innerWidth > 768) return;
-      
-      this.startY = e.clientY;
-      this.currentY = e.clientY;
-      this.isDragging = true;
-      this.hasCaptured = false;
-      
       this.customUi.style.transition = "none";
     };
 
-    const onPointerMove = (e) => {
-      if (!this.isDragging || window.innerWidth > 768) return;
-
-      this.currentY = e.clientY;
-      const diffY = this.currentY - this.startY;
-
-      if (diffY > 0) {
-        if (diffY > 5 && !this.hasCaptured) {
-          this.hasCaptured = true;
-          try {
-            e.currentTarget.setPointerCapture(e.pointerId);
-          } catch (err) {}
-        }
-
-        this.customUi.style.transform = `translateY(${diffY}px)`;
+    const onDrag = (deltaY) => {
+      if (window.innerWidth > 768) return;
+      
+      if (deltaY > 0) {
+        this.customUi.style.transform = `translateY(${deltaY}px)`;
         
         const toggleBtn = document.getElementById("toggle-ui-btn");
         if (toggleBtn) {
           toggleBtn.style.transition = "none";
-          toggleBtn.style.bottom = `calc(55dvh + 15px - ${diffY}px)`;
+          toggleBtn.style.bottom = `calc(55dvh + 15px - ${deltaY}px)`;
         }
       }
     };
 
-    const onPointerUp = (e) => {
-      if (!this.isDragging) return;
-      this.isDragging = false;
-
-      if (this.hasCaptured) {
-        try {
-          e.currentTarget.releasePointerCapture(e.pointerId);
-        } catch (err) {}
-      }
-
+    const onDragEnd = (deltaY) => {
       this.customUi.style.transition = "";
       const toggleBtn = document.getElementById("toggle-ui-btn");
       if (toggleBtn) {
@@ -65,9 +38,7 @@ export class BottomSheetView {
         toggleBtn.style.bottom = "";
       }
 
-      const diffY = this.currentY - this.startY;
-      
-      if (diffY > 100) {
+      if (deltaY > 100 && window.innerWidth <= 768) {
         window.dispatchEvent(new CustomEvent("app-command", {
           detail: { type: "TOGGLE_MENU_UI" }
         }));
@@ -78,22 +49,19 @@ export class BottomSheetView {
       } else {
         this.customUi.style.transform = "";
       }
-      
-      this.startY = 0;
-      this.currentY = 0;
     };
 
+    const dragCallbacks = { onDragStart, onDrag, onDragEnd };
     if (this.handle) {
-      this.handle.addEventListener("pointerdown", onPointerDown);
-      this.handle.addEventListener("pointermove", onPointerMove);
-      this.handle.addEventListener("pointerup", onPointerUp);
-      this.handle.addEventListener("pointercancel", onPointerUp);
+      this.handlers.push(new DragGestureHandler(this.handle, dragCallbacks));
     }
     if (this.tabsContainer) {
-      this.tabsContainer.addEventListener("pointerdown", onPointerDown);
-      this.tabsContainer.addEventListener("pointermove", onPointerMove);
-      this.tabsContainer.addEventListener("pointerup", onPointerUp);
-      this.tabsContainer.addEventListener("pointercancel", onPointerUp);
+      this.handlers.push(new DragGestureHandler(this.tabsContainer, dragCallbacks));
     }
+  }
+
+  dispose() {
+    this.handlers.forEach(handler => handler.dispose());
+    this.handlers = [];
   }
 }

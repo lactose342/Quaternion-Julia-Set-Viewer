@@ -3,6 +3,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { VRButton } from "@/ui/views/VRButton.js";
 import { JuliaMaterialFactory } from "@/infra/factories/JuliaMaterialFactory.js";
 import { XRManager } from "@/infra/XRManager.js";
+import { AdaptiveQualityManager } from "@/infra/AdaptiveQualityManager.js";
 
 export class Renderer {
   constructor(domainStore, uiStore, config) {
@@ -14,8 +15,6 @@ export class Renderer {
     this.renderState = {
       needsRender: true,
       renderTimer: null,
-      fpsFrames: 0,
-      fpsLastTime: performance.now(),
       lastRenderTime: 0,
     };
 
@@ -38,11 +37,11 @@ export class Renderer {
 
     this.maxPixelRatio = Math.min(window.devicePixelRatio, 1.0);
     this.currentPixelRatio = this.maxPixelRatio;
+    this.qualityManager = new AdaptiveQualityManager(this.config);
 
     this.isLoopRunning = false;
     this.getAppState = null;
     this.loopCallback = this.tick.bind(this);
-    this.lastFps = 60;
   }
 
   init() {
@@ -278,8 +277,10 @@ export class Renderer {
     this.isLoopRunning = true;
 
     // Reset FPS counter tracking to ignore the idle sleep time
-    this.renderState.fpsFrames = 0;
-    this.renderState.fpsLastTime = performance.now();
+    if (this.qualityManager) {
+      this.qualityManager.fpsFrames = 0;
+      this.qualityManager.fpsLastTime = performance.now();
+    }
     this.renderState.lastRenderTime = 0;
 
     // Reset the timer's previous timestamp to prevent delta spike upon resuming
@@ -288,7 +289,8 @@ export class Renderer {
     }
 
     if (this.onFpsUpdate) {
-      this.onFpsUpdate(this.lastFps || 60, false);
+      const currentFps = this.qualityManager ? this.qualityManager.getFps(false) : 60;
+      this.onFpsUpdate(currentFps || 60, false);
     }
 
     this.renderer.setAnimationLoop(this.loopCallback);
@@ -327,32 +329,22 @@ export class Renderer {
 
     if (this.onTick) this.onTick(delta);
 
-    if (now >= this.renderState.fpsLastTime + 500) {
-      const fps = Math.round((this.renderState.fpsFrames * 1000) / (now - this.renderState.fpsLastTime));
-      this.lastFps = fps;
-
-      if (!isDownloading && (isAutoAnimating || this.renderState.needsRender || isInteracting || isVR)) {
-        if (fps < 30) {
-          const nextRatio = Math.max(0.35, this.currentPixelRatio - 0.15);
-          if (nextRatio !== this.currentPixelRatio) {
-            this.setPixelRatio(nextRatio);
-            console.log(`[Adaptive Quality] FPS dropped to ${fps}. Reducing pixel ratio to ${this.currentPixelRatio.toFixed(2)}`);
-          }
-        } else if (fps > 55) {
-          const targetMax = isVR ? 0.55 : this.maxPixelRatio;
-          const nextRatio = Math.min(targetMax, this.currentPixelRatio + 0.05);
-          if (nextRatio !== this.currentPixelRatio) {
-            this.setPixelRatio(nextRatio);
-            console.log(`[Adaptive Quality] FPS is healthy (${fps}). Increasing pixel ratio to ${this.currentPixelRatio.toFixed(2)}`);
+    // Adaptive Quality & FPS update delegated to AdaptiveQualityManager
+    if (this.qualityManager) {
+      const nextRatio = this.qualityManager.update(
+        this.currentPixelRatio,
+        this.maxPixelRatio,
+        { isDownloading, isAutoAnimating, isInteracting, isVR },
+        (fps) => {
+          if (this.onFpsUpdate) {
+            this.onFpsUpdate(fps, false);
           }
         }
-      }
+      );
 
-      if (this.onFpsUpdate) {
-        this.onFpsUpdate(fps, false);
+      if (nextRatio !== null) {
+        this.setPixelRatio(nextRatio);
       }
-      this.renderState.fpsFrames = 0;
-      this.renderState.fpsLastTime = now;
     }
 
     const needsRenderThisFrame = !isDownloading && (isAutoAnimating || this.renderState.needsRender || isInteracting || isVR);
@@ -373,7 +365,9 @@ export class Renderer {
         this.onBeforeUpdateUniforms(this);
       }
       this.renderer.render(this.scene, this.camera);
-      this.renderState.fpsFrames++;
+      if (this.qualityManager) {
+        this.qualityManager.fpsFrames++;
+      }
       this.renderState.needsRender = false;
       this.renderState.lastRenderTime = now;
     }

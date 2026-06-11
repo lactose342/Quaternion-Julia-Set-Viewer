@@ -36,39 +36,20 @@ export class URLManager {
       animPhases: { x: 0, y: 0, z: 0, w: 0 }
     };
 
-    // 安全な数値パース（NaNガード）のためのヘルパー
-    const safeParse = (id, targetObj) => {
-      if (params.has(id)) {
-        const val = parseFloat(params.get(id));
-        if (!Number.isNaN(val)) {
-          targetObj[id] = val;
-        } else {
-          console.warn(`Invalid URL parameter ignored for key [${id}]: ${params.get(id)}`);
-        }
-      }
-    };
-
     // 各スキーマの解析
-    this.config.SCHEMAS.fractal.forEach(id => safeParse(id, parsedData.params.fractal));
-    
-    this.config.SCHEMAS.material.forEach(id => {
-      if (params.has(id)) {
-        const val = params.get(id);
-        if (id === 'bgColor') {
-          parsedData.params.material[id] = `#${val}`;
-        } else {
-          const numVal = parseFloat(val);
-          if (!Number.isNaN(numVal)) {
-            parsedData.params.material[id] = numVal;
-          } else {
-            console.warn(`Invalid URL parameter ignored for key [${id}]: ${val}`);
+    const categories = ["fractal", "material", "animation", "camera"];
+    categories.forEach((category) => {
+      const keys = this.config.SCHEMAS[category] || [];
+      keys.forEach((id) => {
+        if (params.has(id)) {
+          const def = this.config.definitions[id] || {};
+          const parsed = this.#parseParam(id, params.get(id), def);
+          if (parsed !== undefined) {
+            parsedData.params[category][id] = parsed;
           }
         }
-      }
+      });
     });
-    
-    this.config.SCHEMAS.animation.forEach(id => safeParse(id, parsedData.params.animation));
-    this.config.SCHEMAS.camera.forEach(id => safeParse(id, parsedData.params.camera));
 
     // アニメーション位相の復元
     if (params.has('ph_x')) {
@@ -137,5 +118,18 @@ export class URLManager {
     }
     
     return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+  }
+
+  #parseParam(key, rawValue, def) {
+    if (rawValue === null || rawValue === undefined) return undefined;
+    if (def.type === "color") {
+      return rawValue.startsWith("#") ? rawValue : `#${rawValue}`;
+    }
+    const val = parseFloat(rawValue);
+    if (!Number.isNaN(val)) {
+      return val;
+    }
+    console.warn(`Invalid URL parameter ignored for key [${key}]: ${rawValue}`);
+    return undefined;
   }
 }
