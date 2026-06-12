@@ -37,11 +37,18 @@ export class XRManager {
     this.onSessionStart = null;
     this.onSessionEnd = null;
     this.onInteraction = null;
+
+    // セッション開始時のフラクタルパラメータを保存する領域
+    this.initialFractalParams = null;
   }
 
   init() {
     this.threeRenderer.xr.addEventListener("sessionstart", () => {
       this.activeSession = this.threeRenderer.xr.getSession();
+
+      // セッション開始時のフラクタルパラメータをディープコピーして保存
+      const currentParams = this.domainStore.getParams("fractal");
+      this.initialFractalParams = currentParams ? { ...currentParams } : null;
 
       // ARパススルーセッションかどうかを判定（environmentBlendModeで確実に判定）
       this.isAR = this.activeSession.environmentBlendMode && this.activeSession.environmentBlendMode !== "opaque";
@@ -116,6 +123,8 @@ export class XRManager {
       const controller = this.threeRenderer.xr.getController(id);
       controller.addEventListener("selectstart", () => this.onSelectStart(id, controller));
       controller.addEventListener("selectend", () => this.onSelectEnd(id));
+      controller.addEventListener("squeezestart", () => this.onSelectStart(id, controller));
+      controller.addEventListener("squeezeend", () => this.onSelectEnd(id));
       this.scene.add(controller);
 
       // コントローラーに3Dシリンダー状のポインターレイ（ガイド光線）を追加
@@ -282,9 +291,6 @@ export class XRManager {
   }
 
   updateJoystickInput(session, delta) {
-    const speed = 1.5 * delta;
-    const scaleSpeed = 0.5 * delta;
-
     // デバッグ用のログ出力 (2秒おきに入力デバイス状況を出力)
     if (!this._lastLogTime || performance.now() - this._lastLogTime > 2000) {
       console.log(`[XRManager] 接続デバイス数: ${session.inputSources.length}`);
@@ -310,21 +316,22 @@ export class XRManager {
       const xVal = Math.abs(axes[xIdx]) > deadzone ? axes[xIdx] : 0.0;
       const yVal = Math.abs(axes[yIdx]) > deadzone ? axes[yIdx] : 0.0;
 
+      // パラメータ変形スピード (1秒あたりの変動量)
+      const morphSpeed = 0.8 * delta;
+
       if (source.handedness === "right") {
         const params = this.domainStore.getParams("fractal");
         let hasChanged = false;
         const payload = {};
 
+        // 右スティック左右(X) -> cx (4次元定数の実部) を増減
         if (xVal !== 0.0) {
-          let rotY = params.rotY + xVal * speed;
-          rotY = (rotY + Math.PI * 2) % (Math.PI * 2);
-          payload.rotY = rotY;
+          payload.cx = Math.max(-2.0, Math.min(2.0, params.cx + xVal * morphSpeed));
           hasChanged = true;
         }
+        // 右スティック上下(Y) -> cy を増減 (上に倒すとプラスにしたいので -yVal)
         if (yVal !== 0.0) {
-          let rotX = params.rotX - yVal * speed;
-          rotX = (rotX + Math.PI * 2) % (Math.PI * 2);
-          payload.rotX = rotX;
+          payload.cy = Math.max(-2.0, Math.min(2.0, params.cy - yVal * morphSpeed));
           hasChanged = true;
         }
 
@@ -332,28 +339,97 @@ export class XRManager {
           this.domainStore.updateParams("fractal", payload);
         }
       } else if (source.handedness === "left") {
-        let hasFractalChanged = false;
-        const fractalPayload = {};
+        const params = this.domainStore.getParams("fractal");
+        let hasChanged = false;
+        const payload = {};
 
+        // 左スティック左右(X) -> cz を増減
         if (xVal !== 0.0) {
-          const params = this.domainStore.getParams("fractal");
-          let rotZW = params.rotZW + xVal * speed;
-          rotZW = (rotZW + Math.PI * 2) % (Math.PI * 2);
-          fractalPayload.rotZW = rotZW;
-          hasFractalChanged = true;
+          payload.cz = Math.max(-2.0, Math.min(2.0, params.cz + xVal * morphSpeed));
+          hasChanged = true;
         }
-
-        if (hasFractalChanged) {
-          this.domainStore.updateParams("fractal", fractalPayload);
-        }
-
+        // 左スティック上下(Y) -> cw を増減 (上に倒すとプラスにしたいので -yVal)
         if (yVal !== 0.0) {
-          this.vrScale = Math.max(0.05, Math.min(this.maxVrScale, this.vrScale - yVal * scaleSpeed));
-          if (this.onInteraction) this.onInteraction();
+          payload.cw = Math.max(-2.0, Math.min(2.0, params.cw - yVal * morphSpeed));
+          hasChanged = true;
         }
+
+        if (hasChanged) {
+          this.domainStore.updateParams("fractal", payload);
+        }
+      }
+
+      // A/X ボタン (Index 4) と B/Y ボタン (Index 5) の検知
+      const buttons = source.gamepad.buttons;
+      
+      // A/Xボタン (Index 4) - 押されている間はリセットを実行（クールダウンは関数側で制御）
+      if (buttons.length > 4 && buttons[4] && buttons[4].pressed) {
+        this.resetFractalPosition();
+      }
+
+      // B/Yボタン (Index 5) - 押されている間はランダム化を実行（クールダウンは関数側で制御）
+      if (buttons.length > 5 && buttons[5] && buttons[5].pressed) {
+        this.randomizeFractal();
       }
     }
   }
+
+  resetFractalPosition() {
+    // 500msのクールダウンで連続実行を防ぐ
+    if (this._lastResetTime && performance.now() - this._lastResetTime < 500) {
+      return;
+    }
+    this._lastResetTime = performance.now();
+
+    this.vrScale = 0.3;
+    this.vrOffset = { x: 0.0, y: 1.0, z: -1.2 };
+    
+    // セッション開始時の形状・回転パラメータを復元
+    const resetPayload = {
+      rotX: 0,
+      rotY: 0,
+      rotZ: 0,
+      rotXW: 0,
+      rotYW: 0,
+      rotZW: 0
+    };
+
+    if (this.initialFractalParams) {
+      resetPayload.cx = this.initialFractalParams.cx !== undefined ? this.initialFractalParams.cx : -0.517;
+      resetPayload.cy = this.initialFractalParams.cy !== undefined ? this.initialFractalParams.cy : -0.341;
+      resetPayload.cz = this.initialFractalParams.cz !== undefined ? this.initialFractalParams.cz : -0.407;
+      resetPayload.cw = this.initialFractalParams.cw !== undefined ? this.initialFractalParams.cw : -0.071;
+
+      // 向き（回転）も開始時の状態を保持している場合は、開始時の向きにリセット
+      resetPayload.rotX = this.initialFractalParams.rotX !== undefined ? this.initialFractalParams.rotX : 0.0;
+      resetPayload.rotY = this.initialFractalParams.rotY !== undefined ? this.initialFractalParams.rotY : 0.0;
+      resetPayload.rotZ = this.initialFractalParams.rotZ !== undefined ? this.initialFractalParams.rotZ : 0.0;
+      resetPayload.rotXW = this.initialFractalParams.rotXW !== undefined ? this.initialFractalParams.rotXW : 0.0;
+      resetPayload.rotYW = this.initialFractalParams.rotYW !== undefined ? this.initialFractalParams.rotYW : 0.0;
+      resetPayload.rotZW = this.initialFractalParams.rotZW !== undefined ? this.initialFractalParams.rotZW : 0.0;
+    }
+    
+    this.domainStore.updateParams("fractal", resetPayload);
+    if (this.onInteraction) this.onInteraction();
+  }
+
+  randomizeFractal() {
+    // 500msのクールダウンで連続実行を防ぐ
+    if (this._lastRandomTime && performance.now() - this._lastRandomTime < 500) {
+      return;
+    }
+    this._lastRandomTime = performance.now();
+
+    // ランダムな cx, cy, cz, cw を [-1.0, 1.0] の範囲で生成
+    const cx = (Math.random() - 0.5) * 2.0;
+    const cy = (Math.random() - 0.5) * 2.0;
+    const cz = (Math.random() - 0.5) * 2.0;
+    const cw = (Math.random() - 0.5) * 2.0;
+
+    this.domainStore.updateParams("fractal", { cx, cy, cz, cw });
+  }
+
+
 
   /**
    * シェーダーマテリアルのユニフォームに WebXR 用のパラメータを同期させる

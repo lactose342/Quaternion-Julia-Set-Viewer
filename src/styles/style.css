@@ -506,7 +506,10 @@ summary {
     border-radius: 5px !important;
     font-size: 12px !important;
     font-weight: bold !important;
-    padding: 8px 12px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5) !important;
     cursor: pointer !important;
     transition: right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.2s !important;
