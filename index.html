@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>4D Julia Set Viewer</title>
     <link href="https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined" rel="stylesheet">
 </head>
+
 <body>
     <div id="custom-ui" class="hidden">
         <!-- モバイル用ドラッグハンドル（PCでは非表示） -->
@@ -29,7 +31,7 @@
                 <span class="material-symbols-outlined">palette</span>色彩
             </button>
             <button class="tab-btn" data-tab="section-animation">
-                <span class="material-symbols-outlined">animation</span>アニメ
+                <span class="material-symbols-outlined">animation</span>動き
             </button>
         </div>
 
@@ -75,7 +77,7 @@
                         <option value="jpeg" selected>JPEG</option>
                         <option value="webp">WebP</option>
                         <option value="png">PNG</option>
-                        <option value="transparent_png">PNG（背景透過）</option>
+                        <option value="transparent_png">透過PNG</option>
                     </select>
                     <select id="dl-scale">
                         <option value="0.5">0.5x（軽量）</option>
@@ -85,8 +87,10 @@
                 </div>
                 <div class="slider-group">
                     <label for="download-btn" title="全画面プレビューで構図を確認しながら撮影するカメラモードに入ります。">作品の保存・共有</label>
-                    <button id="download-btn" class="flex-icon-btn" style="margin-bottom: 4px;" title="全画面の撮影モードに切り替えます">撮影モードへ</button>
-                    <button id="share-btn" class="flex-icon-btn" title="現在の設定を復元できるURLをクリップボードにコピーします">共有URLをコピー</button>
+                    <button id="download-btn" class="flex-icon-btn" style="margin-bottom: 4px;"
+                        title="全画面の撮影モードに切り替えます">撮影モードへ</button>
+                    <button id="share-btn" class="flex-icon-btn"
+                        title="現在の設定を復元できるURLをクリップボードにコピーします">共有URLをコピー</button>
                 </div>
             </div>
         </div>
@@ -112,26 +116,30 @@
     <!-- カメラ撮影モード用フローティングUI -->
     <div id="camera-ui" class="hidden">
         <button id="camera-back-btn" class="flex-icon-btn" title="設定画面に戻る">
-            <span class="material-symbols-outlined">arrow_back</span>戻る
+            <span class="material-symbols-outlined">close</span>撮影終了
         </button>
-        <div class="camera-select-group">
-            <select id="camera-dl-format" title="保存する画像のファイル形式を指定します">
-                <option value="jpeg" selected>JPEG</option>
-                <option value="webp">WebP</option>
-                <option value="png">PNG</option>
-                <option value="transparent_png">PNG (背景透過)</option>
-            </select>
-            <select id="camera-dl-scale" title="書き出す画像の解像度倍率を指定します">
-                <option value="0.5">0.5x (軽量)</option>
-                <option value="1.0" selected>1.0x (標準)</option>
-                <option value="1.5">1.5x (高品質)</option>
-            </select>
+        <div class="camera-settings-wrapper">
+            <span class="camera-settings-title">保存形式 / 画質</span>
+            <div class="camera-select-group">
+                <select id="camera-dl-format" title="保存する画像のファイル形式を指定します">
+                    <option value="jpeg" selected>JPEG</option>
+                    <option value="webp">WebP</option>
+                    <option value="png">PNG</option>
+                    <option value="transparent_png">透過PNG</option>
+                </select>
+                <select id="camera-dl-scale" title="書き出す画像の解像度倍率を指定します">
+                    <option value="0.5">0.5x (軽量)</option>
+                    <option value="1.0" selected>1.0x (標準)</option>
+                    <option value="1.5">1.5x (高品質)</option>
+                </select>
+            </div>
         </div>
         <button id="camera-shutter-btn" class="camera-shutter-btn" title="現在の構図で高解像度画像を保存します">
             <span class="material-symbols-outlined">photo_camera</span>
         </button>
     </div>
-    
+
     <script type="module" src="/src/main.js"></script>
 </body>
+
 </html>

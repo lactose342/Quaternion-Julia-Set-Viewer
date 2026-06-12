@@ -27,6 +27,7 @@ export class JuliaMaterialFactory {
         ...(qualityLevel === "XR" ? { LIMIT_NORMAL_ITER: "1" } : {})
       },
       glslVersion: THREE.GLSL3,
+      depthWrite: false, // デプスの書き込みを無効化し、手やコントローラーが遮られるのを防ぐ
       uniforms: {
         u_resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
         u_c: { value: new THREE.Vector4() },

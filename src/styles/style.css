@@ -811,32 +811,21 @@ summary {
    Camera Mode Floating UI
    ========================================== */
 #camera-ui {
-    position: fixed;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    background-color: rgba(15, 15, 20, 0.8);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    padding: 12px 24px;
-    border-radius: 40px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     z-index: 200;
-    transition: opacity 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    transition: opacity 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     opacity: 1;
 }
 
 #camera-ui.hidden {
     opacity: 0;
     pointer-events: none;
-    transform: translate(-50%, 30px);
 }
 
 .camera-shutter-btn {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
     width: 64px;
     height: 64px;
     border-radius: 50%;
@@ -850,15 +839,16 @@ summary {
     transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.2s;
     outline: none;
     padding: 0;
+    z-index: 200;
 }
 
 .camera-shutter-btn:hover {
-    transform: scale(1.1);
+    transform: translateX(-50%) scale(1.1);
     background-color: #ff453a;
 }
 
 .camera-shutter-btn:active {
-    transform: scale(0.92);
+    transform: translateX(-50%) scale(0.92);
 }
 
 .camera-shutter-btn .material-symbols-outlined {
@@ -868,20 +858,27 @@ summary {
 }
 
 #camera-back-btn {
-    background-color: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    background-color: rgba(15, 15, 20, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     color: #fff;
-    padding: 8px 18px;
+    padding: 10px 20px;
     border-radius: 20px;
     cursor: pointer;
     font-size: 13px;
     font-weight: bold;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
     transition: background-color 0.2s, transform 0.2s;
+    z-index: 200;
 }
 
 #camera-back-btn:hover {
     background-color: rgba(255, 255, 255, 0.2);
-    transform: translateY(-1px);
+    transform: translateY(-2px);
 }
 
 #camera-back-btn:active {
@@ -911,8 +908,10 @@ summary {
     cursor: pointer;
     outline: none;
     transition: background-color 0.2s, border-color 0.2s;
-    height: auto; /* Base の height: 30px 制限を解除 */
-    appearance: none; /* デフォルトの矢印を消す（ブラウザ互換） */
+    height: auto;
+    /* Base の height: 30px 制限を解除 */
+    appearance: none;
+    /* デフォルトの矢印を消す（ブラウザ互換） */
     -webkit-appearance: none;
     text-align: center;
 }
@@ -925,4 +924,50 @@ summary {
 .camera-select-group select option {
     background-color: #15151c;
     color: #fff;
+}
+
+.camera-settings-wrapper {
+    position: fixed;
+    top: 10px;
+    left: 70px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    z-index: 200;
+}
+
+.camera-settings-title {
+    font-size: 9px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    pointer-events: none;
+}
+
+@media (max-width: 600px) {
+    #camera-back-btn {
+        bottom: 28px;
+        right: 10px;
+        padding: 8px 16px;
+        font-size: 14px;
+    }
+
+    .camera-shutter-btn {
+        bottom: 20px;
+        width: 60px;
+        height: 60px;
+    }
+
+    .camera-settings-wrapper {
+        top: 8px;
+        left: 65px;
+    }
+
+    .camera-select-group select {
+        padding: 6px 8px;
+        font-size: 11px;
+        height: 30px;
+    }
 }

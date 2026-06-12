@@ -15,11 +15,16 @@ export class XRManager {
 
     // VR/AR用の初期設定 (高さをさらに引き上げ: y を -0.05 から 0.05 へ変更)
     this.vrScale = 0.3;
+    this.maxVrScale = 1.0; // 拡大の上限値
     this.vrOffset = { x: 0.0, y: 1.0, z: -1.2 };
 
     this.activeSession = null;
     this.isAR = false;
     this.originalBgAlpha = 1.0;
+
+    // AR/VRでのモデル表示制御用
+    this.controllerGrips = [];
+    this.handModels = [];
 
     // ドラッグ・掴み（グラブ）インタラクションの状態管理
     this.dragging = [false, false];
@@ -38,7 +43,7 @@ export class XRManager {
     this.threeRenderer.xr.addEventListener("sessionstart", () => {
       this.activeSession = this.threeRenderer.xr.getSession();
 
-      // ARパススルーセッションかどうかを判定
+      // ARパススルーセッションかどうかを判定（environmentBlendModeで確実に判定）
       this.isAR = this.activeSession.environmentBlendMode && this.activeSession.environmentBlendMode !== "opaque";
 
       // ARモードなら背景色を強制的に完全透過する
@@ -47,6 +52,17 @@ export class XRManager {
         this.originalBgAlpha = materialParams.bgAlpha !== undefined ? materialParams.bgAlpha : 1.0;
         this.domainStore.updateParams("material", { bgAlpha: 0.0 });
       }
+
+      // ARとVRでの表示設定（ARではコントローラー・手モデルを非表示にし、ポインター線のみにする）
+      // ※ 親要素（Grip/Hand自体）のvisibleはThree.jsのWebXR更新ループにより毎フレーム自動上書きされるため、
+      // 　独自に追加した子オブジェクト（モデルの実体）のvisibleを直接切り替えます。
+      const showModels = !this.isAR;
+      this.controllerGrips.forEach((model) => {
+        model.visible = showModels;
+      });
+      this.handModels.forEach((handModel) => {
+        handModel.visible = showModels;
+      });
 
       // コールバック
       if (this.onSessionStart) {
@@ -65,6 +81,14 @@ export class XRManager {
         this.domainStore.updateParams("material", { bgAlpha: this.originalBgAlpha });
       }
       this.isAR = false;
+
+      // セッション終了時にモデルの表示をリセット
+      this.controllerGrips.forEach((model) => {
+        model.visible = true;
+      });
+      this.handModels.forEach((handModel) => {
+        handModel.visible = true;
+      });
 
       // コールバック
       if (this.onSessionEnd) {
@@ -94,19 +118,63 @@ export class XRManager {
       controller.addEventListener("selectend", () => this.onSelectEnd(id));
       this.scene.add(controller);
 
+      // コントローラーに3Dシリンダー状のポインターレイ（ガイド光線）を追加
+      const cylinderGeometry = new THREE.CylinderGeometry(0.002, 0.002, 1, 4);
+      cylinderGeometry.rotateX(Math.PI / 2);
+      cylinderGeometry.translate(0, 0, -0.5); // 基点がグリップ位置になるように調整
+      const cylinderMaterial = new THREE.MeshBasicMaterial({
+        color: 0x0055ff,
+        transparent: true,
+        opacity: 0.5
+      });
+      const ray = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
+      ray.name = "pointer-ray";
+      ray.scale.z = 2; // 2メートルのガイド線
+      controller.add(ray);
+
       // コントローラーモデル（Grip）の追加
       const grip = this.threeRenderer.xr.getControllerGrip(id);
-      grip.add(controllerModelFactory.createControllerModel(grip));
-      this.scene.add(grip);
+      const model = controllerModelFactory.createControllerModel(grip);
+      grip.add(model);
 
-      // ハンドモデル（素手トラッキング用のメッシュ）の追加
+      // オフライン・CDNエラー時のフォールバック用に簡易グリップモデルを追加
+      const gripGeometry = new THREE.BoxGeometry(0.02, 0.02, 0.08);
+      const gripMaterial = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8 });
+      const gripMesh = new THREE.Mesh(gripGeometry, gripMaterial);
+      grip.add(gripMesh);
+
+      this.scene.add(grip);
+      this.controllerGrips.push(model);     // 参照を保存（GLTFモデル）
+      this.controllerGrips.push(gripMesh);  // 参照を保存（フォールバックボックス）
+
+      // ハンドモデルの追加
       const hand = this.threeRenderer.xr.getHand(id);
-      hand.add(handModelFactory.createHandModel(hand, "mesh"));
+      const handModel = handModelFactory.createHandModel(hand, "mesh");
+      hand.add(handModel);
       this.scene.add(hand);
+      this.handModels.push(handModel); // 参照を保存（子ハンドモデル）
     }
   }
 
   onSelectStart(id, controller) {
+    // コントローラーの光線がフラクタルのバウンディング球に交差しているかチェック
+    const sphereCenter = new THREE.Vector3(this.vrOffset.x, this.vrOffset.y, this.vrOffset.z);
+    const sphereRadius = 1.5 * this.vrScale;
+    const sphere = new THREE.Sphere(sphereCenter, sphereRadius);
+
+    const tempMatrix = new THREE.Matrix4();
+    tempMatrix.identity().extractRotation(controller.matrixWorld);
+    const origin = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld);
+    const direction = new THREE.Vector3(0, 0, -1).applyMatrix4(tempMatrix).normalize();
+
+    const ray = new THREE.Ray(origin, direction);
+    const isIntersecting = ray.intersectsSphere(sphere);
+
+    // 交差していない場合はドラッグ（グラブ）を開始しない
+    if (!isIntersecting) {
+      return;
+    }
+
     this.dragging[id] = true;
 
     // 現在のフラクタルのワールドトランスフォーム行列を構築
@@ -166,7 +234,7 @@ export class XRManager {
 
       if (this.initialTwoHandDist && this.initialTwoHandDist > 0.01) {
         const ratio = currentDist / this.initialTwoHandDist;
-        this.vrScale = Math.max(0.05, Math.min(2.0, this.startVrScale * ratio));
+        this.vrScale = Math.max(0.05, Math.min(this.maxVrScale, this.startVrScale * ratio));
       }
 
       // 位置は両手の中間点に配置する
@@ -232,9 +300,15 @@ export class XRManager {
       const axes = source.gamepad.axes;
       if (axes.length < 2) continue;
 
+      // Meta Quest 等の標準コントローラー（xr-standard）では、スティック入力は axes[2]/axes[3] に割り当てられます。
+      // axes の数が4未満の場合はフォールバックとして axes[0]/axes[1] を使用します。
+      const hasThumbstick = axes.length >= 4;
+      const xIdx = hasThumbstick ? 2 : 0;
+      const yIdx = hasThumbstick ? 3 : 1;
+
       const deadzone = 0.15;
-      const xVal = Math.abs(axes[0]) > deadzone ? axes[0] : 0.0;
-      const yVal = Math.abs(axes[1]) > deadzone ? axes[1] : 0.0;
+      const xVal = Math.abs(axes[xIdx]) > deadzone ? axes[xIdx] : 0.0;
+      const yVal = Math.abs(axes[yIdx]) > deadzone ? axes[yIdx] : 0.0;
 
       if (source.handedness === "right") {
         const params = this.domainStore.getParams("fractal");
@@ -274,7 +348,7 @@ export class XRManager {
         }
 
         if (yVal !== 0.0) {
-          this.vrScale = Math.max(0.05, Math.min(2.0, this.vrScale - yVal * scaleSpeed));
+          this.vrScale = Math.max(0.05, Math.min(this.maxVrScale, this.vrScale - yVal * scaleSpeed));
           if (this.onInteraction) this.onInteraction();
         }
       }
