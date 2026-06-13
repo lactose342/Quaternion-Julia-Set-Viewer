@@ -14,6 +14,7 @@ export class BottomSheetView {
     const onDragStart = () => {
       if (window.innerWidth > 768) return;
       this.customUi.style.transition = "none";
+      this.customUi.classList.add("dragging");
     };
 
     const onDrag = (deltaY) => {
@@ -21,17 +22,12 @@ export class BottomSheetView {
       
       if (deltaY > 0) {
         this.customUi.style.transform = `translateY(${deltaY}px)`;
-        
-        const toggleBtn = document.getElementById("toggle-ui-btn");
-        if (toggleBtn) {
-          toggleBtn.style.transition = "none";
-          toggleBtn.style.bottom = `calc(55dvh + 15px - ${deltaY}px)`;
-        }
       }
     };
 
     const onDragEnd = (deltaY) => {
       this.customUi.style.transition = "";
+      this.customUi.classList.remove("dragging");
       const toggleBtn = document.getElementById("toggle-ui-btn");
       if (toggleBtn) {
         toggleBtn.style.transition = "";

@@ -32,7 +32,7 @@ export class MainMenuView {
 
       if (sliderParams.length > 0) {
         const sliderGrid = document.createElement("div");
-        sliderGrid.className = "grid-container";
+        sliderGrid.className = section.singleColumn ? "grid-1col" : "grid-container";
         sliderParams.forEach(([key, def]) => {
           sliderGrid.appendChild(createParameterElement(key, def));
         });

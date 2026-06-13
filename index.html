@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>4D Julia Set Viewer</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
     <link href="https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined" rel="stylesheet">
 </head>
 
@@ -16,10 +17,10 @@
         <!-- モバイル用タブバー（PCでは非表示） -->
         <div id="mobile-tabs-container" class="mobile-tabs">
             <button class="tab-btn active" data-tab="tab-common">
-                <span class="material-symbols-outlined">tune</span>共通設定
+                <span class="material-symbols-outlined">tune</span>全体の調整
             </button>
             <button class="tab-btn" data-tab="section-shape">
-                <span class="material-symbols-outlined">schema</span>形状
+                <span class="material-symbols-outlined">schema</span>形
             </button>
             <button class="tab-btn" data-tab="section-rotation">
                 <span class="material-symbols-outlined">3d_rotation</span>回転
@@ -28,69 +29,72 @@
                 <span class="material-symbols-outlined">videocam</span>カメラ
             </button>
             <button class="tab-btn" data-tab="section-style">
-                <span class="material-symbols-outlined">palette</span>色彩
+                <span class="material-symbols-outlined">palette</span>色・質感
             </button>
             <button class="tab-btn" data-tab="section-animation">
                 <span class="material-symbols-outlined">animation</span>動き
             </button>
         </div>
 
-        <!-- 共通設定パネル（tab-common） -->
+        <!-- 全体の調整パネル（tab-common） -->
         <div id="tab-common" class="tab-content-wrapper active-tab-content">
+            <!-- 1. ベース設定 -->
             <div class="grid-2cols" style="margin-bottom: 20px; align-items: end;">
                 <div class="slider-group">
-                    <label for="preset-select" title="あらかじめ登録されたおすすめの形状を呼び出します。">形状プリセット</label>
+                    <label for="preset-select" title="登録されたおすすめの形状を呼び出します。">おすすめの形状</label>
                     <select id="preset-select">
                         <option value="custom">カスタム</option>
-                        <option value="preset1" selected>Deep Blue (Default)</option>
-                        <option value="preset2">Jade Artifact</option>
-                        <option value="preset3">Crimson Ring</option>
-                        <option value="preset4">Golden Amber</option>
-                        <option value="preset5">Pure Origin</option>
+                        <option value="preset1" selected>深海の渦（標準）</option>
+                        <option value="preset2">碧緑の円環</option>
+                        <option value="preset3">天使の羽</option>
+                        <option value="preset4">黄金の琥珀</option>
+                        <option value="preset5">原初の球</option>
                     </select>
                 </div>
                 <div class="slider-group">
-                    <label for="anim-preset-select" title="自動アニメーション時の動きのパターンを変更します。">動作プリセット</label>
+                    <label for="anim-preset-select" title="自動で動くときのパターンを変更します。">おすすめの動き</label>
                     <select id="anim-preset-select">
                         <option value="custom">カスタム</option>
-                        <option value="preset1" selected>Harmonic Flow (Default)</option>
-                        <option value="preset2">Subtle Drift</option>
-                        <option value="preset3">Turbulent Wave</option>
-                        <option value="preset4">Rapid Pulse</option>
+                        <option value="preset1" selected>さざ波（標準）</option>
+                        <option value="preset2">胎動</option>
+                        <option value="preset3">うねり</option>
+                        <option value="preset4">乱流</option>
                     </select>
                 </div>
-                <div class="slider-group">
+            </div>
+
+            <!-- 2. メイン操作 -->
+            <div style="margin-bottom: 20px;">
+                <div class="slider-group" style="margin-bottom: 12px;">
+                    <label for="random-btn" title="形や色をランダムに変化させ、新しいデザインを作ります。">おまかせ作成</label>
+                    <button id="random-btn" class="flex-icon-btn" title="現在の設定をクリアし、ランダムな形と色を作ります"
+                        style="width: 100%;">ランダムに作る</button>
+                </div>
+                <div class="slider-group" id="download-and-share">
+                    <label for="download-btn" title="各種パネルを隠し、全画面でアングルを確認して撮影するモードへ進みます。">画像の保存と共有</label>
+                    <button id="download-btn" class="flex-icon-btn" style="width: 100%; margin-bottom: 8px;"
+                        title="各種パネルを非表示にして撮影画面に進みます">撮影画面へ</button>
+                    <button id="share-btn" class="flex-icon-btn" style="width: 100%;"
+                        title="現在の形や色の設定を再現できるURLをコピーします">共有URLをコピー</button>
+                </div>
+            </div>
+
+            <!-- 3. サブ機能 -->
+            <div>
+                <div class="slider-group" style="margin-bottom: 12px;">
                     <label title="パラメータ変更の履歴を戻す、進める、または初期状態に戻します。">履歴操作</label>
                     <div class="grid-2cols" style="margin-top: 0; gap: 4px; margin-bottom: 4px;">
                         <button id="undo-btn" class="flex-icon-btn" disabled title="1つ前の状態に戻す">1つ戻る</button>
                         <button id="redo-btn" class="flex-icon-btn" disabled title="1つ後の状態へ進む">1つ進む</button>
                     </div>
-                    <button id="reset-btn" class="flex-icon-btn" title="すべての設定を初期状態に戻す">初期化</button>
+                    <button id="reset-btn" class="flex-icon-btn" title="すべての設定を初期状態に戻す"
+                        style="width: 100%;">初期化</button>
                 </div>
                 <div class="slider-group">
-                    <label for="random-btn" title="すべての形状や色をランダムに変更し、予期せぬデザインを作成します。">ランダム生成</label>
-                    <button id="random-btn" class="flex-icon-btn" title="現在の設定を破棄し、ランダムな形状を生成します">ランダム生成</button>
-                </div>
-                <div class="slider-group">
-                    <label for="dl-format" title="保存する画像のファイル形式と、画質を指定します。">書き出し設定 (形式 / 解像度)</label>
-                    <select id="dl-format" style="margin-bottom: 4px;">
-                        <option value="jpeg" selected>JPEG</option>
-                        <option value="webp">WebP</option>
-                        <option value="png">PNG</option>
-                        <option value="transparent_png">透過PNG</option>
-                    </select>
-                    <select id="dl-scale">
-                        <option value="0.5">0.5x（軽量）</option>
-                        <option value="1.0" selected>1.0x（標準）</option>
-                        <option value="1.5">1.5x（高品質）</option>
-                    </select>
-                </div>
-                <div class="slider-group">
-                    <label for="download-btn" title="全画面プレビューで構図を確認しながら撮影するカメラモードに入ります。">作品の保存・共有</label>
-                    <button id="download-btn" class="flex-icon-btn" style="margin-bottom: 4px;"
-                        title="全画面の撮影モードに切り替えます">撮影モードへ</button>
-                    <button id="share-btn" class="flex-icon-btn"
-                        title="現在の設定を復元できるURLをクリップボードにコピーします">共有URLをコピー</button>
+                    <button id="onboarding-trigger-btn" class="flex-icon-btn" title="使い方の紹介ツアーを再生します"
+                        style="width: 100%;">
+                        <span class="material-symbols-outlined" style="font-size: 16px;">explore</span>使い方ガイド
+                    </button>
                 </div>
             </div>
         </div>
@@ -115,11 +119,11 @@
 
     <!-- カメラ撮影モード用フローティングUI -->
     <div id="camera-ui" class="hidden">
-        <button id="camera-back-btn" class="flex-icon-btn" title="設定画面に戻る">
-            <span class="material-symbols-outlined">close</span>撮影終了
+        <button id="camera-back-btn" class="flex-icon-btn" title="設定画面に戻ります">
+            <span class="material-symbols-outlined">close</span>撮影を終える
         </button>
         <div class="camera-settings-wrapper">
-            <span class="camera-settings-title">保存形式 / 画質</span>
+            <span class="camera-settings-title">保存の画質と形式</span>
             <div class="camera-select-group">
                 <select id="camera-dl-format" title="保存する画像のファイル形式を指定します">
                     <option value="jpeg" selected>JPEG</option>
@@ -127,16 +131,44 @@
                     <option value="png">PNG</option>
                     <option value="transparent_png">透過PNG</option>
                 </select>
-                <select id="camera-dl-scale" title="書き出す画像の解像度倍率を指定します">
-                    <option value="0.5">0.5x (軽量)</option>
-                    <option value="1.0" selected>1.0x (標準)</option>
-                    <option value="1.5">1.5x (高品質)</option>
+                <select id="camera-dl-scale" title="書き出す画像の画質（きめ細かさ）を指定します">
+                    <option value="0.5">0.5x(軽量)</option>
+                    <option value="1.0" selected>1.0x(標準)</option>
+                    <option value="1.5">1.5x(高画質)</option>
                 </select>
             </div>
         </div>
-        <button id="camera-shutter-btn" class="camera-shutter-btn" title="現在の構図で高解像度画像を保存します">
+        <button id="camera-shutter-btn" class="camera-shutter-btn" title="現在の見え方のまま、綺麗な画像として端末に保存します">
             <span class="material-symbols-outlined">photo_camera</span>
         </button>
+    </div>
+
+    <!-- オンボーディングツアー用オーバーレイ -->
+    <div id="onboarding-overlay" class="onboarding-overlay hidden">
+        <!-- スポットライト用SVGマスク（要素以外の背景を暗くし、クリックをブロックする） -->
+        <svg id="onboarding-mask" class="onboarding-mask">
+            <defs>
+                <mask id="spotlight-mask">
+                    <rect width="100%" height="100%" fill="white" />
+                    <rect id="spotlight-rect" x="0" y="0" width="0" height="0" rx="8" ry="8" fill="black" />
+                </mask>
+            </defs>
+            <rect width="100%" height="100%" fill="rgba(0, 0, 0, 0.75)" mask="url(#spotlight-mask)" />
+        </svg>
+
+        <div id="onboarding-card" class="onboarding-card">
+            <div class="onboarding-card-header">
+                <span id="onboarding-step-indicator" class="onboarding-step-indicator">1/4</span>
+                <h3 id="onboarding-title" class="onboarding-title">形状プリセット</h3>
+            </div>
+            <div id="onboarding-body" class="onboarding-body">
+                お気に入りのデザイン（プリセット）を選んでみましょう。ワンタップで全く異なる世界観に切り替わります。
+            </div>
+            <div class="onboarding-footer">
+                <button id="onboarding-skip-btn" class="onboarding-btn secondary">スキップ</button>
+                <button id="onboarding-next-btn" class="onboarding-btn primary">次へ</button>
+            </div>
+        </div>
     </div>
 
     <script type="module" src="/src/main.js"></script>

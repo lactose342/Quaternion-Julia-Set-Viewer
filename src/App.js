@@ -16,6 +16,7 @@ import { ExportView } from "@/ui/views/ExportView.js";
 import { MainMenuView } from "@/ui/views/MainMenuView.js";
 import { StatusView } from "@/ui/views/StatusView.js";
 import { ColorPickerView } from "@/ui/views/ColorPickerView.js";
+import { OnboardingView } from "@/ui/views/OnboardingView.js";
 import { initFormatter } from "@/ui/utils/uiParamFormatter.js";
 
 import { CommandDispatcher } from "@/core/CommandDispatcher.js";
@@ -64,6 +65,7 @@ export class App {
     this.exportView = new ExportView();
     this.mainMenuView = new MainMenuView();
     this.statusView = new StatusView();
+    this.onboardingView = new OnboardingView();
 
     this.dispatcher = new CommandDispatcher();
 
@@ -92,6 +94,7 @@ export class App {
       this.mainMenuView,
       this.colorPickerView,
       this.config,
+      this.onboardingView,
     );
 
     this.#setupCommands();

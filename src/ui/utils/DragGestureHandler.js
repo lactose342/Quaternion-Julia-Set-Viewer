@@ -5,6 +5,7 @@ export class DragGestureHandler {
     this.startY = 0;
     this.currentY = 0;
     this.isDragging = false;
+    this.ticking = false;
 
     this._boundDown = this.#onPointerDown.bind(this);
     this._boundMove = this.#onPointerMove.bind(this);
@@ -34,10 +35,18 @@ export class DragGestureHandler {
   #onPointerMove(e) {
     if (!this.isDragging) return;
     this.currentY = e.clientY;
-    const deltaY = this.currentY - this.startY;
 
-    if (this.callbacks.onDrag) {
-      this.callbacks.onDrag(deltaY, this.currentY);
+    if (!this.ticking) {
+      window.requestAnimationFrame(() => {
+        if (this.isDragging) {
+          const deltaY = this.currentY - this.startY;
+          if (this.callbacks.onDrag) {
+            this.callbacks.onDrag(deltaY, this.currentY);
+          }
+        }
+        this.ticking = false;
+      });
+      this.ticking = true;
     }
   }
 

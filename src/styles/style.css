@@ -41,11 +41,20 @@ body>canvas {
     grid-template-columns: repeat(4, 1fr);
 }
 
+.grid-1col {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 10px;
+}
+
 /* ==========================================
    UI Container & Details
    ========================================== */
 #custom-ui {
-    transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease-in-out;
+    transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+    will-change: transform, opacity;
+    visibility: visible;
     position: fixed;
     overflow-y: auto;
     background-color: rgba(15, 15, 20, 0.85);
@@ -54,6 +63,17 @@ body>canvas {
     box-sizing: border-box;
     z-index: 100;
     overscroll-behavior: contain;
+}
+
+/* 非表示時はレイアウト・描画コストを完全にゼロにする */
+#custom-ui.hidden {
+    visibility: hidden;
+}
+
+/* ドラッグ中は描画負荷が高い背景ぼかしを一時的にOFFにし、ドラッグ追従を60FPSにする */
+#custom-ui.dragging {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
 }
 
 /* ------------------------------------------
@@ -119,6 +139,10 @@ body>canvas {
         border-radius: 20px 20px 0 0;
         padding: 0px 15px 40px 15px;
         transform: translateY(100%);
+        /* モバイル向けにぼかし量を軽量化 (16px -> 8px) して負荷を軽減 */
+        background-color: rgba(15, 15, 20, 0.92);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
     }
 
     #custom-ui.hidden {
@@ -864,28 +888,28 @@ summary {
     position: fixed;
     bottom: 30px;
     right: 30px;
-    background-color: rgba(15, 15, 20, 0.8);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background-color: rgba(40, 40, 40, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid #666;
     color: #fff;
     padding: 10px 20px;
-    border-radius: 20px;
+    border-radius: 5px;
     cursor: pointer;
     font-size: 13px;
     font-weight: bold;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    transition: background-color 0.2s, transform 0.2s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    transition: background-color 0.2s, border-color 0.2s;
     z-index: 200;
 }
 
 #camera-back-btn:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-    transform: translateY(-2px);
+    background-color: rgba(80, 80, 80, 0.9);
+    border-color: #888;
 }
 
 #camera-back-btn:active {
-    transform: translateY(1px);
+    background-color: rgba(60, 60, 60, 0.8);
 }
 
 /* 撮影モード中に設定ボタンとVRボタンを確実に非表示にする */
@@ -901,11 +925,11 @@ summary {
 }
 
 .camera-select-group select {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(40, 40, 40, 0.7);
     color: #fff;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid #666;
     padding: 8px 16px;
-    border-radius: 20px;
+    border-radius: 5px;
     font-size: 13px;
     font-weight: bold;
     cursor: pointer;
@@ -917,11 +941,13 @@ summary {
     /* デフォルトの矢印を消す（ブラウザ互換） */
     -webkit-appearance: none;
     text-align: center;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 
 .camera-select-group select:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.3);
+    background-color: rgba(80, 80, 80, 0.9);
+    border-color: #888;
 }
 
 .camera-select-group select option {
@@ -943,7 +969,8 @@ summary {
 .camera-settings-title {
     font-size: 9px;
     font-weight: bold;
-    color: rgba(255, 255, 255, 0.5);
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     pointer-events: none;
@@ -972,5 +999,159 @@ summary {
         padding: 6px 8px;
         font-size: 11px;
         height: 30px;
+    }
+}
+
+/* ==========================================
+   Onboarding (Tutorial Tour) Styles
+   ========================================== */
+.onboarding-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100dvh;
+    z-index: 9999;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+    pointer-events: auto;
+}
+
+.onboarding-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.onboarding-mask {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10000;
+    pointer-events: inherit;
+}
+
+#spotlight-rect {
+    transition: x 0.3s ease, y 0.3s ease, width 0.3s ease, height 0.3s ease;
+}
+
+.onboarding-card {
+    position: absolute;
+    width: 300px;
+    background-color: rgba(20, 20, 28, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 16px 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+    z-index: 10001;
+    color: #fff;
+    box-sizing: border-box;
+    transition: top 0.3s ease, left 0.3s ease, transform 0.3s ease;
+}
+
+/* モバイル用表示調整 */
+@media (max-width: 768px) {
+    .onboarding-card {
+        width: calc(100vw - 40px);
+        left: 20px !important;
+        /* モバイルでは画面中央に配置する */
+        top: 35% !important;
+        bottom: auto !important;
+        transform: translateY(-35%) !important;
+    }
+}
+
+.onboarding-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.onboarding-step-indicator {
+    font-size: 10px;
+    font-weight: bold;
+    color: #0055ff;
+    background: rgba(0, 85, 255, 0.15);
+    padding: 2px 8px;
+    border-radius: 10px;
+    letter-spacing: 0.05em;
+}
+
+.onboarding-title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: bold;
+    color: #fff;
+}
+
+.onboarding-body {
+    font-size: 13px;
+    color: #ddd;
+    line-height: 1.6;
+    margin-bottom: 16px;
+    word-break: break-all;
+}
+
+.onboarding-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.onboarding-btn {
+    flex: 1;
+    height: 32px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent;
+    transition: background-color 0.2s, border-color 0.2s;
+    outline: none;
+}
+
+.onboarding-btn.primary {
+    background-color: #0055ff;
+    color: #fff;
+    border-color: #0044cc;
+}
+
+.onboarding-btn.primary:hover {
+    background-color: #0066ff;
+}
+
+.onboarding-btn.secondary {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: #ccc;
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.onboarding-btn.secondary:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: #fff;
+}
+
+.onboarding-target-highlight {
+    animation: onboarding-pulse 2s infinite ease-in-out;
+}
+
+@keyframes onboarding-pulse {
+
+    0%,
+    100% {
+        outline: 2px solid #0055ff;
+        outline-offset: 2px;
+    }
+
+    50% {
+        outline: 2px solid rgba(0, 85, 255, 0.2);
+        outline-offset: 4px;
     }
 }

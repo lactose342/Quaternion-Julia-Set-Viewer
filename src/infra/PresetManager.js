@@ -31,9 +31,9 @@ export class PresetManager {
         rotX: parseFloat(randRange(0, 6.283).toFixed(2)),
         rotY: parseFloat(randRange(0, 6.283).toFixed(2)),
         rotZ: parseFloat(randRange(0, 6.283).toFixed(2)),
-        rotXW: parseFloat(randRange(0, 6.283).toFixed(2)),
-        rotYW: parseFloat(randRange(0, 6.283).toFixed(2)),
-        rotZW: parseFloat(randRange(0, 6.283).toFixed(2))
+        rotXW: 0.0,
+        rotYW: 0.0,
+        rotZW: 0.0
       },
       material: {
         hue: parseFloat(Math.random().toFixed(3)),

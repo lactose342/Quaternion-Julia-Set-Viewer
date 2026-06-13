@@ -31,31 +31,33 @@ export const CONFIG = {
     UI_SECTIONS: [
         {
             id: "section-shape",
-            title: "形の調整 (基本形状)",
+            title: "形の調整 (基本の形状)",
             open: true,
             groups: ["shape"]
         },
         {
             id: "section-rotation",
-            title: "向きと回転 (3D/4D)",
+            title: "図形の回転",
             open: false,
-            groups: ["rotation"]
+            groups: ["rotation"],
+            singleColumn: true
         },
         {
             id: "section-camera",
-            title: "カメラと視野角",
+            title: "視野の広さとズーム",
             open: false,
             groups: ["camera"]
         },
         {
             id: "section-style",
-            title: "色と質感",
+            title: "色と見た目の質感",
             open: false,
-            groups: ["style"]
+            groups: ["style"],
+            singleColumn: true
         },
         {
             id: "section-animation",
-            title: "動きの設定",
+            title: "アニメーションの設定",
             open: false,
             groups: ["animation"]
         }
@@ -63,8 +65,8 @@ export const CONFIG = {
     PRESETS: {
         preset1: { cx: -0.517, cy: -0.341, cz: -0.407, cw: -0.071, rotX: 0, rotY: 0, rotZ: 2.02, rotXW: 0, rotYW: 0, rotZW: 0, hue: 0.586, saturation: 1, brightness: 2.3, aoPower: 1, specular: 10, bgColor: '#0a0c1a', bgAlpha: 1.0, fov: 45, zoom: 1.0, camera: { position: { x: 0, y: 0, z: 4.6 }, target: { x: 0, y: 0, z: 0 } } },
         preset2: { cx: 0.415, cy: 0.56, cz: 0.175, cw: 0.459, rotX: 0, rotY: 0.7, rotZ: 0, rotXW: 0, rotYW: 0, rotZW: 0, hue: 0.35, saturation: 1, brightness: 1.5, aoPower: 1.2, specular: 24, bgColor: '#05220d', bgAlpha: 1.0, fov: 45, zoom: 1.0, camera: { position: { x: 0, y: 0, z: 2 }, target: { x: 0, y: 0, z: 0 } } },
-        preset3: { cx: -0.1, cy: 0.8, cz: 0, cw: -0, rotX: 2.25, rotY: 1.29, rotZ: 2.25, rotXW: 0, rotYW: 0, rotZW: 0.15, hue: 0, saturation: 0.814, brightness: 2.3, aoPower: 0.1, specular: 64, bgColor: '#fe9f9f', bgAlpha: 1.0, fov: 45, zoom: 1.0, camera: { position: { x: 0, y: 0, z: 2 }, target: { x: 0, y: 0, z: 0 } } },
-        preset4: { cx: 0.038, cy: 0.681, cz: 0.054, cw: 0.12, rotX: 3.81, rotY: 3.45, rotZ: 0.8, rotXW: 0, rotYW: 0, rotZW: 3.22, hue: 0.114, saturation: 0.898, brightness: 3, aoPower: 2.1, specular: 32, bgColor: '#b87d00', bgAlpha: 1.0, fov: 45, zoom: 1.0, camera: { position: { x: -2.429, y: -1.757, z: 2.171 }, target: { x: 0, y: 0, z: 0 } } },
+        preset3: { cx: -1.0, cy: 0.369, cz: 0.003, cw: 0.009, rotX: 0.0, rotY: 0.7435102613495844, rotZ: 0.9541715020653, rotXW: 0.0, rotYW: 0.0, rotZW: 0.0, hue: 0.09740259740259742, saturation: 0.37560975609756103, value: 0.803921568627451, brightness: 3.0, aoPower: 0.9, specular: 4.0, bgColor: '#fbdfbe', bgAlpha: 1.0, fov: 35.0, zoom: 1.0, camera: { position: { x: 0.752, y: -0.621, z: 3.089 }, target: { x: 0.109, y: -0.351, z: 0.112 } } },
+        preset4: { cx: 0.038, cy: 0.681, cz: 0.054, cw: 0.12, rotX: 3.81, rotY: 3.45, rotZ: 0.8, rotXW: 0, rotYW: 0, rotZW: 0, hue: 0.114, saturation: 0.898, brightness: 3, aoPower: 2.1, specular: 32, bgColor: '#b87d00', bgAlpha: 1.0, fov: 45, zoom: 1.0, camera: { position: { x: -2.429, y: -1.757, z: 2.171 }, target: { x: 0, y: 0, z: 0 } } },
         preset5: { cx: 0, cy: 0, cz: 0, cw: 0, rotX: 0, rotY: 0, rotZ: 0, rotXW: 0, rotYW: 0, rotZW: 0, hue: 0, saturation: 0, brightness: 2.7, aoPower: 0.1, specular: 64, bgColor: '#dedede', bgAlpha: 1.0, fov: 45, zoom: 1.0, camera: { position: { x: 0, y: 0, z: 4 }, target: { x: 0, y: 0, z: 0 } } }
     },
     ANIM_PRESETS: {
