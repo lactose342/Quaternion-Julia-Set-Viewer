@@ -23,12 +23,8 @@ PCやスマートフォンのブラウザだけでなく、VRゴーグル（Meta
 ---
 
 ## 📸 スクリーンショット (Screenshots)
+<img width="2736" height="1824" alt="スクリーンショット 2026-06-14 012743" src="https://github.com/user-attachments/assets/15f593fa-8485-4c2f-95af-accc811811bc" />
 
-<!--
-ここにアプリのスクリーンショット画像を配置してください。
-例: ![4D Julia Set Viewerのメイン画面](/public/screenshot_main.png)
--->
-*(ここにアプリのスクリーンショット画像を挿入)*
 
 ---
 
