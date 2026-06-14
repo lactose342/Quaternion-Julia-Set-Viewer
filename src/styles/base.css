@@ -1,0 +1,17 @@
+/* ==========================================
+   Base
+   ========================================== */
+body {
+    margin: 0;
+    overflow: hidden;
+    background-color: #000;
+    color: #fff;
+    font-family: sans-serif;
+}
+
+body>canvas {
+    width: 100vw !important;
+    height: 100dvh !important;
+    display: block;
+    touch-action: none;
+}

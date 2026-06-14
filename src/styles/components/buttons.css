@@ -1,0 +1,214 @@
+/* ==========================================
+   Buttons
+   ========================================== */
+.flex-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5em;
+    line-height: 1;
+}
+
+#toggle-ui-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5em;
+    line-height: 1;
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    z-index: 150;
+    background-color: rgba(40, 40, 40, 0.9);
+    color: white;
+    border: 1px solid #666;
+    padding: 10px 15px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+    transition: right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), bottom 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.2s;
+}
+
+#toggle-ui-btn.is-close::before {
+    font-family: 'Material Symbols Outlined';
+    content: '\e8b8';
+    line-height: 1;
+    font-size: 16px;
+}
+
+#toggle-ui-btn.is-open::before {
+    font-family: 'Material Symbols Outlined';
+    content: '\e5cd';
+    line-height: 1;
+    font-size: 16px;
+}
+
+#download-btn {
+    background-color: #0055ff;
+    border-color: #0044cc;
+    font-weight: bold;
+}
+
+#download-btn::before {
+    font-family: 'Material Symbols Outlined';
+    content: '\e412';
+    font-size: 16px;
+}
+
+#download-btn:hover {
+    background-color: #0066ff;
+}
+
+#download-btn:disabled {
+    background-color: #555;
+    color: #aaa;
+    border-color: #444;
+}
+
+#share-btn {
+    background-color: #28a745;
+    border-color: #218838;
+    font-weight: bold;
+}
+
+#share-btn::before {
+    font-family: 'Material Symbols Outlined';
+    content: '\e157';
+    font-size: 16px;
+}
+
+#share-btn:hover {
+    background-color: #218838;
+}
+
+#random-btn {
+    background-color: #8a2be2;
+    border-color: #6a1b9a;
+    font-weight: bold;
+}
+
+#random-btn::before {
+    font-family: 'Material Symbols Outlined';
+    content: '\e043';
+    font-size: 16px;
+}
+
+#random-btn:hover {
+    background-color: #9400d3;
+}
+
+#undo-btn::before {
+    font-family: 'Material Symbols Outlined';
+    content: '\e166';
+    font-size: 16px;
+}
+
+#redo-btn::before {
+    font-family: 'Material Symbols Outlined';
+    content: '\e15a';
+    font-size: 16px;
+}
+
+#reset-btn::before {
+    font-family: 'Material Symbols Outlined';
+    content: '\e872';
+    font-size: 16px;
+}
+
+#fullscreen-btn,
+#auto-animate-btn {
+    position: absolute;
+    top: 10px;
+    z-index: 150;
+    background-color: rgba(40, 40, 40, 0.7);
+    color: white;
+    border: 1px solid #666;
+    padding: 8px;
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    transition: background-color 0.2s;
+    width: 42px;
+    height: 42px;
+}
+
+#fullscreen-btn {
+    right: 10px;
+    transition: right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.2s;
+}
+
+#fullscreen-btn:hover {
+    background-color: rgba(80, 80, 80, 0.9);
+}
+
+#fullscreen-btn::before {
+    font-family: 'Material Symbols Outlined';
+    content: '\e5d0';
+    font-size: 20px;
+}
+
+#fullscreen-btn.is-fullscreen::before {
+    content: '\e5d1';
+}
+
+#auto-animate-btn {
+    left: 10px;
+}
+
+#auto-animate-btn:hover {
+    background-color: rgba(80, 80, 80, 0.9);
+}
+
+#auto-animate-btn::before {
+    font-family: 'Material Symbols Outlined';
+    content: '\e037';
+    font-size: 20px;
+}
+
+#auto-animate-btn.is-playing::before {
+    content: '\e034';
+}
+
+#VRButton {
+    position: absolute !important;
+    right: 60px !important;
+    top: 10px !important;
+    left: auto !important;
+    bottom: auto !important;
+    z-index: 150 !important;
+    background-color: rgba(40, 40, 40, 0.7) !important;
+    color: #fff !important;
+    border: 1px solid #666 !important;
+    border-radius: 5px !important;
+    font-size: 12px !important;
+    font-weight: bold !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5) !important;
+    cursor: pointer !important;
+    transition: right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.2s !important;
+    width: 42px;
+    height: 42px;
+}
+
+#VRButton:disabled {
+    opacity: 0.3 !important;
+    cursor: not-allowed !important;
+    background-color: rgba(40, 40, 40, 0.7) !important;
+}
+
+#VRButton:hover {
+    background-color: rgba(80, 80, 80, 0.9) !important;
+}
+
+#VRButton::after {
+    font-family: 'Material Symbols Outlined';
+    content: '\f4c5';
+    font-size: 20px;
+}
