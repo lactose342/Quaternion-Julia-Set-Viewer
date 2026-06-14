@@ -44,8 +44,8 @@ export class XRManager {
     this.onSessionEnd = null;
     this.onInteraction = null;
 
-    // セッション開始時のフラクタルパラメータを保存する領域
-    this.initialFractalParams = null;
+    // セッション開始時の全パラメータを保存する領域
+    this.initialParams = null;
     this.domTouchCount = 0;
     this.lastDomPinchDist = null;
     this.inputProcessor = new XRInputProcessor(this);
@@ -73,9 +73,9 @@ export class XRManager {
     this.threeRenderer.xr.addEventListener("sessionstart", () => {
       this.activeSession = this.threeRenderer.xr.getSession();
 
-      // セッション開始時のフラクタルパラメータをディープコピーして保存
-      const currentParams = this.domainStore.getParams("fractal");
-      this.initialFractalParams = currentParams ? { ...currentParams } : null;
+      // セッション開始時の全パラメータをディープコピーして保存
+      const snapshot = this.domainStore.getSnapshot();
+      this.initialParams = snapshot ? snapshot.params : null;
 
       // ARパススルーセッションかどうかを判定（environmentBlendModeで確実に判定）
       this.isAR = this.activeSession.environmentBlendMode && this.activeSession.environmentBlendMode !== "opaque";
@@ -380,8 +380,10 @@ export class XRManager {
     this.vrScale = 0.3;
     this.vrOffset = { x: 0.0, y: 1.0, z: -1.2 };
 
-    if (this.initialFractalParams) {
-      this.domainStore.updateParams("fractal", this.initialFractalParams);
+    if (this.initialParams) {
+      Object.keys(this.initialParams).forEach((category) => {
+        this.domainStore.updateParams(category, this.initialParams[category]);
+      });
     }
     if (this.onInteraction) this.onInteraction();
   }
