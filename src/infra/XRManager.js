@@ -380,8 +380,8 @@ export class XRManager {
     this.vrScale = 0.3;
     this.vrOffset = { x: 0.0, y: 1.0, z: -1.2 };
 
-    if (this.dispatcher) {
-      this.dispatcher.dispatch("RESET_STATE");
+    if (this.initialFractalParams) {
+      this.domainStore.updateParams("fractal", this.initialFractalParams);
     }
     if (this.onInteraction) this.onInteraction();
   }

@@ -166,31 +166,34 @@ export class XRInputProcessor {
         this.xrManager.isJoystickOperating[side] = true;
         const morphSpeed = 0.8 * delta;
         const params = this.xrManager.domainStore.getParams("fractal");
+        const isAutoAnimating = this.xrManager.uiStore.isAutoAnimating;
 
-        if (source.handedness === "right") {
-          if (hasChangedX) {
-            const nextCx = Math.max(-2.0, Math.min(2.0, params.cx + xVal * morphSpeed));
-            if (this.xrManager.dispatcher) {
-              this.xrManager.dispatcher.dispatch("UPDATE_PARAM_INPUT", { category: "fractal", key: "cx", value: nextCx });
+        if (!isAutoAnimating) {
+          if (source.handedness === "right") {
+            if (hasChangedX) {
+              const nextCx = Math.max(-2.0, Math.min(2.0, params.cx + xVal * morphSpeed));
+              if (this.xrManager.dispatcher) {
+                this.xrManager.dispatcher.dispatch("UPDATE_PARAM_INPUT", { category: "fractal", key: "cx", value: nextCx });
+              }
             }
-          }
-          if (hasChangedY) {
-            const nextCy = Math.max(-2.0, Math.min(2.0, params.cy - yVal * morphSpeed));
-            if (this.xrManager.dispatcher) {
-              this.xrManager.dispatcher.dispatch("UPDATE_PARAM_INPUT", { category: "fractal", key: "cy", value: nextCy });
+            if (hasChangedY) {
+              const nextCy = Math.max(-2.0, Math.min(2.0, params.cy - yVal * morphSpeed));
+              if (this.xrManager.dispatcher) {
+                this.xrManager.dispatcher.dispatch("UPDATE_PARAM_INPUT", { category: "fractal", key: "cy", value: nextCy });
+              }
             }
-          }
-        } else if (source.handedness === "left") {
-          if (hasChangedX) {
-            const nextCz = Math.max(-2.0, Math.min(2.0, params.cz + xVal * morphSpeed));
-            if (this.xrManager.dispatcher) {
-              this.xrManager.dispatcher.dispatch("UPDATE_PARAM_INPUT", { category: "fractal", key: "cz", value: nextCz });
+          } else if (source.handedness === "left") {
+            if (hasChangedX) {
+              const nextCz = Math.max(-2.0, Math.min(2.0, params.cz + xVal * morphSpeed));
+              if (this.xrManager.dispatcher) {
+                this.xrManager.dispatcher.dispatch("UPDATE_PARAM_INPUT", { category: "fractal", key: "cz", value: nextCz });
+              }
             }
-          }
-          if (hasChangedY) {
-            const nextCw = Math.max(-2.0, Math.min(2.0, params.cw - yVal * morphSpeed));
-            if (this.xrManager.dispatcher) {
-              this.xrManager.dispatcher.dispatch("UPDATE_PARAM_INPUT", { category: "fractal", key: "cw", value: nextCw });
+            if (hasChangedY) {
+              const nextCw = Math.max(-2.0, Math.min(2.0, params.cw - yVal * morphSpeed));
+              if (this.xrManager.dispatcher) {
+                this.xrManager.dispatcher.dispatch("UPDATE_PARAM_INPUT", { category: "fractal", key: "cw", value: nextCw });
+              }
             }
           }
         }
