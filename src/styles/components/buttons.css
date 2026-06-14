@@ -281,3 +281,9 @@ body.xr-ar-mode #dl-modal {
 body.xr-ar-mode #ar-controls {
     display: flex !important;
 }
+
+#onboarding-trigger-btn::before {
+    font-family: 'Material Symbols Outlined';
+    content: '\e87a'; /* explore */
+    font-size: 16px;
+}

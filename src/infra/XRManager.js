@@ -276,25 +276,24 @@ export class XRManager {
   onSelectStart(id, controller) {
     const isScreenTouch = controller.inputSource && controller.inputSource.targetRayMode === 'screen';
 
-    // スマホARの画面タッチの場合は、球体交差チェックをバイパスする
-    if (!isScreenTouch) {
-      // コントローラーの光線がフラクタルのバウンディング球に交差しているかチェック
-      const sphereCenter = new THREE.Vector3(this.vrOffset.x, this.vrOffset.y, this.vrOffset.z);
-      const sphereRadius = 1.5 * this.vrScale;
-      const sphere = new THREE.Sphere(sphereCenter, sphereRadius);
+    // コントローラーの光線（または画面タッチのレイ）がフラクタルのバウンディング球に交差しているかチェック
+    const sphereCenter = new THREE.Vector3(this.vrOffset.x, this.vrOffset.y, this.vrOffset.z);
+    // スマホAR時は反応範囲を狭め（0.7x）、VR等は掴みやすさ優先（1.5x）にする
+    const radiusMultiplier = isScreenTouch ? 0.7 : 1.5;
+    const sphereRadius = radiusMultiplier * this.vrScale;
+    const sphere = new THREE.Sphere(sphereCenter, sphereRadius);
 
-      const tempMatrix = new THREE.Matrix4();
-      tempMatrix.identity().extractRotation(controller.matrixWorld);
-      const origin = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld);
-      const direction = new THREE.Vector3(0, 0, -1).applyMatrix4(tempMatrix).normalize();
+    const tempMatrix = new THREE.Matrix4();
+    tempMatrix.identity().extractRotation(controller.matrixWorld);
+    const origin = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld);
+    const direction = new THREE.Vector3(0, 0, -1).applyMatrix4(tempMatrix).normalize();
 
-      const ray = new THREE.Ray(origin, direction);
-      const isIntersecting = ray.intersectsSphere(sphere);
+    const ray = new THREE.Ray(origin, direction);
+    const isIntersecting = ray.intersectsSphere(sphere);
 
-      // 交差していない場合はドラッグ（グラブ）を開始しない
-      if (!isIntersecting) {
-        return;
-      }
+    // 交差していない場合はドラッグ（グラブ）を開始しない
+    if (!isIntersecting) {
+      return;
     }
 
     this.dragging[id] = true;
