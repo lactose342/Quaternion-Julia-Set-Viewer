@@ -40,8 +40,8 @@
     position: fixed;
     overflow-y: auto;
     background-color: rgba(15, 15, 20, 0.85);
-    backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
     box-sizing: border-box;
     z-index: 100;
     overscroll-behavior: contain;
@@ -54,8 +54,8 @@
 
 /* ドラッグ中は描画負荷が高い背景ぼかしを一時的にOFFにし、ドラッグ追従を60FPSにする */
 #custom-ui.dragging {
-    backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
 }
 
 /* ------------------------------------------
@@ -123,8 +123,8 @@
         transform: translateY(100%);
         /* モバイル向けにぼかし量を軽量化 (16px -> 8px) して負荷を軽減 */
         background-color: rgba(15, 15, 20, 0.92);
-        backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(8px);
     }
 
     #custom-ui.hidden {

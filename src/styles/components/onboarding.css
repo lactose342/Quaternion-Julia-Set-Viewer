@@ -36,8 +36,8 @@
     position: absolute;
     width: 300px;
     background-color: rgba(20, 20, 28, 0.95);
-    backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 12px;
     padding: 16px 20px;
