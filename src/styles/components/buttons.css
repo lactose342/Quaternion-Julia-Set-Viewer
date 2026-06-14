@@ -264,3 +264,20 @@
 #ar-exit-btn:hover {
     background-color: rgba(240, 70, 85, 1);
 }
+
+/* ARモード時はARコントロール（終了ボタン）のみを表示し、他の全デスクトップUIを非表示にする */
+body.xr-ar-mode #custom-ui,
+body.xr-ar-mode #fps-counter,
+body.xr-ar-mode #auto-animate-btn,
+body.xr-ar-mode #fullscreen-btn,
+body.xr-ar-mode #toggle-ui-btn,
+body.xr-ar-mode #VRButton,
+body.xr-ar-mode #camera-ui,
+body.xr-ar-mode #onboarding-overlay,
+body.xr-ar-mode #dl-modal {
+    display: none !important;
+}
+
+body.xr-ar-mode #ar-controls {
+    display: flex !important;
+}

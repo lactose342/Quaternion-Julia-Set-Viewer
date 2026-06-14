@@ -69,6 +69,7 @@ export class XRManager {
 
       // ARモードなら背景色を強制的に完全透過する
       if (this.isAR) {
+        document.body.classList.add("xr-ar-mode");
         const materialParams = this.domainStore.getParams("material");
         this.originalBgAlpha = materialParams.bgAlpha !== undefined ? materialParams.bgAlpha : 1.0;
         this.domainStore.updateParams("material", { bgAlpha: 0.0 });
@@ -108,6 +109,7 @@ export class XRManager {
     });
 
     this.threeRenderer.xr.addEventListener("sessionend", () => {
+      document.body.classList.remove("xr-ar-mode");
       this.activeSession = null;
       if (this.isAR) {
         // 背景透過度を元の状態に復元

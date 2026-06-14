@@ -4,9 +4,8 @@ export class XRInputProcessor {
   constructor(xrManager) {
     this.xrManager = xrManager;
     this.lastDirection = null;
-    this.initialTwoHandDist = null;
+    this.lastTwoHandDist = null;
     this.lastActiveTouchCount = 0;
-    this.startVrOffsetZ = 0.0;
   }
 
   update(delta) {
@@ -35,7 +34,6 @@ export class XRInputProcessor {
       const touchCountChanged = activeTouchCount !== this.lastActiveTouchCount;
       this.lastActiveTouchCount = activeTouchCount;
 
-      // スマホAR（画面タッチ）のインタラクション
       if (activeTouchCount === 2) {
         // 2本指タッチ：奥行き方向の移動 (vrOffset.z)
         const c0 = getControllerSafe(0);
@@ -46,18 +44,16 @@ export class XRInputProcessor {
           const currentDist = dir0.distanceTo(dir1);
 
           if (touchCountChanged) {
-            this.initialTwoHandDist = currentDist;
-            this.startVrOffsetZ = this.xrManager.vrOffset.z;
-          }
-
-          if (this.initialTwoHandDist && this.initialTwoHandDist > 0.001) {
-            const ratio = currentDist / this.initialTwoHandDist;
-            // ピンチによる奥行き感度（1.5倍）
-            const deltaZ = (ratio - 1.0) * 1.5; 
-            const targetZ = this.startVrOffsetZ + deltaZ;
+            this.lastTwoHandDist = currentDist;
+          } else if (this.lastTwoHandDist !== null && this.lastTwoHandDist > 0.001) {
+            const deltaDist = currentDist - this.lastTwoHandDist;
+            // ピンチによる奥行き感度 (距離の差分に対して奥行きを移動させる)
+            const sensitivityDepth = 8.0;
+            const targetZ = this.xrManager.vrOffset.z + deltaDist * sensitivityDepth;
             // 手前は -0.15, 奥は -4.0 をリミットとする
             this.xrManager.vrOffset.z = Math.max(-4.0, Math.min(-0.15, targetZ));
           }
+          this.lastTwoHandDist = currentDist;
         }
         if (this.xrManager.onInteraction) this.xrManager.onInteraction();
       } else if (activeTouchCount === 1) {
