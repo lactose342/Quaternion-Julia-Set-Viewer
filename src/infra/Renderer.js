@@ -67,6 +67,7 @@ export class Renderer {
     this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
     this.renderer.xr.enabled = true;
     this.renderer.xr.setFoveation(1.0);
+    this.renderer.xr.setFramebufferScaleFactor(0.55);
 
     document.body.appendChild(VRButton.createButton(this.renderer));
 
