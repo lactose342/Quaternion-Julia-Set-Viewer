@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { XRControllerModelFactory } from "three/examples/jsm/webxr/XRControllerModelFactory.js";
 import { XRHandModelFactory } from "three/examples/jsm/webxr/XRHandModelFactory.js";
+import { XRInputProcessor } from "./XRInputProcessor.js";
 
 /**
  * WebXR / AR セッションおよびインタラクションを統合管理するヘルパーサービス
@@ -45,9 +46,19 @@ export class XRManager {
 
     // セッション開始時のフラクタルパラメータを保存する領域
     this.initialFractalParams = null;
+    this.inputProcessor = new XRInputProcessor(this);
+
+    // AR用オーバーレイコントロール
+    this.arControls = null;
+    this.arScreenshotBtn = null;
+    this.arExitBtn = null;
   }
 
   init() {
+    this.arControls = document.getElementById("ar-controls");
+    this.arScreenshotBtn = document.getElementById("ar-screenshot-btn");
+    this.arExitBtn = document.getElementById("ar-exit-btn");
+
     this.threeRenderer.xr.addEventListener("sessionstart", () => {
       this.activeSession = this.threeRenderer.xr.getSession();
 
@@ -63,10 +74,29 @@ export class XRManager {
         const materialParams = this.domainStore.getParams("material");
         this.originalBgAlpha = materialParams.bgAlpha !== undefined ? materialParams.bgAlpha : 1.0;
         this.domainStore.updateParams("material", { bgAlpha: 0.0 });
+
+        // ARコントロールの表示とイベント設定
+        if (this.arControls) {
+          this.arControls.classList.remove("hidden");
+        }
+        if (this.arScreenshotBtn) {
+          this.arScreenshotBtn.onclick = () => {
+            if (this.dispatcher) {
+              this.dispatcher.dispatch("DOWNLOAD_AR_SCREENSHOT");
+            }
+          };
+        }
+        if (this.arExitBtn) {
+          this.arExitBtn.onclick = () => {
+            if (this.activeSession) {
+              this.activeSession.end();
+            }
+          };
+        }
       }
 
       // ARとVRでの表示設定（ARではコントローラー・手モデルを非表示にし、ポインター線のみにする）
-      // ※ 親要素（Grip/Hand自体）のvisibleはThree.jsのWebXR更新ループにより毎フレーム自動上書きされるため、
+      // ※ 親要素（Grip/Hand自体）のvisibleはThree.js of WebXR更新ループにより毎フレーム自動上書きされるため、
       // 　独自に追加した子オブジェクト（モデルの実体）のvisibleを直接切り替えます。
       const showModels = !this.isAR;
       this.controllerGrips.forEach((model) => {
@@ -93,6 +123,11 @@ export class XRManager {
         this.domainStore.updateParams("material", { bgAlpha: this.originalBgAlpha });
       }
       this.isAR = false;
+
+      // ARコントロールの非表示化
+      if (this.arControls) {
+        this.arControls.classList.add("hidden");
+      }
 
       // セッション終了時にモデルの表示をリセット
       this.controllerGrips.forEach((model) => {
@@ -257,230 +292,8 @@ export class XRManager {
    * @param {number} delta 経過時間 (秒)
    */
   update(delta) {
-    const session = this.threeRenderer.xr.getSession();
-    if (!session) return;
-
-    // 1. 直接掴み（グラブ＆ドラッグ）および両手拡大縮小の更新処理
-    this.updateDragInteraction();
-
-    // 2. アナログスティック入力の更新処理 (補助操作用として維持)
-    this.updateJoystickInput(session, delta);
-  }
-
-  updateDragInteraction() {
-    const isScreenTouch0 = this.dragging[0] && this.threeRenderer.xr.getController(0).inputSource && this.threeRenderer.xr.getController(0).inputSource.targetRayMode === 'screen';
-    const isScreenTouch1 = this.dragging[1] && this.threeRenderer.xr.getController(1).inputSource && this.threeRenderer.xr.getController(1).inputSource.targetRayMode === 'screen';
-    const isScreenTouch = isScreenTouch0 || isScreenTouch1;
-
-    if (isScreenTouch) {
-      const activeTouchCount = (this.dragging[0] ? 1 : 0) + (this.dragging[1] ? 1 : 0);
-      
-      if (this.lastActiveTouchCount === undefined) {
-        this.lastActiveTouchCount = 0;
-      }
-      const touchCountChanged = activeTouchCount !== this.lastActiveTouchCount;
-      this.lastActiveTouchCount = activeTouchCount;
-
-      // スマホAR（画面タッチ）のインタラクション
-      if (activeTouchCount === 2) {
-        // 2本指タッチ：ピンチズーム（拡大縮小）
-        const c0 = this.threeRenderer.xr.getController(0);
-        const c1 = this.threeRenderer.xr.getController(1);
-        const dir0 = this.getControllerDirection(c0);
-        const dir1 = this.getControllerDirection(c1);
-        const currentDist = dir0.distanceTo(dir1);
-
-        if (touchCountChanged) {
-          // タッチ数が2に変化した瞬間、基準距離と基準スケールをリセット
-          this.initialTwoHandDist = currentDist;
-          this.startVrScale = this.vrScale;
-        }
-
-        if (this.initialTwoHandDist && this.initialTwoHandDist > 0.001) {
-          const ratio = currentDist / this.initialTwoHandDist;
-          this.vrScale = Math.max(0.05, Math.min(this.maxVrScale, this.startVrScale * ratio));
-        }
-        if (this.onInteraction) this.onInteraction();
-      } else if (activeTouchCount === 1) {
-        // 1本指タッチ：スワイプ回転
-        const id = this.dragging[0] ? 0 : 1;
-        const c = this.threeRenderer.xr.getController(id);
-        const currentDirection = this.getControllerDirection(c);
-
-        // タッチ数が変化した直後のフレームは、前の指の方向からのジャンプを防ぐため
-        // 回転量の計算は行わず、lastDirection の同期のみ行う
-        if (!touchCountChanged && this.lastDirection) {
-          const diff = new THREE.Vector3().subVectors(currentDirection, this.lastDirection);
-          
-          // カメラの右・上ベクトルを基準にしてドラッグ方向を求める
-          const xrCamera = this.threeRenderer.xr.getCamera();
-          const right = new THREE.Vector3(1, 0, 0);
-          const up = new THREE.Vector3(0, 1, 0);
-          
-          if (xrCamera) {
-            const tempCamMatrix = new THREE.Matrix4();
-            tempCamMatrix.extractRotation(xrCamera.matrixWorld);
-            right.applyMatrix4(tempCamMatrix).normalize();
-            up.applyMatrix4(tempCamMatrix).normalize();
-          }
-
-          const diffX = diff.dot(right);
-          const diffY = diff.dot(up);
-
-          const sensitivity = 5.0;
-          const params = this.domainStore.getParams("fractal");
-          const nextRotX = params.rotX - diffY * sensitivity;
-          const nextRotY = params.rotY + diffX * sensitivity;
-
-          this.domainStore.updateParams("fractal", {
-            rotX: nextRotX,
-            rotY: nextRotY
-          });
-        }
-        this.lastDirection = currentDirection.clone();
-        if (this.onInteraction) this.onInteraction();
-      }
-      return;
-    }
-
-    // 【両手でのピンチ / 拡大縮小 ＆ 位置調整】
-    if (this.dragging[0] && this.dragging[1]) {
-      const c0 = this.threeRenderer.xr.getController(0);
-      const c1 = this.threeRenderer.xr.getController(1);
-      const currentDist = c0.position.distanceTo(c1.position);
-
-      if (this.initialTwoHandDist && this.initialTwoHandDist > 0.01) {
-        const ratio = currentDist / this.initialTwoHandDist;
-        this.vrScale = Math.max(0.05, Math.min(this.maxVrScale, this.startVrScale * ratio));
-      }
-
-      // 位置は両手の中間点に配置する
-      const midpoint = new THREE.Vector3().addVectors(c0.position, c1.position).multiplyScalar(0.5);
-      this.vrOffset.x = midpoint.x;
-      this.vrOffset.y = midpoint.y;
-      this.vrOffset.z = midpoint.z;
-
-      if (this.onInteraction) this.onInteraction();
-      return;
-    }
-
-    // 【片手でのグラブ・直接操作 (6-DoFトランスフォーム追従)】
-    for (let id = 0; id < 2; id++) {
-      if (!this.dragging[id]) continue;
-
-      const c = this.threeRenderer.xr.getController(id);
-      const relativeMatrix = this.grabRelativeMatrix[id];
-      if (!relativeMatrix) continue;
-
-      // コントローラーの現在の位置・回転をフラクタルの行列に掛け合わせて新しいワールド行列を計算
-      c.updateMatrixWorld(true);
-      const newFractalMatrix = c.matrixWorld.clone().multiply(relativeMatrix);
-
-      const position = new THREE.Vector3();
-      const rotation = new THREE.Quaternion();
-      const scale = new THREE.Vector3();
-      newFractalMatrix.decompose(position, rotation, scale);
-
-      // ワールド位置（Offset）の更新
-      this.vrOffset.x = position.x;
-      this.vrOffset.y = position.y;
-      this.vrOffset.z = position.z;
-
-      // クォータニオンからオイラー角を復元し、ドメインストア（3D回転）を更新
-      const euler = new THREE.Euler().setFromQuaternion(rotation, "XYZ");
-      this.domainStore.updateParams("fractal", {
-        rotX: euler.x,
-        rotY: euler.y,
-        rotZ: euler.z
-      });
-
-      if (this.onInteraction) this.onInteraction();
-    }
-  }
-
-  updateJoystickInput(session, delta) {
-    // デバッグ用のログ出力 (2秒おきに入力デバイス状況を出力)
-    if (!this._lastLogTime || performance.now() - this._lastLogTime > 2000) {
-      console.log(`[XRManager] 接続デバイス数: ${session.inputSources.length}`);
-      for (const source of session.inputSources) {
-        console.log(` - 手: ${source.handedness}, Gamepad: ${!!source.gamepad}, HandTracking: ${!!source.hand}`);
-      }
-      this._lastLogTime = performance.now();
-    }
-
-    for (const source of session.inputSources) {
-      if (!source.gamepad) continue;
-
-      const axes = source.gamepad.axes;
-      if (axes.length < 2) continue;
-
-      // Meta Quest 等の標準コントローラー（xr-standard）では、スティック入力は axes[2]/axes[3] に割り当てられます。
-      // axes の数が4未満の場合はフォールバックとして axes[0]/axes[1] を使用します。
-      const hasThumbstick = axes.length >= 4;
-      const xIdx = hasThumbstick ? 2 : 0;
-      const yIdx = hasThumbstick ? 3 : 1;
-
-      const deadzone = 0.15;
-      const xVal = Math.abs(axes[xIdx]) > deadzone ? axes[xIdx] : 0.0;
-      const yVal = Math.abs(axes[yIdx]) > deadzone ? axes[yIdx] : 0.0;
-
-      const hasChangedX = xVal !== 0.0;
-      const hasChangedY = yVal !== 0.0;
-      const side = source.handedness === "right" ? 0 : 1;
-
-      if (hasChangedX || hasChangedY) {
-        this.isJoystickOperating[side] = true;
-        const morphSpeed = 0.8 * delta;
-        const params = this.domainStore.getParams("fractal");
-
-        if (source.handedness === "right") {
-          if (hasChangedX) {
-            const nextCx = Math.max(-2.0, Math.min(2.0, params.cx + xVal * morphSpeed));
-            if (this.dispatcher) {
-              this.dispatcher.dispatch("UPDATE_PARAM_INPUT", { category: "fractal", key: "cx", value: nextCx });
-            }
-          }
-          if (hasChangedY) {
-            const nextCy = Math.max(-2.0, Math.min(2.0, params.cy - yVal * morphSpeed));
-            if (this.dispatcher) {
-              this.dispatcher.dispatch("UPDATE_PARAM_INPUT", { category: "fractal", key: "cy", value: nextCy });
-            }
-          }
-        } else if (source.handedness === "left") {
-          if (hasChangedX) {
-            const nextCz = Math.max(-2.0, Math.min(2.0, params.cz + xVal * morphSpeed));
-            if (this.dispatcher) {
-              this.dispatcher.dispatch("UPDATE_PARAM_INPUT", { category: "fractal", key: "cz", value: nextCz });
-            }
-          }
-          if (hasChangedY) {
-            const nextCw = Math.max(-2.0, Math.min(2.0, params.cw - yVal * morphSpeed));
-            if (this.dispatcher) {
-              this.dispatcher.dispatch("UPDATE_PARAM_INPUT", { category: "fractal", key: "cw", value: nextCw });
-            }
-          }
-        }
-      } else {
-        if (this.isJoystickOperating[side]) {
-          this.isJoystickOperating[side] = false;
-          if (this.dispatcher) {
-            this.dispatcher.dispatch("COMMIT_HISTORY");
-          }
-        }
-      }
-
-      // A/X ボタン (Index 4) と B/Y ボタン (Index 5) の検知
-      const buttons = source.gamepad.buttons;
-      
-      // A/Xボタン (Index 4) - 押されている間はリセットを実行（クールダウンは関数側で制御）
-      if (buttons.length > 4 && buttons[4] && buttons[4].pressed) {
-        this.resetFractalPosition();
-      }
-
-      // B/Yボタン (Index 5) - 押されている間はランダム化を実行（クールダウンは関数側で制御）
-      if (buttons.length > 5 && buttons[5] && buttons[5].pressed) {
-        this.randomizeFractal();
-      }
+    if (this.inputProcessor) {
+      this.inputProcessor.update(delta);
     }
   }
 

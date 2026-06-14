@@ -15,3 +15,4 @@ export { CommitHistoryCommand } from "./CommitHistoryCommand.js";
 export { InitializeAppCommand } from "./InitializeAppCommand.js";
 export { EnterCameraModeCommand } from "./EnterCameraModeCommand.js";
 export { ExitCameraModeCommand } from "./ExitCameraModeCommand.js";
+export { DownloadArScreenshotCommand } from "./DownloadArScreenshotCommand.js";

@@ -212,3 +212,63 @@
     content: '\f4c5';
     font-size: 20px;
 }
+
+/* ==========================================
+   AR Controls Floating Overlay
+   ========================================== */
+#ar-controls {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto; /* WebXR DOM Overlayでクリック可能にする */
+}
+
+#ar-controls.hidden {
+    display: none !important;
+}
+
+.ar-btn {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    transition: transform 0.2s, background-color 0.2s;
+}
+
+.ar-btn:active {
+    transform: scale(0.92);
+}
+
+.ar-btn .material-symbols-outlined {
+    font-size: 24px;
+}
+
+#ar-screenshot-btn {
+    background-color: rgba(0, 85, 255, 0.9); /* 青色 */
+}
+
+#ar-screenshot-btn:hover {
+    background-color: rgba(30, 110, 255, 1);
+}
+
+#ar-exit-btn {
+    background-color: rgba(220, 53, 69, 0.9); /* 赤色 */
+}
+
+#ar-exit-btn:hover {
+    background-color: rgba(240, 70, 85, 1);
+}

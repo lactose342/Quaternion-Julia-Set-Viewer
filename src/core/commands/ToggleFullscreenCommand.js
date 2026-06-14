@@ -22,10 +22,12 @@ export class ToggleFullscreenCommand extends Command {
       }
 
       document.documentElement.requestFullscreen().catch(() => {
+        this.mainMenuView.updateFullscreen(false);
         this.toastView.show("全画面表示の開始に失敗しました", "error");
       });
     } else {
       document.exitFullscreen().catch(() => {
+        this.mainMenuView.updateFullscreen(false);
         this.toastView.show("全画面表示の解除に失敗しました", "error");
       });
     }

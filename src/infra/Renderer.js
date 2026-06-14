@@ -36,6 +36,7 @@ export class Renderer {
     this.onCameraChange = null;
     this.onFpsUpdate = null;
     this.onFirstRender = null;
+    this.captureCallback = null;
     this.isDownloading = false;
 
     this.maxPixelRatio = 2.0;
@@ -180,6 +181,16 @@ export class Renderer {
     this.camera.clearViewOffset();
     this.camera.aspect = originalAspect;
     this.camera.updateProjectionMatrix();
+  }
+
+  captureNextFrame() {
+    this.renderState.needsRender = true;
+    this.startLoop();
+    return new Promise((resolve) => {
+      this.captureCallback = (blob) => {
+        resolve(blob);
+      };
+    });
   }
 
   startExportMode(aspect, tileW, tileH) {
@@ -433,6 +444,13 @@ export class Renderer {
         this.onBeforeUpdateUniforms(this);
       }
       this.renderer.render(this.scene, this.camera);
+      if (this.captureCallback) {
+        const cb = this.captureCallback;
+        this.captureCallback = null;
+        this.renderer.domElement.toBlob((blob) => {
+          cb(blob);
+        }, "image/png");
+      }
       if (this.onFirstRender) {
         this.onFirstRender();
         this.onFirstRender = null;

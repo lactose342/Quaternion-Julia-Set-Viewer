@@ -29,7 +29,10 @@ export const VRButton = {
       button.title = startTitle;
       button.onclick = function () {
         if (currentSession === null) {
-          const sessionInit = { optionalFeatures: ["local-floor", "hand-tracking"] };
+          const sessionInit = {
+            optionalFeatures: ["local-floor", "hand-tracking", "dom-overlay"],
+            domOverlay: { root: document.body }
+          };
           navigator.xr.requestSession(mode, sessionInit).then(onSessionStarted);
         } else {
           currentSession.end();
