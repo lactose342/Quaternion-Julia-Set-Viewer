@@ -6,10 +6,11 @@ import { XRManager } from "@/infra/XRManager.js";
 import { AdaptiveQualityManager } from "@/infra/AdaptiveQualityManager.js";
 
 export class Renderer {
-  constructor(domainStore, uiStore, config) {
+  constructor(domainStore, uiStore, config, dispatcher) {
     this.domainStore = domainStore;
     this.uiStore = uiStore;
     this.config = config;
+    this.dispatcher = dispatcher;
     this.xrManager = null;
 
     this.renderState = {
@@ -68,7 +69,7 @@ export class Renderer {
 
     document.body.appendChild(VRButton.createButton(this.renderer));
 
-    this.xrManager = new XRManager(this.renderer, this.scene, this.domainStore, this.uiStore, this.config);
+    this.xrManager = new XRManager(this.renderer, this.scene, this.domainStore, this.uiStore, this.config, this.dispatcher);
     this.xrManager.onSessionStart = () => {
       this.setQuality("XR");
       this.setPixelRatio(0.55);
@@ -177,6 +178,25 @@ export class Renderer {
     this.camera.clearViewOffset();
     this.camera.aspect = originalAspect;
     this.camera.updateProjectionMatrix();
+  }
+
+  startExportMode(aspect, tileW, tileH) {
+    this.isDownloading = true;
+    this.controls.enabled = false;
+    this.stopLoop();
+    this.setQuality("EXPORT");
+    this.camera.aspect = aspect;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(tileW, tileH, false);
+  }
+
+  endExportMode(originalQuality, originalAspect) {
+    this.resetViewOffset(originalAspect);
+    this.isDownloading = false;
+    this.setQuality(originalQuality);
+    this.controls.enabled = true;
+    this.renderState.needsRender = true;
+    this.startLoop();
   }
 
   restoreCameraFromSnapshot(cameraSnapshot) {

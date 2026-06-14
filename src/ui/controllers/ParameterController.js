@@ -28,127 +28,119 @@ export class ParameterController {
   init(container) {
     const stopPropagation = (e) => e.stopPropagation();
     
-    // スキーマ定義からDOM IDを動的取得
-    const domIdsToBind = Object.values(this.definitions).map((def) => def.domId);
+    const elements = container.querySelectorAll("[data-parameter]");
 
-    domIdsToBind.forEach((domId) => {
-      const el = container.querySelector(`#${domId}`);
-      if (!el) return;
+    elements.forEach((el) => {
+      const stateKey = el.getAttribute("data-parameter");
+      if (!stateKey) return;
 
-      const stateKey = this._getStateKey(domId);
-      let isOperating = false;
+      if (stateKey === "baseColorPicker") {
+        let colorRafId = null;
+        let pendingColor = null;
 
-      const flushPending = () => {
-        const rafId = this.rafIds.get(domId);
-        if (rafId !== undefined) {
-          cancelAnimationFrame(rafId);
-          this.rafIds.delete(domId);
-          
-          const payload = this.pendingPayloads.get(domId);
-          if (payload) {
-             this.#dispatch("UPDATE_PARAM_INPUT", payload);
-             this.pendingPayloads.delete(domId);
+        const flushColor = () => {
+          if (colorRafId !== null) {
+            cancelAnimationFrame(colorRafId);
+            colorRafId = null;
           }
-        }
-      };
-
-      const commit = () => {
-        if (isOperating) {
-           isOperating = false;
-           flushPending();
-           this.#dispatch("COMMIT_HISTORY");
-        }
-      };
-
-      el.addEventListener("touchstart", stopPropagation, { passive: true, signal: this.signal });
-      
-      el.addEventListener("pointerdown", (e) => {
-        stopPropagation(e);
-        isOperating = true;
-        
-        const handleGlobalUp = () => {
-          commit();
-          window.removeEventListener("pointerup", handleGlobalUp);
-          window.removeEventListener("pointercancel", handleGlobalUp);
-        };
-        
-        window.addEventListener("pointerup", handleGlobalUp, { signal: this.signal });
-        window.addEventListener("pointercancel", handleGlobalUp, { signal: this.signal });
-      }, { signal: this.signal });
-
-      el.addEventListener("input", () => {
-        isOperating = true;
-        const currentRawValue = el.value;
-        const inputType = el.type;
-
-        const val = parseParamFromUI(stateKey, currentRawValue, inputType);
-        const category = this.categoryMap.get(stateKey) || "fractal";
-        
-        this.pendingPayloads.set(domId, { category, key: stateKey, value: val });
-
-        if (this.rafIds.has(domId)) return;
-
-        const id = requestAnimationFrame(() => {
-          this.rendererUpdateTick(domId);
-        });
-        this.rafIds.set(domId, id);
-      }, { signal: this.signal });
-
-      el.addEventListener("change", () => {
-         commit();
-      }, { signal: this.signal });
-    });
-
-    const baseColorPicker = container.querySelector("#baseColorPicker");
-    if (baseColorPicker) {
-      let colorRafId = null;
-      let pendingColor = null;
-
-      const flushColor = () => {
-        if (colorRafId !== null) {
-          cancelAnimationFrame(colorRafId);
-          colorRafId = null;
-        }
-        if (pendingColor) {
-          this.#dispatch("UPDATE_COLOR_INPUT", pendingColor);
-          pendingColor = null;
-        }
-      };
-
-      baseColorPicker.addEventListener("input", (e) => {
-        const hsvVals = hexToHsv(e.target.value);
-        pendingColor = { hue: hsvVals.h, saturation: hsvVals.s, value: hsvVals.v };
-
-        if (colorRafId !== null) return;
-
-        colorRafId = requestAnimationFrame(() => {
-          colorRafId = null;
           if (pendingColor) {
             this.#dispatch("UPDATE_COLOR_INPUT", pendingColor);
             pendingColor = null;
           }
-        });
-      }, { signal: this.signal });
-      
-      baseColorPicker.addEventListener("change", () => {
-        flushColor();
-        this.#dispatch("COMMIT_HISTORY");
-      }, { signal: this.signal });
-    }
+        };
+
+        el.addEventListener("input", (e) => {
+          const hsvVals = hexToHsv(e.target.value);
+          pendingColor = { hue: hsvVals.h, saturation: hsvVals.s, value: hsvVals.v };
+
+          if (colorRafId !== null) return;
+
+          colorRafId = requestAnimationFrame(() => {
+            colorRafId = null;
+            if (pendingColor) {
+              this.#dispatch("UPDATE_COLOR_INPUT", pendingColor);
+              pendingColor = null;
+            }
+          });
+        }, { signal: this.signal });
+        
+        el.addEventListener("change", () => {
+          flushColor();
+          this.#dispatch("COMMIT_HISTORY");
+        }, { signal: this.signal });
+      } else {
+        let isOperating = false;
+
+        const flushPending = () => {
+          const rafId = this.rafIds.get(stateKey);
+          if (rafId !== undefined) {
+            cancelAnimationFrame(rafId);
+            this.rafIds.delete(stateKey);
+            
+            const payload = this.pendingPayloads.get(stateKey);
+            if (payload) {
+               this.#dispatch("UPDATE_PARAM_INPUT", payload);
+               this.pendingPayloads.delete(stateKey);
+            }
+          }
+        };
+
+        const commit = () => {
+          if (isOperating) {
+             isOperating = false;
+             flushPending();
+             this.#dispatch("COMMIT_HISTORY");
+          }
+        };
+
+        el.addEventListener("touchstart", stopPropagation, { passive: true, signal: this.signal });
+        
+        el.addEventListener("pointerdown", (e) => {
+          stopPropagation(e);
+          isOperating = true;
+          
+          const handleGlobalUp = () => {
+            commit();
+            window.removeEventListener("pointerup", handleGlobalUp);
+            window.removeEventListener("pointercancel", handleGlobalUp);
+          };
+          
+          window.addEventListener("pointerup", handleGlobalUp, { signal: this.signal });
+          window.addEventListener("pointercancel", handleGlobalUp, { signal: this.signal });
+        }, { signal: this.signal });
+
+        el.addEventListener("input", () => {
+          isOperating = true;
+          const currentRawValue = el.value;
+          const inputType = el.type;
+
+          const val = parseParamFromUI(stateKey, currentRawValue, inputType);
+          const category = this.categoryMap.get(stateKey) || "fractal";
+          
+          this.pendingPayloads.set(stateKey, { category, key: stateKey, value: val });
+
+          if (this.rafIds.has(stateKey)) return;
+
+          const id = requestAnimationFrame(() => {
+            this.rendererUpdateTick(stateKey);
+          });
+          this.rafIds.set(stateKey, id);
+        }, { signal: this.signal });
+
+        el.addEventListener("change", () => {
+           commit();
+        }, { signal: this.signal });
+      }
+    });
   }
 
-  rendererUpdateTick(domId) {
-    this.rafIds.delete(domId);
-    const payload = this.pendingPayloads.get(domId);
+  rendererUpdateTick(stateKey) {
+    this.rafIds.delete(stateKey);
+    const payload = this.pendingPayloads.get(stateKey);
     if (payload) {
        this.#dispatch("UPDATE_PARAM_INPUT", payload);
-       this.pendingPayloads.delete(domId);
+       this.pendingPayloads.delete(stateKey);
     }
-  }
-
-  _getStateKey(domId) {
-    const entry = Object.entries(this.definitions).find(([_, def]) => def.domId === domId);
-    return entry ? entry[0] : domId;
   }
 
   clearPendingUpdates() {

@@ -1,3 +1,5 @@
+import { CONFIG } from "@/config/config.js";
+
 export class OnboardingView {
   constructor() {
     this.currentStep = 0;
@@ -116,7 +118,7 @@ export class OnboardingView {
 
     if (!step) return;
 
-    const isMobile = window.innerWidth <= 768;
+    const isMobile = window.innerWidth <= CONFIG.SYSTEM.BREAKPOINT;
     const targetId = (isMobile && step.targetIdMobile) ? step.targetIdMobile : step.targetId;
     const target = document.getElementById(targetId);
 
@@ -166,7 +168,7 @@ export class OnboardingView {
   #positionCard(targetRect) {
     if (!this.card) return;
 
-    const isMobile = window.innerWidth <= 768;
+    const isMobile = window.innerWidth <= CONFIG.SYSTEM.BREAKPOINT;
     if (isMobile) {
       // モバイル時はCSSメディアクエリで中央配置にするためJS位置指定はパス
       this.card.style.top = "";

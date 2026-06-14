@@ -1,6 +1,8 @@
-export class TabView {
-  constructor(colorPickerView) {
-    this.colorPickerView = colorPickerView;
+import { CONFIG } from "@/config/config.js";
+
+export class TabView extends EventTarget {
+  constructor() {
+    super();
     this.tabsContainer = document.getElementById("mobile-tabs-container");
   }
 
@@ -34,16 +36,14 @@ export class TabView {
           }
         });
 
-        // タブ切り替え後にカラーピッカーを強制再描画（表示後の寸法に合わせて解像度を再設定）
-        if (this.colorPickerView) {
-          this.colorPickerView.syncAll(true);
-        }
+        // タブ切り替えイベントを通知
+        this.dispatchEvent(new CustomEvent("tab-changed", { detail: { tabId: targetTabId } }));
       });
     });
 
     // モバイル幅の時はdetailsを最初からopenにして、コンテンツが非表示にならないようにする
     const ensureMobileDetailsOpen = () => {
-      if (window.innerWidth <= 768) {
+      if (window.innerWidth <= CONFIG.SYSTEM.BREAKPOINT) {
         document.querySelectorAll("#parameter-sections-container > details").forEach(details => {
           details.setAttribute("open", "");
         });

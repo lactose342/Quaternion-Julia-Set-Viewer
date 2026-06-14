@@ -6,12 +6,13 @@ import { XRHandModelFactory } from "three/examples/jsm/webxr/XRHandModelFactory.
  * WebXR / AR セッションおよびインタラクションを統合管理するヘルパーサービス
  */
 export class XRManager {
-  constructor(threeRenderer, scene, domainStore, uiStore, config) {
+  constructor(threeRenderer, scene, domainStore, uiStore, config, dispatcher) {
     this.threeRenderer = threeRenderer;
     this.scene = scene;
     this.domainStore = domainStore;
     this.uiStore = uiStore;
     this.config = config;
+    this.dispatcher = dispatcher;
 
     // VR/AR用の初期設定 (高さをさらに引き上げ: y を -0.05 から 0.05 へ変更)
     this.vrScale = 0.3;
@@ -32,6 +33,9 @@ export class XRManager {
     this.grabRelativeMatrix = [null, null]; // コントローラーとフラクタルの相対トランスフォーム行列
     this.startVrScale = 1.0;
     this.initialTwoHandDist = null;
+
+    // ジョイスティック操作の状態管理
+    this.isJoystickOperating = [false, false];
 
     // コールバック
     this.onSessionStart = null;
@@ -316,46 +320,48 @@ export class XRManager {
       const xVal = Math.abs(axes[xIdx]) > deadzone ? axes[xIdx] : 0.0;
       const yVal = Math.abs(axes[yIdx]) > deadzone ? axes[yIdx] : 0.0;
 
-      // パラメータ変形スピード (1秒あたりの変動量)
-      const morphSpeed = 0.8 * delta;
+      const hasChangedX = xVal !== 0.0;
+      const hasChangedY = yVal !== 0.0;
+      const side = source.handedness === "right" ? 0 : 1;
 
-      if (source.handedness === "right") {
+      if (hasChangedX || hasChangedY) {
+        this.isJoystickOperating[side] = true;
+        const morphSpeed = 0.8 * delta;
         const params = this.domainStore.getParams("fractal");
-        let hasChanged = false;
-        const payload = {};
 
-        // 右スティック左右(X) -> cx (4次元定数の実部) を増減
-        if (xVal !== 0.0) {
-          payload.cx = Math.max(-2.0, Math.min(2.0, params.cx + xVal * morphSpeed));
-          hasChanged = true;
+        if (source.handedness === "right") {
+          if (hasChangedX) {
+            const nextCx = Math.max(-2.0, Math.min(2.0, params.cx + xVal * morphSpeed));
+            if (this.dispatcher) {
+              this.dispatcher.dispatch("UPDATE_PARAM_INPUT", { category: "fractal", key: "cx", value: nextCx });
+            }
+          }
+          if (hasChangedY) {
+            const nextCy = Math.max(-2.0, Math.min(2.0, params.cy - yVal * morphSpeed));
+            if (this.dispatcher) {
+              this.dispatcher.dispatch("UPDATE_PARAM_INPUT", { category: "fractal", key: "cy", value: nextCy });
+            }
+          }
+        } else if (source.handedness === "left") {
+          if (hasChangedX) {
+            const nextCz = Math.max(-2.0, Math.min(2.0, params.cz + xVal * morphSpeed));
+            if (this.dispatcher) {
+              this.dispatcher.dispatch("UPDATE_PARAM_INPUT", { category: "fractal", key: "cz", value: nextCz });
+            }
+          }
+          if (hasChangedY) {
+            const nextCw = Math.max(-2.0, Math.min(2.0, params.cw - yVal * morphSpeed));
+            if (this.dispatcher) {
+              this.dispatcher.dispatch("UPDATE_PARAM_INPUT", { category: "fractal", key: "cw", value: nextCw });
+            }
+          }
         }
-        // 右スティック上下(Y) -> cy を増減 (上に倒すとプラスにしたいので -yVal)
-        if (yVal !== 0.0) {
-          payload.cy = Math.max(-2.0, Math.min(2.0, params.cy - yVal * morphSpeed));
-          hasChanged = true;
-        }
-
-        if (hasChanged) {
-          this.domainStore.updateParams("fractal", payload);
-        }
-      } else if (source.handedness === "left") {
-        const params = this.domainStore.getParams("fractal");
-        let hasChanged = false;
-        const payload = {};
-
-        // 左スティック左右(X) -> cz を増減
-        if (xVal !== 0.0) {
-          payload.cz = Math.max(-2.0, Math.min(2.0, params.cz + xVal * morphSpeed));
-          hasChanged = true;
-        }
-        // 左スティック上下(Y) -> cw を増減 (上に倒すとプラスにしたいので -yVal)
-        if (yVal !== 0.0) {
-          payload.cw = Math.max(-2.0, Math.min(2.0, params.cw - yVal * morphSpeed));
-          hasChanged = true;
-        }
-
-        if (hasChanged) {
-          this.domainStore.updateParams("fractal", payload);
+      } else {
+        if (this.isJoystickOperating[side]) {
+          this.isJoystickOperating[side] = false;
+          if (this.dispatcher) {
+            this.dispatcher.dispatch("COMMIT_HISTORY");
+          }
         }
       }
 
@@ -384,32 +390,9 @@ export class XRManager {
     this.vrScale = 0.3;
     this.vrOffset = { x: 0.0, y: 1.0, z: -1.2 };
     
-    // セッション開始時の形状・回転パラメータを復元
-    const resetPayload = {
-      rotX: 0,
-      rotY: 0,
-      rotZ: 0,
-      rotXW: 0,
-      rotYW: 0,
-      rotZW: 0
-    };
-
-    if (this.initialFractalParams) {
-      resetPayload.cx = this.initialFractalParams.cx !== undefined ? this.initialFractalParams.cx : -0.517;
-      resetPayload.cy = this.initialFractalParams.cy !== undefined ? this.initialFractalParams.cy : -0.341;
-      resetPayload.cz = this.initialFractalParams.cz !== undefined ? this.initialFractalParams.cz : -0.407;
-      resetPayload.cw = this.initialFractalParams.cw !== undefined ? this.initialFractalParams.cw : -0.071;
-
-      // 向き（回転）も開始時の状態を保持している場合は、開始時の向きにリセット
-      resetPayload.rotX = this.initialFractalParams.rotX !== undefined ? this.initialFractalParams.rotX : 0.0;
-      resetPayload.rotY = this.initialFractalParams.rotY !== undefined ? this.initialFractalParams.rotY : 0.0;
-      resetPayload.rotZ = this.initialFractalParams.rotZ !== undefined ? this.initialFractalParams.rotZ : 0.0;
-      resetPayload.rotXW = this.initialFractalParams.rotXW !== undefined ? this.initialFractalParams.rotXW : 0.0;
-      resetPayload.rotYW = this.initialFractalParams.rotYW !== undefined ? this.initialFractalParams.rotYW : 0.0;
-      resetPayload.rotZW = this.initialFractalParams.rotZW !== undefined ? this.initialFractalParams.rotZW : 0.0;
+    if (this.dispatcher) {
+      this.dispatcher.dispatch("RESET_STATE");
     }
-    
-    this.domainStore.updateParams("fractal", resetPayload);
     if (this.onInteraction) this.onInteraction();
   }
 
@@ -420,13 +403,9 @@ export class XRManager {
     }
     this._lastRandomTime = performance.now();
 
-    // ランダムな cx, cy, cz, cw を [-1.0, 1.0] の範囲で生成
-    const cx = (Math.random() - 0.5) * 2.0;
-    const cy = (Math.random() - 0.5) * 2.0;
-    const cz = (Math.random() - 0.5) * 2.0;
-    const cw = (Math.random() - 0.5) * 2.0;
-
-    this.domainStore.updateParams("fractal", { cx, cy, cz, cw });
+    if (this.dispatcher) {
+      this.dispatcher.dispatch("RANDOMIZE");
+    }
   }
 
 

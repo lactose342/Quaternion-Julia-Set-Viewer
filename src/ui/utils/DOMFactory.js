@@ -22,6 +22,7 @@ export function createParameterElement(key, def) {
 
   const input = document.createElement("input");
   input.id = def.domId;
+  input.setAttribute("data-parameter", key);
   input.type = def.type === "color" ? "color" : "range";
   input.value = def.default;
 
@@ -107,6 +108,7 @@ export function createColorPickerElement(key, def) {
   const hiddenInput = document.createElement("input");
   hiddenInput.type = "hidden";
   hiddenInput.id = def.domId;
+  hiddenInput.setAttribute("data-parameter", key);
   hiddenInput.value = def.default;
   container.appendChild(hiddenInput);
 

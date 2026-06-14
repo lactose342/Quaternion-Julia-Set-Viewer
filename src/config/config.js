@@ -19,7 +19,8 @@ export const CONFIG = {
     SYSTEM: {
         MAX_HISTORY: 30,
         DEFAULT_QUALITY: 'HIGH',
-        AMP_LIMIT: 1.2
+        AMP_LIMIT: 1.2,
+        BREAKPOINT: 768
     },
     SCHEMAS: {
         camera: PARAMETER_SCHEMAS.camera,

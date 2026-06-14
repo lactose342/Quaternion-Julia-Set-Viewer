@@ -52,7 +52,12 @@ export class UIController {
       }
     }
 
-    this.tabView = new TabView(this.colorPickerView);
+    this.tabView = new TabView();
+    this.tabView.addEventListener("tab-changed", () => {
+      if (this.colorPickerView) {
+        this.colorPickerView.syncAll(true);
+      }
+    }, { signal: this.abortController.signal });
     this.tabView.init();
 
     this.bottomSheetView = new BottomSheetView();

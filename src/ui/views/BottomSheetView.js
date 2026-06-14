@@ -1,4 +1,5 @@
 import { DragGestureHandler } from "@/ui/utils/DragGestureHandler.js";
+import { CONFIG } from "@/config/config.js";
 
 export class BottomSheetView {
   constructor() {
@@ -12,13 +13,13 @@ export class BottomSheetView {
     if (!this.customUi) return;
 
     const onDragStart = () => {
-      if (window.innerWidth > 768) return;
+      if (window.innerWidth > CONFIG.SYSTEM.BREAKPOINT) return;
       this.customUi.style.transition = "none";
       this.customUi.classList.add("dragging");
     };
 
     const onDrag = (deltaY) => {
-      if (window.innerWidth > 768) return;
+      if (window.innerWidth > CONFIG.SYSTEM.BREAKPOINT) return;
       
       if (deltaY > 0) {
         this.customUi.style.transform = `translateY(${deltaY}px)`;
@@ -34,7 +35,7 @@ export class BottomSheetView {
         toggleBtn.style.bottom = "";
       }
 
-      if (deltaY > 100 && window.innerWidth <= 768) {
+      if (deltaY > 100 && window.innerWidth <= CONFIG.SYSTEM.BREAKPOINT) {
         window.dispatchEvent(new CustomEvent("app-command", {
           detail: { type: "TOGGLE_MENU_UI" }
         }));

@@ -1,25 +1,3 @@
-import "@/styles/style.css";
-import { DomainStore } from "@/core/store/DomainStore.js";
-import { UIStore } from "@/core/store/UIStore.js";
-import { HistoryManager } from "@/core/HistoryManager.js";
-import { URLManager } from "@/infra/URLManager.js";
-import { PresetManager } from "@/infra/PresetManager.js";
-import { ExportManager } from "@/infra/ExportManager.js";
-import { Renderer } from "@/infra/Renderer.js";
-import { UIController } from "@/ui/controllers/UIController.js";
-import { AnimationController } from "@/core/AnimationController.js";
-import { ParameterController } from "@/ui/controllers/ParameterController.js";
-import { ActionController } from "@/ui/controllers/ActionController.js";
-import { ToastView } from "@/ui/views/ToastView.js";
-import { ParameterView } from "@/ui/views/ParameterView.js";
-import { ExportView } from "@/ui/views/ExportView.js";
-import { MainMenuView } from "@/ui/views/MainMenuView.js";
-import { StatusView } from "@/ui/views/StatusView.js";
-import { ColorPickerView } from "@/ui/views/ColorPickerView.js";
-import { OnboardingView } from "@/ui/views/OnboardingView.js";
-import { initFormatter } from "@/ui/utils/uiParamFormatter.js";
-
-import { CommandDispatcher } from "@/core/CommandDispatcher.js";
 import {
   ApplyPresetCommand,
   DownloadHighResCommand,
@@ -41,61 +19,28 @@ import {
 } from "@/core/commands/index.js";
 
 export class App {
-  constructor(config) {
-    this.config = config;
-    initFormatter(this.config.definitions);
-
-    this.abortController = new AbortController();
-
-    this.domainStore = new DomainStore(this.config);
-    this.uiStore = new UIStore(this.config.SYSTEM.DEFAULT_QUALITY);
-    this.historyManager = new HistoryManager(this.config.SYSTEM.MAX_HISTORY);
-
-    this.renderer = new Renderer(this.domainStore, this.uiStore, this.config);
-    this.animationController = new AnimationController(this.domainStore, this.uiStore);
-
-    this.urlManager = new URLManager(this.config);
-    this.presetManager = new PresetManager(this.config, this.domainStore);
-    this.exportManager = new ExportManager(this.renderer, this.domainStore, this.uiStore, this.config);
-
-    this.colorPickerView = new ColorPickerView();
-
-    this.toastView = new ToastView();
-    this.parameterView = new ParameterView(this.config.definitions);
-    this.exportView = new ExportView();
-    this.mainMenuView = new MainMenuView();
-    this.statusView = new StatusView();
-    this.onboardingView = new OnboardingView();
-
-    this.dispatcher = new CommandDispatcher();
-
-    this.paramController = new ParameterController(
-      this.dispatcher,
-      this.abortController.signal,
-      this.config.definitions,
-    );
-
-    this.actionController = new ActionController(
-      this.dispatcher,
-      this.abortController.signal,
-    );
-
-    this.uiController = new UIController(
-      this.domainStore,
-      this.uiStore,
-      this.renderer,
-      this.historyManager,
-      this.exportManager,
-      this.toastView,
-      this.paramController,
-      this.actionController,
-      this.parameterView,
-      this.exportView,
-      this.mainMenuView,
-      this.colorPickerView,
-      this.config,
-      this.onboardingView,
-    );
+  constructor(deps) {
+    this.config = deps.config;
+    this.abortController = deps.abortController;
+    this.dispatcher = deps.dispatcher;
+    this.domainStore = deps.domainStore;
+    this.uiStore = deps.uiStore;
+    this.historyManager = deps.historyManager;
+    this.renderer = deps.renderer;
+    this.animationController = deps.animationController;
+    this.urlManager = deps.urlManager;
+    this.presetManager = deps.presetManager;
+    this.exportManager = deps.exportManager;
+    this.colorPickerView = deps.colorPickerView;
+    this.toastView = deps.toastView;
+    this.parameterView = deps.parameterView;
+    this.exportView = deps.exportView;
+    this.mainMenuView = deps.mainMenuView;
+    this.statusView = deps.statusView;
+    this.onboardingView = deps.onboardingView;
+    this.paramController = deps.paramController;
+    this.actionController = deps.actionController;
+    this.uiController = deps.uiController;
 
     this.#setupCommands();
     this.#setupDataFlowListeners();

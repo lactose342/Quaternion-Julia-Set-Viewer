@@ -28,15 +28,13 @@ export class ExportManager extends EventTarget {
     const originalAspect = this.renderer.camera.aspect;
 
     try {
-      await this.#startDownloadState();
+      const dims = this.#calculateDimensions(scale);
+      await this.#startDownloadState(dims);
 
       await this.#flushDOM();
       await this.#sleep(150);
 
-      const dims = this.#calculateDimensions(scale);
       const { canvas, ctx } = this.#createCanvas(dims.targetWidth, dims.targetHeight);
-
-      this.#setupRendererForExport(dims);
 
       const isTransparent = format === "transparent_png";
 
@@ -54,31 +52,29 @@ export class ExportManager extends EventTarget {
       console.error(error);
       throw error;
     } finally {
-      this.renderer.resetViewOffset(originalAspect);
-      this.#endDownloadState(originalQuality);
+      this.#endDownloadState(originalQuality, originalAspect);
     }
   }
 
-  async #startDownloadState() {
+  async #startDownloadState(dims) {
     this.uiStore.update({
       isDownloading: true,
       downloadProgress: 0,
       downloadMessage: "0%"
     });
-    this.renderer.controls.enabled = false;
-    this.renderer.stopLoop();
+    this.renderer.startExportMode(
+      dims.targetWidth / dims.targetHeight,
+      dims.tileW,
+      dims.tileH
+    );
 
     await this.#flushDOM();
     await this.#sleep(50);
   }
 
-  #endDownloadState(originalQuality) {
+  #endDownloadState(originalQuality, originalAspect) {
     this.uiStore.update({ isDownloading: false });
-
-    this.renderer.setQuality(originalQuality);
-    this.renderer.controls.enabled = true;
-    this.renderer.renderState.needsRender = true;
-    this.renderer.startLoop();
+    this.renderer.endExportMode(originalQuality, originalAspect);
   }
 
   #calculateDimensions(scale) {
@@ -109,13 +105,6 @@ export class ExportManager extends EventTarget {
     canvas.height = height;
     const ctx = canvas.getContext("2d");
     return { canvas, ctx };
-  }
-
-  #setupRendererForExport(dims) {
-    this.renderer.setQuality("EXPORT");
-    this.renderer.camera.aspect = dims.targetWidth / dims.targetHeight;
-    this.renderer.camera.updateProjectionMatrix();
-    this.renderer.renderer.setSize(dims.tileW, dims.tileH, false);
   }
 
   async #renderTiles(ctx, dims, isTransparent, renderParams) {
