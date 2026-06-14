@@ -6,6 +6,10 @@ export class XRInputProcessor {
     this.lastDirection = null;
     this.lastTwoHandDist = null;
     this.lastActiveTouchCount = 0;
+    
+    // 両手グラブ開始時の初期状態保存用
+    this.initialMidpoint = null;
+    this.startVrOffset = null;
   }
 
   update(delta) {
@@ -87,21 +91,41 @@ export class XRInputProcessor {
       const c1 = getControllerSafe(1);
       if (c0 && c1) {
         const currentDist = c0.position.distanceTo(c1.position);
+        const currentMidpoint = new THREE.Vector3().addVectors(c0.position, c1.position).multiplyScalar(0.5);
+
+        // 両手グラブ開始時の初期状態を記録
+        const isTwoHandStart = !this.initialMidpoint || !this.startVrOffset;
+        if (isTwoHandStart) {
+          this.initialMidpoint = currentMidpoint.clone();
+          this.startVrOffset = {
+            x: this.xrManager.vrOffset.x,
+            y: this.xrManager.vrOffset.y,
+            z: this.xrManager.vrOffset.z
+          };
+          this.xrManager.initialTwoHandDist = currentDist;
+          this.xrManager.startVrScale = this.xrManager.vrScale;
+        }
 
         if (this.xrManager.initialTwoHandDist && this.xrManager.initialTwoHandDist > 0.01) {
           const ratio = currentDist / this.xrManager.initialTwoHandDist;
           this.xrManager.vrScale = Math.max(0.05, Math.min(this.xrManager.maxVrScale, this.xrManager.startVrScale * ratio));
         }
 
-        // 位置は両手の中間点に配置する
-        const midpoint = new THREE.Vector3().addVectors(c0.position, c1.position).multiplyScalar(0.5);
-        this.xrManager.vrOffset.x = midpoint.x;
-        this.xrManager.vrOffset.y = midpoint.y;
-        this.xrManager.vrOffset.z = midpoint.z;
+        // 位置の更新（初期位置からの移動量デルタを加算する）
+        if (this.initialMidpoint && this.startVrOffset) {
+          const delta = new THREE.Vector3().subVectors(currentMidpoint, this.initialMidpoint);
+          this.xrManager.vrOffset.x = this.startVrOffset.x + delta.x;
+          this.xrManager.vrOffset.y = this.startVrOffset.y + delta.y;
+          this.xrManager.vrOffset.z = this.startVrOffset.z + delta.z;
+        }
       }
 
       if (this.xrManager.onInteraction) this.xrManager.onInteraction();
       return;
+    } else {
+      // 両手操作終了時に初期状態をクリア
+      this.initialMidpoint = null;
+      this.startVrOffset = null;
     }
 
     // 【片手でのグラブ・直接操作 (6-DoFトランスフォーム追従)】
