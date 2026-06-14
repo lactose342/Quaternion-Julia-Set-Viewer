@@ -35,6 +35,7 @@ export class Renderer {
 
     this.onCameraChange = null;
     this.onFpsUpdate = null;
+    this.onFirstRender = null;
     this.isDownloading = false;
 
     this.maxPixelRatio = 2.0;
@@ -97,6 +98,7 @@ export class Renderer {
     this.setQuality("HIGH");
 
     this.mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.material);
+    this.mesh.frustumCulled = false;
 
     this.mesh.onBeforeRender = (renderer, scene, camera) => {
       if (!this.material || !this.material.uniforms) return;
@@ -431,6 +433,10 @@ export class Renderer {
         this.onBeforeUpdateUniforms(this);
       }
       this.renderer.render(this.scene, this.camera);
+      if (this.onFirstRender) {
+        this.onFirstRender();
+        this.onFirstRender = null;
+      }
       if (this.qualityManager) {
         this.qualityManager.fpsFrames++;
       }

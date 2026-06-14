@@ -10,6 +10,15 @@
 </head>
 
 <body>
+    <!-- 起動時ローディングオーバーレイ -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-title">Loading 4D Julia Set</div>
+            <div class="loading-subtitle">WebGLシェーダーをコンパイル中...</div>
+        </div>
+    </div>
+
     <div id="custom-ui" class="hidden">
         <!-- モバイル用ドラッグハンドル（PCでは非表示） -->
         <div class="bottom-sheet-handle"></div>

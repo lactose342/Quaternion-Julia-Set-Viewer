@@ -107,6 +107,16 @@ export class App {
 
       this.dispatcher.dispatch("INITIALIZE_APP", { currentUrl: window.location.href });
 
+      this.renderer.onFirstRender = () => {
+        const loader = document.getElementById("loading-overlay");
+        if (loader) {
+          loader.classList.add("fade-out");
+          setTimeout(() => {
+            loader.style.display = "none";
+          }, 500);
+        }
+      };
+
       this.renderer.animate(() => ({
         isDownloading: this.uiStore.isDownloading,
         isAutoAnimating: this.uiStore.isAutoAnimating
