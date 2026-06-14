@@ -22,6 +22,21 @@ export class AdaptiveQualityManager {
     const { isDownloading, isAutoAnimating, isInteracting, isVR } = appState;
     const isActive = isAutoAnimating || isInteracting || isVR;
 
+    // VR時は動的解像度変更（Adaptive Quality）をスキップし、固定ピクセル比（0.55など）を維持する
+    if (isVR) {
+      const elapsed = now - this.fpsLastTime;
+      if (elapsed >= 300) {
+        const fps = Math.round((this.fpsFrames * 1000) / elapsed);
+        this.lastFps = fps;
+        this.fpsFrames = 0;
+        this.fpsLastTime = now;
+        if (onFpsCalculated) {
+          onFpsCalculated(fps);
+        }
+      }
+      return null;
+    }
+
     // 1. アクティブ移行時（静止から操作・アニメーション開始）は基準値 1.0 に即リセット
     if (isActive && !this.wasActive) {
       this.wasActive = true;
