@@ -44,6 +44,10 @@ export class XRManager {
     this.onSessionEnd = null;
     this.onInteraction = null;
 
+    // 通常モード / XRモードの回転個別管理用
+    this.savedNormalRotation = null;
+    this.savedXRRotation = null;
+
     // セッション開始時の全パラメータを保存する領域
     this.initialParams = null;
     this.domTouchCount = 0;
@@ -73,7 +77,25 @@ export class XRManager {
     this.threeRenderer.xr.addEventListener("sessionstart", () => {
       this.activeSession = this.threeRenderer.xr.getSession();
 
-      // セッション開始時の全パラメータをディープコピーして保存
+      // 1. 進入前の通常モードの回転パラメータを退避
+      const currentParams = this.domainStore.getParams("fractal");
+      if (currentParams) {
+        this.savedNormalRotation = {
+          rotX: currentParams.rotX,
+          rotY: currentParams.rotY,
+          rotZ: currentParams.rotZ,
+          rotXW: currentParams.rotXW,
+          rotYW: currentParams.rotYW,
+          rotZW: currentParams.rotZW
+        };
+      }
+
+      // 2. もし前回のXR終了時の回転状態が保存されていれば、それを復元して適用
+      if (this.savedXRRotation) {
+        this.domainStore.updateParams("fractal", this.savedXRRotation);
+      }
+
+      // 3. XRセッション開始時（XR回転適用後）の全パラメータをディープコピーして保存
       const snapshot = this.domainStore.getSnapshot();
       this.initialParams = snapshot ? snapshot.params : null;
 
@@ -177,6 +199,24 @@ export class XRManager {
 
     this.threeRenderer.xr.addEventListener("sessionend", () => {
       document.body.classList.remove("xr-ar-mode");
+
+      // 1. XRセッション終了時の回転パラメータを保存
+      const currentParams = this.domainStore.getParams("fractal");
+      if (currentParams) {
+        this.savedXRRotation = {
+          rotX: currentParams.rotX,
+          rotY: currentParams.rotY,
+          rotZ: currentParams.rotZ,
+          rotXW: currentParams.rotXW,
+          rotYW: currentParams.rotYW,
+          rotZW: currentParams.rotZW
+        };
+      }
+
+      // 2. 保存していた通常モードの回転状態を復元
+      if (this.savedNormalRotation) {
+        this.domainStore.updateParams("fractal", this.savedNormalRotation);
+      }
 
       // touchイベントリスナーの解除
       if (this._onTouchStart) {
