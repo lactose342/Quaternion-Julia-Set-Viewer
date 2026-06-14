@@ -263,6 +263,11 @@ export class UIController {
   }
 
   updateRenderQuality() {
+    // VR/ARプレゼンテーション中は、デスクトップ用画質変更を完全にスキップして "XR" 品質を維持する
+    if (this.renderer.renderer && this.renderer.renderer.xr.isPresenting) {
+      return;
+    }
+
     const uiState = this.uiStore.getState();
     if (uiState.isDownloading) return;
 
