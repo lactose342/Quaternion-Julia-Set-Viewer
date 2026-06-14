@@ -46,6 +46,8 @@ export class XRManager {
 
     // セッション開始時のフラクタルパラメータを保存する領域
     this.initialFractalParams = null;
+    this.domTouchCount = 0;
+    this.lastDomPinchDist = null;
     this.inputProcessor = new XRInputProcessor(this);
 
     // AR用オーバーレイコントロール
@@ -85,6 +87,60 @@ export class XRManager {
             }
           };
         }
+
+        // スマホAR用：標準のDOMタッチイベント（マルチタッチ・ピンチ）をハンドリングして奥行き移動
+        this.domTouchCount = 0;
+        this.lastDomPinchDist = null;
+
+        this._onTouchStart = (e) => {
+          this.domTouchCount = e.touches.length;
+          if (this.domTouchCount === 2) {
+            const t0 = e.touches[0];
+            const t1 = e.touches[1];
+            this.lastDomPinchDist = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
+          } else {
+            this.lastDomPinchDist = null;
+          }
+        };
+
+        this._onTouchMove = (e) => {
+          this.domTouchCount = e.touches.length;
+          if (this.domTouchCount === 2 && this.lastDomPinchDist !== null) {
+            const t0 = e.touches[0];
+            const t1 = e.touches[1];
+            const dist = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
+
+            const deltaPixels = dist - this.lastDomPinchDist;
+            // 2本指のピンチ感度（1ピクセルあたりの奥行き移動量）
+            const sensitivity = 0.005;
+            const targetZ = this.vrOffset.z + deltaPixels * sensitivity;
+            // 手前は -0.15, 奥は -4.0 をリミットとする
+            this.vrOffset.z = Math.max(-4.0, Math.min(-0.15, targetZ));
+
+            this.lastDomPinchDist = dist;
+            if (this.onInteraction) this.onInteraction();
+
+            if (e.cancelable) {
+              e.preventDefault();
+            }
+          }
+        };
+
+        this._onTouchEnd = (e) => {
+          this.domTouchCount = e.touches.length;
+          if (this.domTouchCount === 2) {
+            const t0 = e.touches[0];
+            const t1 = e.touches[1];
+            this.lastDomPinchDist = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
+          } else {
+            this.lastDomPinchDist = null;
+          }
+        };
+
+        window.addEventListener("touchstart", this._onTouchStart, { passive: false });
+        window.addEventListener("touchmove", this._onTouchMove, { passive: false });
+        window.addEventListener("touchend", this._onTouchEnd, { passive: false });
+        window.addEventListener("touchcancel", this._onTouchEnd, { passive: false });
       }
 
       // ARとVRでの表示設定（ARではコントローラー・手モデルを非表示にし、ポインター線のみにする）
@@ -110,6 +166,19 @@ export class XRManager {
 
     this.threeRenderer.xr.addEventListener("sessionend", () => {
       document.body.classList.remove("xr-ar-mode");
+
+      // touchイベントリスナーの解除
+      if (this._onTouchStart) {
+        window.removeEventListener("touchstart", this._onTouchStart);
+        window.removeEventListener("touchmove", this._onTouchMove);
+        window.removeEventListener("touchend", this._onTouchEnd);
+        window.removeEventListener("touchcancel", this._onTouchEnd);
+        this._onTouchStart = null;
+        this._onTouchMove = null;
+        this._onTouchEnd = null;
+      }
+      this.domTouchCount = 0;
+
       this.activeSession = null;
       if (this.isAR) {
         // 背景透過度を元の状態に復元

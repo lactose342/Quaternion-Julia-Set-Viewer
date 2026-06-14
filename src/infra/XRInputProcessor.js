@@ -30,33 +30,19 @@ export class XRInputProcessor {
     const isMobileAR = screenTouch0 || screenTouch1;
 
     if (isMobileAR) {
+      const domTouchCount = this.xrManager.domTouchCount || 0;
+      if (domTouchCount >= 2) {
+        // 2本以上の指がある場合は、1本指での平行移動の競合を防ぐために処理をスキップ
+        this.lastActiveTouchCount = 0;
+        this.lastDirection = null;
+        return;
+      }
+
       const activeTouchCount = (this.xrManager.dragging[0] ? 1 : 0) + (this.xrManager.dragging[1] ? 1 : 0);
       const touchCountChanged = activeTouchCount !== this.lastActiveTouchCount;
       this.lastActiveTouchCount = activeTouchCount;
 
-      if (activeTouchCount === 2) {
-        // 2本指タッチ：奥行き方向の移動 (vrOffset.z)
-        const c0 = getControllerSafe(0);
-        const c1 = getControllerSafe(1);
-        if (c0 && c1) {
-          const dir0 = this.xrManager.getControllerDirection(c0);
-          const dir1 = this.xrManager.getControllerDirection(c1);
-          const currentDist = dir0.distanceTo(dir1);
-
-          if (touchCountChanged) {
-            this.lastTwoHandDist = currentDist;
-          } else if (this.lastTwoHandDist !== null && this.lastTwoHandDist > 0.001) {
-            const deltaDist = currentDist - this.lastTwoHandDist;
-            // ピンチによる奥行き感度 (距離の差分に対して奥行きを移動させる)
-            const sensitivityDepth = 8.0;
-            const targetZ = this.xrManager.vrOffset.z + deltaDist * sensitivityDepth;
-            // 手前は -0.15, 奥は -4.0 をリミットとする
-            this.xrManager.vrOffset.z = Math.max(-4.0, Math.min(-0.15, targetZ));
-          }
-          this.lastTwoHandDist = currentDist;
-        }
-        if (this.xrManager.onInteraction) this.xrManager.onInteraction();
-      } else if (activeTouchCount === 1) {
+      if (activeTouchCount === 1) {
         // 1本指タッチ：平行移動 (vrOffset.x, vrOffset.y)
         const id = this.xrManager.dragging[0] ? 0 : 1;
         const c = getControllerSafe(id);

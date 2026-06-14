@@ -192,8 +192,34 @@
         transition: background 0.2s, color 0.2s;
     }
 
-    .tab-btn .material-symbols-outlined {
+    .tab-btn::before {
+        font-family: 'Material Symbols Outlined';
+        line-height: 1;
         font-size: 16px;
+    }
+
+    .tab-btn[data-tab="tab-common"]::before {
+        content: '\e429'; /* tune */
+    }
+
+    .tab-btn[data-tab="section-shape"]::before {
+        content: '\e4fd'; /* schema */
+    }
+
+    .tab-btn[data-tab="section-rotation"]::before {
+        content: '\e84d'; /* 3d_rotation */
+    }
+
+    .tab-btn[data-tab="section-camera"]::before {
+        content: '\e04b'; /* videocam */
+    }
+
+    .tab-btn[data-tab="section-style"]::before {
+        content: '\e40a'; /* palette */
+    }
+
+    .tab-btn[data-tab="section-animation"]::before {
+        content: '\e71c'; /* animation */
     }
 
     .tab-btn:hover {
