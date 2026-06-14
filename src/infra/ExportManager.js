@@ -19,45 +19,6 @@ export class ExportManager extends EventTarget {
     return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   }
 
-  async downloadArScreenshot() {
-    if (this.uiStore.isDownloading) return;
-
-    this.uiStore.update({ isDownloading: true });
-
-    try {
-      const blob = await this.renderer.captureNextFrame();
-      if (!blob) {
-        throw new Error("AR撮影のキャプチャに失敗しました");
-      }
-
-      const now = new Date();
-      const timestamp = now.getFullYear() +
-        String(now.getMonth() + 1).padStart(2, '0') +
-        String(now.getDate()).padStart(2, '0') + '_' +
-        String(now.getHours()).padStart(2, '0') +
-        String(now.getMinutes()).padStart(2, '0') +
-        String(now.getSeconds()).padStart(2, '0') + '_' +
-        String(now.getMilliseconds()).padStart(3, '0');
-
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.download = `4d_julia_ar_${timestamp}.png`;
-      link.href = url;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
-
-      this.dispatchEvent(new CustomEvent("toast", { detail: { message: "AR撮影を保存しました", type: "success" } }));
-
-    } catch (error) {
-      console.error(error);
-      this.dispatchEvent(new CustomEvent("toast", { detail: { message: "撮影に失敗しました", type: "error" } }));
-    } finally {
-      this.uiStore.update({ isDownloading: false });
-    }
-  }
-
   async downloadHighRes(format, scale) {
     if (document.activeElement) document.activeElement.blur();
 

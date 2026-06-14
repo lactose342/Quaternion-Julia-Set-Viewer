@@ -257,14 +257,6 @@
     font-size: 24px;
 }
 
-#ar-screenshot-btn {
-    background-color: rgba(0, 85, 255, 0.9); /* 青色 */
-}
-
-#ar-screenshot-btn:hover {
-    background-color: rgba(30, 110, 255, 1);
-}
-
 #ar-exit-btn {
     background-color: rgba(220, 53, 69, 0.9); /* 赤色 */
 }

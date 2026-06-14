@@ -50,13 +50,11 @@ export class XRManager {
 
     // AR用オーバーレイコントロール
     this.arControls = null;
-    this.arScreenshotBtn = null;
     this.arExitBtn = null;
   }
 
   init() {
     this.arControls = document.getElementById("ar-controls");
-    this.arScreenshotBtn = document.getElementById("ar-screenshot-btn");
     this.arExitBtn = document.getElementById("ar-exit-btn");
 
     this.threeRenderer.xr.addEventListener("sessionstart", () => {
@@ -78,13 +76,6 @@ export class XRManager {
         // ARコントロールの表示とイベント設定
         if (this.arControls) {
           this.arControls.classList.remove("hidden");
-        }
-        if (this.arScreenshotBtn) {
-          this.arScreenshotBtn.onclick = () => {
-            if (this.dispatcher) {
-              this.dispatcher.dispatch("DOWNLOAD_AR_SCREENSHOT");
-            }
-          };
         }
         if (this.arExitBtn) {
           this.arExitBtn.onclick = () => {

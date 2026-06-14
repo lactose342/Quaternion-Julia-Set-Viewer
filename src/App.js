@@ -15,8 +15,7 @@ import {
   CommitHistoryCommand,
   InitializeAppCommand,
   EnterCameraModeCommand,
-  ExitCameraModeCommand,
-  DownloadArScreenshotCommand
+  ExitCameraModeCommand
 } from "@/core/commands/index.js";
 
 export class App {
@@ -65,7 +64,6 @@ export class App {
     this.dispatcher.register("COMMIT_HISTORY", new CommitHistoryCommand(this.domainStore, this.uiStore, this.historyManager));
     this.dispatcher.register("ENTER_CAMERA_MODE", new EnterCameraModeCommand(this.uiStore));
     this.dispatcher.register("EXIT_CAMERA_MODE", new ExitCameraModeCommand(this.uiStore));
-    this.dispatcher.register("DOWNLOAD_AR_SCREENSHOT", new DownloadArScreenshotCommand(this.exportManager));
   }
 
   #setupDataFlowListeners() {
