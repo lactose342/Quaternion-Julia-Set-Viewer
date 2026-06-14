@@ -6,6 +6,7 @@ export class XRInputProcessor {
     this.lastDirection = null;
     this.initialTwoHandDist = null;
     this.lastActiveTouchCount = 0;
+    this.startVrOffsetZ = 0.0;
   }
 
   update(delta) {
@@ -36,49 +37,29 @@ export class XRInputProcessor {
 
       // スマホAR（画面タッチ）のインタラクション
       if (activeTouchCount === 2) {
-        // 2本指タッチ：3D回転 (rotX, rotY)
-        // c0 を代表として回転量を計算
-        const c = getControllerSafe(0);
-        if (c) {
-          const currentDirection = this.xrManager.getControllerDirection(c);
+        // 2本指タッチ：奥行き方向の移動 (vrOffset.z)
+        const c0 = getControllerSafe(0);
+        const c1 = getControllerSafe(1);
+        if (c0 && c1) {
+          const dir0 = this.xrManager.getControllerDirection(c0);
+          const dir1 = this.xrManager.getControllerDirection(c1);
+          const currentDist = dir0.distanceTo(dir1);
 
           if (touchCountChanged) {
-            // タッチ数が変化した瞬間は基準方向をリセット
-            this.lastDirection = currentDirection.clone();
+            this.initialTwoHandDist = currentDist;
+            this.startVrOffsetZ = this.xrManager.vrOffset.z;
           }
 
-          if (!touchCountChanged && this.lastDirection) {
-            const diff = new THREE.Vector3().subVectors(currentDirection, this.lastDirection);
-            
-            // カメラの右・上ベクトルを基準にしてドラッグ方向を求める
-            const xrCamera = this.xrManager.threeRenderer.xr.getCamera();
-            const right = new THREE.Vector3(1, 0, 0);
-            const up = new THREE.Vector3(0, 1, 0);
-            
-            if (xrCamera) {
-              const tempCamMatrix = new THREE.Matrix4();
-              tempCamMatrix.extractRotation(xrCamera.matrixWorld);
-              right.applyMatrix4(tempCamMatrix).normalize();
-              up.applyMatrix4(tempCamMatrix).normalize();
-            }
-
-            const diffX = diff.dot(right);
-            const diffY = diff.dot(up);
-
-            const sensitivity = 5.0;
-            const params = this.xrManager.domainStore.getParams("fractal");
-            const nextRotX = params.rotX - diffY * sensitivity;
-            const nextRotY = params.rotY + diffX * sensitivity;
-
-            this.xrManager.domainStore.updateParams("fractal", {
-              rotX: nextRotX,
-              rotY: nextRotY
-            });
+          if (this.initialTwoHandDist && this.initialTwoHandDist > 0.001) {
+            const ratio = currentDist / this.initialTwoHandDist;
+            // ピンチによる奥行き感度（1.5倍）
+            const deltaZ = (ratio - 1.0) * 1.5; 
+            const targetZ = this.startVrOffsetZ + deltaZ;
+            // 手前は -0.15, 奥は -4.0 をリミットとする
+            this.xrManager.vrOffset.z = Math.max(-4.0, Math.min(-0.15, targetZ));
           }
-          this.lastDirection = currentDirection.clone();
         }
         if (this.xrManager.onInteraction) this.xrManager.onInteraction();
-
       } else if (activeTouchCount === 1) {
         // 1本指タッチ：平行移動 (vrOffset.x, vrOffset.y)
         const id = this.xrManager.dragging[0] ? 0 : 1;
