@@ -186,7 +186,9 @@ export class ExportManager extends EventTarget {
           const link = document.createElement("a");
           link.download = `4d_julia_wallpaper_${width}x${height}.${ext}`;
           link.href = url;
+          document.body.appendChild(link);
           link.click();
+          document.body.removeChild(link);
           setTimeout(() => URL.revokeObjectURL(url), 2000);
           resolve();
         },

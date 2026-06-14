@@ -33,6 +33,7 @@ export class XRManager {
     this.grabRelativeMatrix = [null, null]; // コントローラーとフラクタルの相対トランスフォーム行列
     this.startVrScale = 1.0;
     this.initialTwoHandDist = null;
+    this.lastActiveTouchCount = 0;
 
     // ジョイスティック操作の状態管理
     this.isJoystickOperating = [false, false];
@@ -169,26 +170,54 @@ export class XRManager {
     }
   }
 
-  onSelectStart(id, controller) {
-    // コントローラーの光線がフラクタルのバウンディング球に交差しているかチェック
-    const sphereCenter = new THREE.Vector3(this.vrOffset.x, this.vrOffset.y, this.vrOffset.z);
-    const sphereRadius = 1.5 * this.vrScale;
-    const sphere = new THREE.Sphere(sphereCenter, sphereRadius);
-
+  getControllerDirection(controller) {
     const tempMatrix = new THREE.Matrix4();
     tempMatrix.identity().extractRotation(controller.matrixWorld);
-    const origin = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld);
-    const direction = new THREE.Vector3(0, 0, -1).applyMatrix4(tempMatrix).normalize();
+    return new THREE.Vector3(0, 0, -1).applyMatrix4(tempMatrix).normalize();
+  }
 
-    const ray = new THREE.Ray(origin, direction);
-    const isIntersecting = ray.intersectsSphere(sphere);
+  onSelectStart(id, controller) {
+    const isScreenTouch = controller.inputSource && controller.inputSource.targetRayMode === 'screen';
 
-    // 交差していない場合はドラッグ（グラブ）を開始しない
-    if (!isIntersecting) {
-      return;
+    // スマホARの画面タッチの場合は、球体交差チェックをバイパスする
+    if (!isScreenTouch) {
+      // コントローラーの光線がフラクタルのバウンディング球に交差しているかチェック
+      const sphereCenter = new THREE.Vector3(this.vrOffset.x, this.vrOffset.y, this.vrOffset.z);
+      const sphereRadius = 1.5 * this.vrScale;
+      const sphere = new THREE.Sphere(sphereCenter, sphereRadius);
+
+      const tempMatrix = new THREE.Matrix4();
+      tempMatrix.identity().extractRotation(controller.matrixWorld);
+      const origin = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld);
+      const direction = new THREE.Vector3(0, 0, -1).applyMatrix4(tempMatrix).normalize();
+
+      const ray = new THREE.Ray(origin, direction);
+      const isIntersecting = ray.intersectsSphere(sphere);
+
+      // 交差していない場合はドラッグ（グラブ）を開始しない
+      if (!isIntersecting) {
+        return;
+      }
     }
 
     this.dragging[id] = true;
+
+    // スマホARの場合
+    if (isScreenTouch) {
+      this.lastDirection = this.getControllerDirection(controller);
+      this.lastPosition = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld);
+      this.startVrScale = this.vrScale;
+      
+      // 2点タッチ（拡大縮小）のための初期方向ベクトル距離を記録
+      if (this.dragging[0] && this.dragging[1]) {
+        const c0 = this.threeRenderer.xr.getController(0);
+        const c1 = this.threeRenderer.xr.getController(1);
+        const dir0 = this.getControllerDirection(c0);
+        const dir1 = this.getControllerDirection(c1);
+        this.initialTwoHandDist = dir0.distanceTo(dir1);
+      }
+      return;
+    }
 
     // 現在のフラクタルのワールドトランスフォーム行列を構築
     const fractalMatrix = new THREE.Matrix4();
@@ -239,6 +268,81 @@ export class XRManager {
   }
 
   updateDragInteraction() {
+    const isScreenTouch0 = this.dragging[0] && this.threeRenderer.xr.getController(0).inputSource && this.threeRenderer.xr.getController(0).inputSource.targetRayMode === 'screen';
+    const isScreenTouch1 = this.dragging[1] && this.threeRenderer.xr.getController(1).inputSource && this.threeRenderer.xr.getController(1).inputSource.targetRayMode === 'screen';
+    const isScreenTouch = isScreenTouch0 || isScreenTouch1;
+
+    if (isScreenTouch) {
+      const activeTouchCount = (this.dragging[0] ? 1 : 0) + (this.dragging[1] ? 1 : 0);
+      
+      if (this.lastActiveTouchCount === undefined) {
+        this.lastActiveTouchCount = 0;
+      }
+      const touchCountChanged = activeTouchCount !== this.lastActiveTouchCount;
+      this.lastActiveTouchCount = activeTouchCount;
+
+      // スマホAR（画面タッチ）のインタラクション
+      if (activeTouchCount === 2) {
+        // 2本指タッチ：ピンチズーム（拡大縮小）
+        const c0 = this.threeRenderer.xr.getController(0);
+        const c1 = this.threeRenderer.xr.getController(1);
+        const dir0 = this.getControllerDirection(c0);
+        const dir1 = this.getControllerDirection(c1);
+        const currentDist = dir0.distanceTo(dir1);
+
+        if (touchCountChanged) {
+          // タッチ数が2に変化した瞬間、基準距離と基準スケールをリセット
+          this.initialTwoHandDist = currentDist;
+          this.startVrScale = this.vrScale;
+        }
+
+        if (this.initialTwoHandDist && this.initialTwoHandDist > 0.001) {
+          const ratio = currentDist / this.initialTwoHandDist;
+          this.vrScale = Math.max(0.05, Math.min(this.maxVrScale, this.startVrScale * ratio));
+        }
+        if (this.onInteraction) this.onInteraction();
+      } else if (activeTouchCount === 1) {
+        // 1本指タッチ：スワイプ回転
+        const id = this.dragging[0] ? 0 : 1;
+        const c = this.threeRenderer.xr.getController(id);
+        const currentDirection = this.getControllerDirection(c);
+
+        // タッチ数が変化した直後のフレームは、前の指の方向からのジャンプを防ぐため
+        // 回転量の計算は行わず、lastDirection の同期のみ行う
+        if (!touchCountChanged && this.lastDirection) {
+          const diff = new THREE.Vector3().subVectors(currentDirection, this.lastDirection);
+          
+          // カメラの右・上ベクトルを基準にしてドラッグ方向を求める
+          const xrCamera = this.threeRenderer.xr.getCamera();
+          const right = new THREE.Vector3(1, 0, 0);
+          const up = new THREE.Vector3(0, 1, 0);
+          
+          if (xrCamera) {
+            const tempCamMatrix = new THREE.Matrix4();
+            tempCamMatrix.extractRotation(xrCamera.matrixWorld);
+            right.applyMatrix4(tempCamMatrix).normalize();
+            up.applyMatrix4(tempCamMatrix).normalize();
+          }
+
+          const diffX = diff.dot(right);
+          const diffY = diff.dot(up);
+
+          const sensitivity = 5.0;
+          const params = this.domainStore.getParams("fractal");
+          const nextRotX = params.rotX - diffY * sensitivity;
+          const nextRotY = params.rotY + diffX * sensitivity;
+
+          this.domainStore.updateParams("fractal", {
+            rotX: nextRotX,
+            rotY: nextRotY
+          });
+        }
+        this.lastDirection = currentDirection.clone();
+        if (this.onInteraction) this.onInteraction();
+      }
+      return;
+    }
+
     // 【両手でのピンチ / 拡大縮小 ＆ 位置調整】
     if (this.dragging[0] && this.dragging[1]) {
       const c0 = this.threeRenderer.xr.getController(0);
