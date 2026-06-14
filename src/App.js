@@ -97,6 +97,9 @@ export class App {
 
   init() {
     try {
+      // FOUC (Flash of Unstyled Content) 対策用クラスの解除
+      document.body.classList.remove("fouc-prevent");
+
       this.dispatcher.listen();
 
       this.renderer.init();

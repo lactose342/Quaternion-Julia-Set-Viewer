@@ -115,7 +115,7 @@ export class XRManager {
             const sensitivity = 0.005;
             const targetZ = this.vrOffset.z + deltaPixels * sensitivity;
             // 手前は -0.15, 奥は -10.0 をリミットとする
-            this.vrOffset.z = Math.max(-10.0, Math.min(-0.15, targetZ));
+            this.vrOffset.z = Math.max(-5.0, Math.min(-0.15, targetZ));
 
             this.lastDomPinchDist = dist;
             if (this.onInteraction) this.onInteraction();
@@ -303,7 +303,7 @@ export class XRManager {
       this.lastDirection = this.getControllerDirection(controller);
       this.lastPosition = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld);
       this.startVrScale = this.vrScale;
-      
+
       // 2点タッチ（拡大縮小）のための初期方向ベクトル距離を記録
       if (this.dragging[0] && this.dragging[1]) {
         const c0 = this.threeRenderer.xr.getController(0);
@@ -367,7 +367,7 @@ export class XRManager {
 
     this.vrScale = 0.3;
     this.vrOffset = { x: 0.0, y: 1.0, z: -1.2 };
-    
+
     if (this.dispatcher) {
       this.dispatcher.dispatch("RESET_STATE");
     }

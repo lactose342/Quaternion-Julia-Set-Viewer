@@ -7,9 +7,62 @@
     <title>4D Julia Set Viewer</title>
     <link rel="icon" type="image/png" href="/favicon.png">
     <link href="https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined" rel="stylesheet">
+    <style>
+        /* FOUC (Flash of Unstyled Content) 対策 */
+        body.fouc-prevent {
+            background-color: #050508;
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: sans-serif;
+        }
+        body.fouc-prevent > :not(.loading-overlay) {
+            display: none !important;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #050508;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+            opacity: 1;
+            transition: opacity 0.5s ease;
+        }
+        .loading-content {
+            text-align: center;
+        }
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top-color: #0055ff;
+            animation: spin 1s ease-in-out infinite;
+            margin: 0 auto 20px auto;
+        }
+        .loading-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #ffffff;
+        }
+        .loading-subtitle {
+            font-size: 14px;
+            color: #888899;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 
-<body>
+<body class="fouc-prevent">
     <!-- 起動時ローディングオーバーレイ -->
     <div id="loading-overlay" class="loading-overlay">
         <div class="loading-content">
