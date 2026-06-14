@@ -72,14 +72,39 @@ export class Renderer {
     document.body.appendChild(VRButton.createButton(this.renderer));
 
     this.xrManager = new XRManager(this.renderer, this.scene, this.domainStore, this.uiStore, this.config, this.dispatcher);
+    this.savedCameraState = null;
+
     this.xrManager.onSessionStart = () => {
+      // XRセッション開始前にデスクトップカメラの状態を退避
+      if (this.camera && this.controls) {
+        this.savedCameraState = {
+          position: this.camera.position.clone(),
+          target: this.controls.target.clone()
+        };
+      }
+
       this.setQuality("XR");
       this.setPixelRatio(0.55);
       this.renderer.xr.setFoveation(1.0);
     };
     this.xrManager.onSessionEnd = () => {
+      // XRセッション終了時にデスクトップカメラの状態を復元
+      if (this.savedCameraState && this.camera && this.controls) {
+        this.camera.position.copy(this.savedCameraState.position);
+        this.controls.target.copy(this.savedCameraState.target);
+        this.controls.update();
+
+        // ドメインストア側のカメラパラメータも同期して元に戻す
+        this.domainStore.updateCamera("position", this.camera.position);
+        this.domainStore.updateCamera("target", this.controls.target);
+
+        this.savedCameraState = null;
+      }
+
       this.setPixelRatio(this.maxPixelRatio);
       this.setQuality("HIGH");
+      this.renderState.needsRender = true;
+      this.startLoop();
     };
     this.xrManager.onInteraction = () => {
       this.renderState.needsRender = true;
