@@ -59,6 +59,17 @@ export class XRManager {
     this.arControls = document.getElementById("ar-controls");
     this.arExitBtn = document.getElementById("ar-exit-btn");
 
+    // ARセッション中に背景透過度がリセットされたりランダム生成で上書きされた場合、強制的に再透過する
+    this.domainStore.addEventListener("domain-updated", () => {
+      if (this.isAR) {
+        const materialParams = this.domainStore.getParams("material");
+        if (materialParams && materialParams.bgAlpha !== 0.0) {
+          this.originalBgAlpha = materialParams.bgAlpha !== undefined ? materialParams.bgAlpha : 1.0;
+          this.domainStore.updateParams("material", { bgAlpha: 0.0 });
+        }
+      }
+    });
+
     this.threeRenderer.xr.addEventListener("sessionstart", () => {
       this.activeSession = this.threeRenderer.xr.getSession();
 
@@ -180,11 +191,12 @@ export class XRManager {
       this.domTouchCount = 0;
 
       this.activeSession = null;
-      if (this.isAR) {
+      const wasAR = this.isAR;
+      this.isAR = false;
+      if (wasAR) {
         // 背景透過度を元の状態に復元
         this.domainStore.updateParams("material", { bgAlpha: this.originalBgAlpha });
       }
-      this.isAR = false;
 
       // ARコントロールの非表示化
       if (this.arControls) {
