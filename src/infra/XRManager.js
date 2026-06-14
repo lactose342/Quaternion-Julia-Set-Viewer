@@ -114,8 +114,8 @@ export class XRManager {
             // 2本指のピンチ感度（1ピクセルあたりの奥行き移動量）
             const sensitivity = 0.005;
             const targetZ = this.vrOffset.z + deltaPixels * sensitivity;
-            // 手前は -0.15, 奥は -4.0 をリミットとする
-            this.vrOffset.z = Math.max(-4.0, Math.min(-0.15, targetZ));
+            // 手前は -0.15, 奥は -10.0 をリミットとする
+            this.vrOffset.z = Math.max(-10.0, Math.min(-0.15, targetZ));
 
             this.lastDomPinchDist = dist;
             if (this.onInteraction) this.onInteraction();
