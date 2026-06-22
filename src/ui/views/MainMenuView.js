@@ -48,6 +48,32 @@ export class MainMenuView {
         details.appendChild(colorGrid);
       }
 
+      if (section.id === "section-rotation") {
+        const nestedDetails = document.createElement("details");
+        nestedDetails.id = "section-rotation-4d-details";
+        nestedDetails.style.marginTop = "10px";
+        nestedDetails.style.background = "rgba(255, 255, 255, 0.02)";
+
+        const nestedSummary = document.createElement("summary");
+        nestedSummary.textContent = "4次元の回転";
+        nestedDetails.appendChild(nestedSummary);
+
+        const nestedContainer = document.createElement("div");
+        nestedContainer.className = "grid-1col";
+        nestedContainer.style.marginTop = "10px";
+
+        const rot4DKeys = ["rotXW", "rotYW", "rotZW"];
+        rot4DKeys.forEach(key => {
+          const def = definitions[key];
+          if (def) {
+            nestedContainer.appendChild(createParameterElement(key, def));
+          }
+        });
+
+        nestedDetails.appendChild(nestedContainer);
+        details.appendChild(nestedDetails);
+      }
+
       if (section.id === "section-animation") {
         const nestedDetails = document.createElement("details");
         nestedDetails.id = "section-animation-details";
