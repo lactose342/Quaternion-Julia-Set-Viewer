@@ -55,7 +55,7 @@ export class MainMenuView {
         nestedDetails.style.background = "rgba(255, 255, 255, 0.02)";
 
         const nestedSummary = document.createElement("summary");
-        nestedSummary.textContent = "4次元の回転";
+        nestedSummary.textContent = "4次元回転";
         nestedDetails.appendChild(nestedSummary);
 
         const nestedContainer = document.createElement("div");
@@ -118,7 +118,7 @@ export class MainMenuView {
 
     this.customUi.classList.toggle("hidden");
     const isOpen = !this.customUi.classList.contains("hidden");
-    
+
     if (isOpen) {
       this.toggleBtn.classList.remove("is-close");
       this.toggleBtn.classList.add("is-open");
