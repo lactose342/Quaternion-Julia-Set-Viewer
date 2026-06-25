@@ -14,10 +14,4 @@ export default defineConfig({
   build: {
     assetsInlineLimit: 100000000,
   },
-
-  server: {
-    allowedHosts: [
-      '.ngrok-free.app'
-    ]
-  },
 });
