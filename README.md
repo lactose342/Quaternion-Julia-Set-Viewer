@@ -1,4 +1,4 @@
-# 4D Quaternion Julia Set Viewer
+# Quaternion Julia Set Viewer
 
 4次元の数学的世界に存在する神秘的なフラクタル「4次元四元数ジュリア集合（4D Quaternion Julia Set）」を、レイマーチング（Raymarching）を用いてブラウザ上でリアルタイムに3D描画し、自由に探索・操作できるインタラクティブなアートビューアです。高度な数式とWebGL2の描画技術を組み合わせることで、本来は目に見えない4次元空間の美しい断面を、まるで目の前にある彫刻のようにリアルタイムで鑑賞できます。
 
