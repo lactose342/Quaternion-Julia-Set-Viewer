@@ -7,6 +7,13 @@ export const CONFIG = {
         EXPORT: { steps: 2000, iter: 120 },
         XR: { steps: 200, iter: 12 }
     },
+    ADAPTIVE_QUALITY: {
+        ANIM_MIN_RATIO: 0.85,      // limit resolution drop during auto-animation to maintain smoothness
+        ANIM_START_RATIO: 1.2,     // pixel ratio immediately set when starting auto-animation
+        INTERACT_MIN_RATIO: 1.0,   // limit resolution drop during manual drag to keep sharp visual quality (no lower than 1.0)
+        INTERACT_START_RATIO: 1.3, // pixel ratio immediately set when starting manual interaction
+        MAX_RATIO: 1.5,            // limit maximum pixel ratio during dynamic state to prevent chattering
+    },
     RENDER_SETTINGS: {
         STEP_DIST_NORMAL: 0.95,
         STEP_DIST_EXPORT: 0.4,

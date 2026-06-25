@@ -5,8 +5,11 @@ export class AdaptiveQualityManager {
     this.fpsLastTime = performance.now();
     this.lastFps = 60;
     this.wasActive = false;
+    this.wasInteracting = false;
     this.lastChangeTime = 0;
     this.healthyCount = 0;
+    this.lastAnimRatio = this.config?.ADAPTIVE_QUALITY?.ANIM_START_RATIO ?? 1.2;
+    this.lastInteractRatio = this.config?.ADAPTIVE_QUALITY?.INTERACT_START_RATIO ?? 1.3;
   }
 
   /**
@@ -37,21 +40,27 @@ export class AdaptiveQualityManager {
       return null;
     }
 
-    // 1. アクティブ移行時（静止から操作・アニメーション開始）は基準値 1.0 に即リセット
-    if (isActive && !this.wasActive) {
+    const isInteractingStart = isInteracting && !this.wasInteracting;
+    const isAnimStart = isActive && !this.wasActive && !isInteracting;
+
+    // 1. アクティブ移行時（静止から操作・アニメーション開始、またはアニメーション中の操作開始）はそれぞれの開始ピクセル比にリセット
+    if (isInteractingStart || isAnimStart) {
       this.wasActive = true;
+      this.wasInteracting = isInteracting;
       this.healthyCount = 0;
       this.lastChangeTime = now;
       this.fpsFrames = 0;
       this.fpsLastTime = now;
-      if (currentPixelRatio !== 1.0) {
-        console.log(`[Adaptive Quality] Interaction started. Resetting pixel ratio to 1.0`);
-        return 1.0;
+      const startRatio = isInteracting ? this.lastInteractRatio : this.lastAnimRatio;
+      if (currentPixelRatio !== startRatio) {
+        console.log(`[Adaptive Quality] Transition to ${isInteracting ? "Interaction" : "Animation"}. Resetting pixel ratio to ${startRatio}`);
+        return startRatio;
       }
     }
 
     if (!isActive) {
       this.wasActive = false;
+      this.wasInteracting = false;
       this.healthyCount = 0;
       return null; // 静止時は Renderer 側で maxPixelRatio (2.0) に戻すため、ここでは何も返さない
     }
@@ -76,8 +85,10 @@ export class AdaptiveQualityManager {
     }
 
     // 3. 画質の変更判断
-    const DYNAMIC_MIN_LIMIT = 0.75; // 操作中の見栄えを保つための最小ピクセル比
-    const DYNAMIC_MAX_LIMIT = isVR ? 0.55 : 1.5;  // 動的時の上限を1.5に抑えてチャタリングを防止
+    const DYNAMIC_MIN_LIMIT = isInteracting
+      ? (this.config?.ADAPTIVE_QUALITY?.INTERACT_MIN_RATIO ?? 1.0)
+      : (this.config?.ADAPTIVE_QUALITY?.ANIM_MIN_RATIO ?? 0.85);
+    const DYNAMIC_MAX_LIMIT = isVR ? 0.55 : (this.config?.ADAPTIVE_QUALITY?.MAX_RATIO ?? 1.5);  // 動的時の上限を抑えてチャタリングを防止
 
     // A. 下げる判断：カクツキ防止のためクールダウンを無視して即座に適用
     if (fps < 48) {
@@ -87,6 +98,11 @@ export class AdaptiveQualityManager {
         console.log(`[Adaptive Quality] FPS dropped to ${fps}. Reducing pixel ratio to ${nextRatio.toFixed(2)}`);
         this.lastChangeTime = now;
         this.healthyCount = 0;
+        if (isInteracting) {
+          this.lastInteractRatio = nextRatio;
+        } else {
+          this.lastAnimRatio = nextRatio;
+        }
         return nextRatio;
       }
     }
@@ -107,10 +123,17 @@ export class AdaptiveQualityManager {
         console.log(`[Adaptive Quality] FPS is consistently healthy (${fps} for ~3s). Increasing pixel ratio to ${nextRatio.toFixed(2)}`);
         this.lastChangeTime = now;
         this.healthyCount = 0;
+        if (isInteracting) {
+          this.lastInteractRatio = nextRatio;
+        } else {
+          this.lastAnimRatio = nextRatio;
+        }
         return nextRatio;
       }
     }
 
+    this.wasActive = isActive;
+    this.wasInteracting = isInteracting;
     return null;
   }
 
